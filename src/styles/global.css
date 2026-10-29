@@ -185,37 +185,12 @@ button {
   border: 2px solid var(--cream);
 }
 
-/* ---------- intro ---------- */
-.intro {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  background: radial-gradient(ellipse at 50% 60%, rgba(16, 26, 50, 0) 30%, rgba(7, 12, 28, 0.75) 85%);
-  text-align: center;
-}
-.intro-lockup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  animation: rise 1s ease both;
-}
+/* ---------- fallback lockup + how to play ---------- */
 @keyframes rise {
   from {
     opacity: 0;
     transform: translateY(14px);
   }
-}
-.intro-kicker {
-  margin: 0;
-  font-family: var(--hand);
-  color: var(--saffron);
-  font-size: 18px;
-  letter-spacing: 0.02em;
 }
 .logo-big {
   margin: 0;
@@ -235,13 +210,6 @@ button {
   font-family: var(--hand);
   font-size: clamp(20px, 4.5vw, 28px);
   color: var(--cream);
-}
-.intro-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
-  flex-wrap: wrap;
-  justify-content: center;
 }
 .howto {
   position: relative;
@@ -279,11 +247,6 @@ button {
   color: var(--ink);
   border-color: var(--ink);
   background: transparent;
-}
-.skip-intro {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
 }
 
 /* ---------- HUD ---------- */

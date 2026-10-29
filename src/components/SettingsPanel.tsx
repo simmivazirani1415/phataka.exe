@@ -4,6 +4,7 @@ import { IconClose } from './Icons';
 import { SoundToggle } from './SoundToggle';
 import { runtime } from '../game/Runtime';
 import { startHands, stopHands, useHands } from '../input/HandTracker';
+import { useIdent } from '../intro/identState';
 
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return (
@@ -40,6 +41,7 @@ export function SettingsPanel() {
   const settings = useGame((s) => s.settings);
   const update = useGame((s) => s.updateSettings);
   const setUi = useGame((s) => s.setUi);
+  const active = useGame((s) => s.active);
   const reset = useGame((s) => s.reset);
   const [confirm, setConfirm] = useState(false);
   const hands = useHands((s) => s.status);
@@ -74,6 +76,17 @@ export function SettingsPanel() {
           }}
         >
           Highlight hidden patakas
+        </button>
+        <button
+          className="btn ghost small"
+          disabled={!!active}
+          onClick={() => {
+            setUi({ settings: false, tray: false, album: false, newMemory: null, showMe: null });
+            useGame.getState().setPhase('intro');
+            useIdent.getState().replay();
+          }}
+        >
+          Replay intro
         </button>
       </div>
       <div className="setting danger">

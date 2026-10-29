@@ -85,6 +85,19 @@ export interface Anchor {
   pos: Vec3;
   rotY?: number;
 }
+export interface BuildingSpec {
+  id: string;
+  x0: number;
+  x1: number;
+  zFront: number;
+  zBack: number;
+  front: 1 | -1;
+  floors: number;
+  /** top of the roof slab */
+  roofY: number;
+  /** street-facing windows, with the floor they sit on */
+  windows: (WindowSpot & { floor: number })[];
+}
 
 export interface World {
   blocks: Block[];
@@ -97,6 +110,7 @@ export interface World {
   rangolis: RangoliSpec[];
   diyas: DiyaSpec[];
   anchors: Record<string, Anchor>;
+  buildings: Record<string, BuildingSpec>;
 }
 
 const WARM = ['#FFC35C', '#FFB347', '#FFD98A', '#FFCF70', '#FFA94D'];
@@ -114,6 +128,7 @@ export function buildWorld(): World {
   const rangolis: RangoliSpec[] = [];
   const diyas: DiyaSpec[] = [];
   const anchors: Record<string, Anchor> = {};
+  const buildings: Record<string, BuildingSpec> = {};
 
   const glow = (g: Partial<GlowSpec> & { pos: Vec3; color: string; size: number }) => {
     glows.push({ flicker: 0.1, stage: 0, appearStage: 0, group: -1, kind: 'bulb', ...g });
@@ -378,6 +393,9 @@ export function buildWorld(): World {
     const tile = shade(PALETTE.terracotta, -0.05);
     const info: BInfo = { roofY: floors * FH + 0.2, zFront: zF, zBack: zB, xc };
     const doorX = xc + (o.door ?? 0) * width;
+    const spec: BuildingSpec = { id: o.id, x0, x1, zFront: zF, zBack: zB, front, floors, roofY: floors * FH + 0.2, windows: [] };
+    buildings[o.id] = spec;
+    b.tag = o.id;
 
     for (let f = 0; f < floors; f++) {
       const y0 = f * FH;
@@ -411,6 +429,7 @@ export function buildWorld(): World {
         if (o.shop && f === 0) continue;
         if (isBalconyFloor && Math.abs(wx - (xc + (o.balcony!.offset ?? 0))) < o.balcony!.w / 2) continue;
         addWindow(wx, y0 + 1.15, zFf, front, trim, accent, tile, windowStage(o.lightsStage), { shutters: rand() < 0.35 });
+        spec.windows.push({ ...windows[windows.length - 1], floor: f });
       }
       // back windows
       const nb = Math.max(1, Math.floor(width / 3));
@@ -567,6 +586,7 @@ export function buildWorld(): World {
       }
     }
     info.roofY = py;
+    b.tag = undefined;
     return info;
   }
 
@@ -979,7 +999,7 @@ export function buildWorld(): World {
   }
 
   b.finalize();
-  return { blocks: b.blocks, glows, strings, characters, windows, signs, lights, rangolis, diyas, anchors };
+  return { blocks: b.blocks, glows, strings, characters, windows, signs, lights, rangolis, diyas, anchors, buildings };
 }
 
 export function shade(hex: string, amt: number) {

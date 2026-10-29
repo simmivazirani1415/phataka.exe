@@ -114,7 +114,7 @@ export function GlowField() {
     const now = performance.now();
     glowUniforms.uTime.value = state.clock.elapsedTime;
     // with bloom on High graphics the glows run hotter than 1.0 so they spill light
-    glowUniforms.uGlobal.value = (1 - runtime.ghost) * (runtime.composer ? 1.45 : 1);
+    glowUniforms.uGlobal.value = (1 - runtime.ghost) * (runtime.composer ? 1.45 : 1) * (0.25 + 0.75 * runtime.intro.world);
     const stage = useGame.getState().stage();
     const k = Math.min(1, dt * 4);
     for (let i = 0; i < n; i++) {
