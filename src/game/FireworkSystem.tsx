@@ -498,7 +498,7 @@ export function FireworkDirector() {
 
   useFrame((_, rawDt) => {
     const r = running.current;
-    const dt = Math.min(rawDt, 0.05);
+    const dt = Math.min(rawDt, runtime.maxDt);
     const fl = runtime.fireworkLight;
     if (r) {
       r.t += dt;

@@ -10,7 +10,20 @@ npm run dev      # http://localhost:5173  (add ?debug to expose window.__pataka 
 npm run build    # tsc -b && vite build → dist/ (relative base, can be hosted under any path)
 ```
 
-## What's in it, by stage
+## Street-level mohalla (v3)
+
+The diorama is now the backdrop of the intro film only. When the TILLI. doors open you are standing in the gali at eye height (1.6 m), and the rest of the game is played on foot.
+
+- **Walking.** WASD or arrows to walk, Shift to run, drag to look. On phones a joystick sits bottom left (add `?joystick` to force it). Walls, stalls, people and vehicles block you.
+- **The mohalla.** It is built from 36 m chunks: the chowk (main bursting ground), the chai stall, the temple corner, a house lane, a shop lane and side galis, with balconies, rooftops, signs, rangolis, buntings and fairy lights. Chunks are streamed and reused as you walk, so the gali never ends. Code is in `src/street/` (`StreetLayout.ts` holds the layout, collision and placement rules).
+- **Packets.** The eight boxes are larger, with a pulsing golden glow, sparkles and a ground pool that brighten as you get closer. Walk up and press E (or tap Pick up).
+- **Tray.** Opened crackers sit in a slim tray on the right as small renders of the real cracker, each with x5 lights. Drag one (or tap it) onto the ground. The reticle is gold on open road and chowk, red near walls, people, vehicles and animals.
+- **Lighting.** The camera drops into a low spotlight on the cracker. The card at the bottom shows only the gesture icon and a progress ring; tapping it lights the cracker too. Bursts happen on the ground with sparks, smoke, a scorch mark that fades, light on nearby walls and sound. The bomb shakes the camera and the rocket launches from where it stands. The first burst of each cracker becomes its Polaroid.
+- **People and traffic.** An instanced crowd walks, chats, sits at the chai stall and watches from balconies. Scooters, bicycles, autos and cars drive on the left, follow each other and stop for you. Bursts make people flinch, cover their ears or step back, kids cheer, someone films, dogs run off and riders brake and swerve, with the odd Hinglish line. Crackers can only be placed clear of everyone, and people keep away from a lit cracker, so nobody is ever hit.
+- **Performance.** Buildings, people and vehicles are InstancedMeshes that share buffers between chunk copies, with distance LOD for detail, lights and crowd animation, pooled particles and pooled ground marks. Low Graphics shortens the draw distance, halves the lamp lights and skips bloom. Reduced motion turns off head bob and camera shake.
+- **Saves** use their own keys (`pataka.exe.street.v1`), so this build can live next to the older one on the same site.
+
+## What's in it, by stage (v1)
 
 1. **World and intro.** The mohalla is procedural: about 3,000 blocks, instanced by material and shape. It has six zones: the gali, the pataka shop, the courtyard, rooftops, the family terrace and the chai corner. The intro shows a ghost silhouette, then the blocks assemble in phases: ground, road, walls, details, props, lights. The intro can be skipped, and it runs 3× faster in reduced motion.
 2. **Camera.** A 360° orthographic orbit with polar and zoom limits and inertia. Presets: Overview, Terrace, Street, Shop, Courtyard and Rooftops. R or the reset button returns to the start view. The base zoom adapts to the viewport.

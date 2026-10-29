@@ -77,6 +77,8 @@ export const runtime = {
   hazards: [] as Hazard[],
   /** where the carried cracker would go, and whether it may */
   reticle: null as { x: number; z: number; check: 'ok' | 'ground' | 'person' | 'vehicle' | 'far' } | null,
+  /** longest step the firework timeline takes per frame (headless tests raise it) */
+  maxDt: 0.05,
   /** moving things the player cannot walk through (vehicles, people) register a test here */
   solids: new Map<'person' | 'vehicle', (x: number, z: number, r: number) => boolean>(),
   capture: null as CaptureApi | null,

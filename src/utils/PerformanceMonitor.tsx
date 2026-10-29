@@ -8,6 +8,11 @@ import { useGame } from '../game/GameState';
 
 export function PerformanceMonitor() {
   const setDpr = useThree((s) => s.setDpr);
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    // headless tests read draw calls and triangles from here
+    if (new URLSearchParams(location.search).has('debug')) (window as unknown as Record<string, unknown>).__gl = gl;
+  }, [gl]);
   const graphics = useGame((s) => s.settings.graphics);
   const maxDpr = graphics === 'high' ? Math.min(2, window.devicePixelRatio || 1) : Math.min(1, window.devicePixelRatio || 1);
   const minDpr = graphics === 'high' ? 1 : 0.7;
