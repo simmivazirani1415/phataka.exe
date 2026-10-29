@@ -1,13 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, OrthographicCamera } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { runtime, type CameraApi, type CameraState } from '../game/Runtime';
 import { useGame } from '../game/GameState';
 import { baseZoomFor, CAMERA_DISTANCE, getPreset, USER_LIMITS, type PresetName } from './CameraPresets';
-import { CAMERA_SETTLE_END } from '../world/BlockBuilder';
 
 const _v = new THREE.Vector3();
 
@@ -20,8 +19,22 @@ function wrapAngle(from: number, to: number) {
 
 export function CameraController() {
   const controls = useRef<OrbitControlsImpl>(null!);
-  const camRef = useRef<THREE.OrthographicCamera>(null!);
-  const { size } = useThree();
+  const { size, set: setThree, get: getThree } = useThree();
+  // The gameplay camera. It stays R3F's default camera throughout; the intro ident renders
+  // through its own film camera and hands back to this one behind the doors.
+  const camera = useMemo(() => {
+    const c = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
+    c.position.set(40, 50, 60);
+    // R3F leaves a manual camera's frustum alone; we size it ourselves below
+    Object.assign(c, { manual: true });
+    return c;
+  }, []);
+  const camRef = useRef(camera);
+  useLayoutEffect(() => {
+    const old = getThree().camera;
+    setThree({ camera });
+    return () => setThree({ camera: old });
+  }, [camera, setThree, getThree]);
   const base = useRef(baseZoomFor(size.width, size.height));
   const factor = useRef(1);
   const saved = useRef<CameraState | null>(null);
@@ -148,10 +161,18 @@ export function CameraController() {
         cam.getWorldDirection(_v);
         return [_v.x, _v.y, _v.z];
       },
+      snap: (s: CameraState) => {
+        tween.current?.kill();
+        cinematic.current = false;
+        userInput.current = false;
+        if (controls.current) controls.current.enabled = false;
+        set(s);
+        applyLimits(false);
+      },
     };
     runtime.camera = api;
-    // initial framing
-    set({ ...getPreset('overview'), azimuth: 1.7, polar: 0.82, zoom: 0.9 });
+    // initial framing: the view the intro doors open onto
+    set(getPreset('entry'));
     applyLimits(false);
     controls.current.enabled = false;
     return () => {
@@ -160,49 +181,34 @@ export function CameraController() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep framing responsive
-  useEffect(() => {
+  // keep framing responsive (the camera is manual, so its frustum is ours to keep)
+  useLayoutEffect(() => {
     base.current = baseZoomFor(size.width, size.height);
     const cam = camRef.current;
-    if (!cam) return;
+    cam.left = -size.width / 2;
+    cam.right = size.width / 2;
+    cam.top = size.height / 2;
+    cam.bottom = -size.height / 2;
     cam.zoom = base.current * factor.current;
     cam.updateProjectionMatrix();
     applyLimits(cinematic.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size.width, size.height]);
 
-  // intro: the ghost silhouette turns slowly; assembly: a gentle cinematic orbit settling into overview
-  const introStart = useRef<number | null>(null);
+  // the intro holds on the entry framing; entering the mohalla moves into the overview and hands over control
   useEffect(() => {
-    if (phase === 'assembling') {
-      introStart.current = runtime.assemblyTime;
-      runtime.camera?.setUserInput(false);
-      if (reducedMotion) runtime.camera?.goTo(getPreset('overview'), 0.3);
-    }
+    if (phase === 'intro') runtime.camera?.snap(getPreset('entry'));
     if (phase === 'playing') {
       const over = getPreset('overview');
-      runtime.camera?.goTo(over, 1.2).then(() => runtime.camera?.setUserInput(true));
+      runtime.camera?.goTo(over, reducedMotion ? 0.3 : 1.25).then(() => runtime.camera?.setUserInput(true));
     }
-  }, [phase, reducedMotion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
-  useFrame((_, dt) => {
+  useFrame(() => {
     const c = controls.current;
     const cam = camRef.current;
     if (!c || !cam) return;
-    const st = useGame.getState();
-    if (st.phase === 'intro' && !st.settings.reducedMotion) {
-      const s = get();
-      set({ ...s, azimuth: s.azimuth + dt * 0.06 });
-    } else if (st.phase === 'assembling' && !st.settings.reducedMotion && !tween.current?.isActive()) {
-      const t = Math.min(1, runtime.assemblyTime / CAMERA_SETTLE_END);
-      const e = 1 - Math.pow(1 - t, 3);
-      const over = getPreset('overview');
-      set({
-        target: over.target,
-        azimuth: 1.7 + (over.azimuth + Math.PI * 2 - 1.7 - Math.PI * 2) * e,
-        polar: 0.78 + (over.polar - 0.78) * e,
-        zoom: 0.86 + (over.zoom - 0.86) * e,
-      });
-    }
     // clamp panning to the platform
     c.target.x = THREE.MathUtils.clamp(c.target.x, -27, 27);
     c.target.z = THREE.MathUtils.clamp(c.target.z, -21, 21);
@@ -221,9 +227,9 @@ export function CameraController() {
 
   return (
     <>
-      <OrthographicCamera ref={camRef} makeDefault near={1} far={400} position={[40, 50, 60]} zoom={base.current} />
       <OrbitControls
         ref={controls}
+        camera={camera}
         makeDefault
         enableDamping
         dampingFactor={0.08}

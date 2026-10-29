@@ -30,6 +30,8 @@ export interface Block {
   phase: Phase;
   order: number;
   anim: AssemblyAnim;
+  /** Building id for blocks that belong to a building (used by the intro ident). */
+  tag?: string;
   // filled by finalize()
   delay: number;
   offset: [number, number, number];
@@ -65,6 +67,8 @@ export class BlockBuilder {
   private anim: AssemblyAnim = 'rise';
   private order = 0;
   private rand = mulberry32(1987);
+  /** Applied to every block added while set. */
+  tag: string | undefined;
 
   setPhase(phase: Phase, anim: AssemblyAnim, order?: number) {
     this.phase = phase;
@@ -93,6 +97,7 @@ export class BlockBuilder {
       anim: this.anim,
       delay: 0,
       offset: [0, 0, 0],
+      tag: this.tag,
       ...b,
     };
     this.blocks.push(block);

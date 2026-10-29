@@ -22,9 +22,12 @@ export const PRESET_LABELS: Record<PresetName, string> = {
   rooftops: 'Rooftops',
 };
 
-export function getPreset(name: PresetName): CameraState {
+export function getPreset(name: PresetName | 'entry'): CameraState {
   const a = getWorld().anchors;
   switch (name) {
+    case 'entry':
+      // what the intro's doors open onto: the gali in front of the tall cream house the rocket left from
+      return { target: [-3.2, 2.0, -0.6], azimuth: 0.5, polar: 0.98, zoom: 0.84 };
     case 'terrace':
       return { target: a['family.terrace'].pos, azimuth: -0.55, polar: 0.82, zoom: 2.6 };
     case 'street':

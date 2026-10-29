@@ -17,6 +17,7 @@ export function Lighting() {
   const points = useRef<(THREE.PointLight | null)[]>([]);
   const hemi = useRef<THREE.HemisphereLight>(null!);
   const moon = useRef<THREE.DirectionalLight>(null!);
+  const key = useRef<THREE.PointLight>(null!);
   const lights = world.lights.filter((l) => graphics === 'high' || l.lowGraphics);
 
   useFrame((st) => {
@@ -26,7 +27,11 @@ export function Lighting() {
     fw.current.intensity = fl.intensity * 40;
     reveal.current.position.set(...runtime.reveal.pos);
     reveal.current.intensity = runtime.reveal.intensity * (runtime.composer ? 12 : 22);
-    const lightsOn = THREE.MathUtils.clamp((runtime.assemblyTime - PHASES.lights[0]) / 1.5, 0, 1);
+    const intro = runtime.intro;
+    key.current.position.set(...intro.keyPos);
+    key.current.color.setRGB(...intro.keyColor);
+    key.current.intensity = intro.key;
+    const lightsOn = THREE.MathUtils.clamp((runtime.assemblyTime - PHASES.lights[0]) / 1.5, 0, 1) * intro.world;
     const stage = useGame.getState().stage();
     lights.forEach((l, i) => {
       const p = points.current[i];
@@ -37,9 +42,9 @@ export function Lighting() {
     // the night gets a touch warmer as the mohalla celebrates
     const warm = stage / 8;
     const ghost = runtime.ghost;
-    hemi.current.intensity = (0.75 + warm * 0.2) * (1 - ghost * 0.6);
+    hemi.current.intensity = (0.75 + warm * 0.2) * (1 - ghost * 0.6) * (0.35 + 0.65 * intro.world);
     hemi.current.groundColor.setRGB(0.2 + warm * 0.1, 0.12 + warm * 0.05, 0.09);
-    moon.current.intensity = 1.0 * (1 - ghost * 0.5);
+    moon.current.intensity = 1.0 * (1 - ghost * 0.5) * (0.3 + 0.7 * intro.world);
   });
 
   const high = graphics === 'high';
@@ -69,6 +74,7 @@ export function Lighting() {
       ))}
       <pointLight ref={fw} intensity={0} distance={28} decay={1.1} />
       <pointLight ref={reveal} intensity={0} distance={9} decay={1.2} color="#FFE6BC" />
+      <pointLight ref={key} intensity={0} distance={11} decay={1.3} />
     </>
   );
 }

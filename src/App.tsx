@@ -1,8 +1,10 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { useGame, hydrateMemories } from './game/GameState';
 import { runtime } from './game/Runtime';
-import { IntroScreen } from './components/IntroScreen';
-import { GameHUD, SkipIntro } from './components/GameHUD';
+import { GameHUD } from './components/GameHUD';
+import { IdentOverlay } from './intro/IdentOverlay';
+import { useIdent } from './intro/identState';
+import { SITE } from './config/site';
 import { PackageReveal } from './components/PackageReveal';
 import { NewMemory } from './components/PolaroidCard';
 import { CollectionTray } from './components/CollectionTray';
@@ -28,10 +30,8 @@ function hasWebGL() {
 function Fallback({ reason }: { reason: string }) {
   return (
     <div className="fallback">
-      <h1 className="logo-big">
-        Pataka<span>.exe</span>
-      </h1>
-      <p className="tagline">Har ghar mein ek pataka hai.</p>
+      <h1 className="logo-big">{SITE.name}</h1>
+      <p className="tagline">{SITE.tagline}</p>
       <p>{reason}</p>
       <ul className="fallback-grid">
         {PACKAGES.map((p) => (
@@ -155,13 +155,14 @@ async function fontsReady() {
   const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
   if (!fonts) return;
   await Promise.race([
-    Promise.all([fonts.load('48px "Rozha One"', 'Pataka पटाका'), fonts.load('32px "Kalam"'), fonts.load('600 20px "Baloo 2"'), fonts.load('400 20px "Baloo 2"')]),
+    Promise.all([fonts.load('48px "Rozha One"', `${SITE.name} Pataka पटाका`), fonts.load('32px "Kalam"'), fonts.load('600 20px "Baloo 2"'), fonts.load('400 20px "Baloo 2"')]),
     new Promise((r) => setTimeout(r, 2500)),
   ]);
 }
 
 export default function App() {
   const phase = useGame((s) => s.phase);
+  const identStage = useIdent((s) => s.stage);
   const reducedMotion = useGame((s) => s.settings.reducedMotion);
   const [ready, setReady] = useState(false);
   const [webgl] = useState(hasWebGL);
@@ -186,10 +187,9 @@ export default function App() {
             <WorldScene />
           </Suspense>
         )}
+        {ready && identStage !== 'off' && <IdentOverlay />}
       </WorldBoundary>
       {!ready && <div className="loading">Mohalla jag raha hai…</div>}
-      {phase === 'intro' && ready && <IntroScreen />}
-      {phase === 'assembling' && <SkipIntro />}
       {phase === 'playing' && <GameHUD />}
       <PackageReveal />
       <GestureLayer />

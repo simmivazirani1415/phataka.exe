@@ -291,6 +291,61 @@ class Engine {
     this.tone('fireworks', i === 0 ? 880 : 660, 0.08, { type: 'square', gain: 0.03 });
   }
 
+  // ---------------------------------------------------------------- INTRO IDENT
+  /** A soft tanpura-like bed under the five-second film. */
+  identBed(duration = 5.2) {
+    const ctx = this.live();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(500, t);
+    lp.frequency.linearRampToValueAtTime(1600, t + duration * 0.6);
+    lp.Q.value = 0.7;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.5);
+    g.gain.setValueAtTime(0.05, t + duration - 1.2);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    lp.connect(g).connect(this.out('ambience'));
+    // Sa and Pa, gently detuned
+    for (const [f, d] of [[146.83, 0], [220, 3], [293.66, -4], [110, 2]] as const) {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.detune.value = d;
+      o.connect(lp);
+      o.start(t);
+      o.stop(t + duration + 0.1);
+    }
+  }
+  /** Bell-like ting for a window lamp coming on; i picks the note. */
+  identWindow(i: number) {
+    const f = [880, 1046.5, 1318.5][i % 3];
+    this.tone('world', f, 0.7, { gain: 0.05, attack: 0.004 });
+    this.tone('world', f * 2.76, 0.3, { gain: 0.012, delay: 0.005 });
+  }
+  /** Rocket lifting off: a rising whistle over a rushing hiss. */
+  identRocket(duration = 0.9) {
+    this.tone('fireworks', 700, duration, { type: 'sine', to: 2600, gain: 0.04, attack: 0.04 });
+    this.burstNoise('fireworks', duration, { type: 'bandpass', freq: 600, to: 3600, q: 1.6, gain: 0.12, attack: 0.05 });
+  }
+  /** Soft, round burst with a shimmer of crackle (no harsh bang). */
+  identBurst() {
+    this.boom(0.55);
+    this.crackle(0.9, 34, 0.035, 0.12);
+    [1568, 1975.5, 2349.3, 2637].forEach((f, i) => this.tone('world', f, 1.1, { gain: 0.018, delay: 0.35 + i * 0.07, attack: 0.02 }));
+  }
+  /** Painted wooden doors: a low knock as they meet, a creak as they open. */
+  identDoorsClose() {
+    this.burstNoise('world', 0.12, { type: 'lowpass', freq: 380, gain: 0.12 });
+    this.tone('world', 90, 0.18, { type: 'sine', to: 60, gain: 0.08 });
+  }
+  identDoorsOpen(dur = 0.6) {
+    this.burstNoise('world', dur, { type: 'bandpass', freq: 520, to: 340, q: 9, gain: 0.05, attack: 0.08 });
+    this.chime();
+  }
+
   // ---------------------------------------------------------------- AMBIENCE
   private startAmbience() {
     const ctx = this.ctx;

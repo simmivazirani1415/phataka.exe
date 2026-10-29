@@ -45,9 +45,9 @@ export interface Caption {
 }
 
 interface GameStore {
-  phase: 'intro' | 'assembling' | 'playing';
+  /** 'intro' covers the ident film and the entry screen; 'playing' is the explorable mohalla. */
+  phase: 'intro' | 'playing';
   introPlayed: boolean;
-  worldAssembled: boolean;
   packages: Record<PackageId, PackageState>;
   memories: Memory[];
   settings: Settings;
@@ -69,7 +69,6 @@ interface GameStore {
 
   stage: () => number;
   setPhase: (p: GameStore['phase']) => void;
-  setAssembled: () => void;
   transition: (id: PackageId, to: PackageState) => boolean;
   setActive: (a: GameStore['active']) => void;
   setStep: (step: RevealStep) => void;
@@ -127,7 +126,6 @@ let captionId = 0;
 export const useGame = create<GameStore>((set, get) => ({
   phase: 'intro',
   introPlayed: saved?.introPlayed ?? false,
-  worldAssembled: false,
   packages: restorePackages(),
   memories: [],
   settings: { ...defaultSettings(), ...(saved?.settings ?? {}), sound: false },
@@ -138,7 +136,6 @@ export const useGame = create<GameStore>((set, get) => ({
 
   stage: () => Object.values(get().packages).filter((s) => s === 'MEMORY_CAPTURED').length,
   setPhase: (phase) => set({ phase, introPlayed: get().introPlayed || phase !== 'intro' }),
-  setAssembled: () => set({ worldAssembled: true, phase: 'playing' }),
   transition: (id, to) => {
     const from = get().packages[id];
     if (!TRANSITIONS[from].includes(to)) return false;

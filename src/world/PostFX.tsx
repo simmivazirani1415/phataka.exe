@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { Bloom, BrightnessContrast, EffectComposer, HueSaturation, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode, type EffectComposer as ComposerImpl } from 'postprocessing';
 import { runtime } from '../game/Runtime';
@@ -12,18 +11,14 @@ import { flashScale, useGame } from '../game/GameState';
 export function PostFX() {
   const graphics = useGame((s) => s.settings.graphics);
   const flash = useGame((s) => s.settings.flash);
-  const ref = useRef<ComposerImpl>(null);
-
-  useEffect(() => {
-    runtime.composer = graphics === 'high' ? ref.current : null;
-    return () => {
-      runtime.composer = null;
-    };
-  }, [graphics]);
+  // the composer is rebuilt whenever its inputs change, so track it through the ref callback
+  const track = (c: ComposerImpl | null) => {
+    runtime.composer = c ?? null;
+  };
 
   if (graphics !== 'high') return null;
   return (
-    <EffectComposer ref={ref} multisampling={4} enableNormalPass={false}>
+    <EffectComposer ref={track} multisampling={4} enableNormalPass={false}>
       <Bloom mipmapBlur luminanceThreshold={0.82} luminanceSmoothing={0.18} intensity={0.5 + 0.55 * flashScale(flash)} radius={0.72} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <HueSaturation saturation={0.14} />

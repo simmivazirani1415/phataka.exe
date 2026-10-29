@@ -1,0 +1,398 @@
+/* ---------- intro ident ---------- */
+.ident {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+  --ident-indigo: #0b1230;
+}
+.ident-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: radial-gradient(ellipse at 50% 55%, #141d44 0%, var(--ident-indigo) 70%);
+}
+
+/* legibility over the 3D mohalla once the doors open */
+.ident-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, rgba(9, 13, 36, 0.82) 0%, rgba(9, 13, 36, 0.4) 26%, rgba(9, 13, 36, 0) 44%, rgba(9, 13, 36, 0) 56%, rgba(9, 13, 36, 0.55) 74%, rgba(9, 13, 36, 0.9) 100%),
+    radial-gradient(ellipse at 50% 50%, rgba(9, 13, 36, 0) 45%, rgba(9, 13, 36, 0.45) 100%);
+}
+
+/* ---------- wordmark ---------- */
+.ident-brand {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0 16px;
+  transform-origin: 50% 50%;
+}
+.ident-brand-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.wordmark {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(64px, 17vmin, 220px);
+  line-height: 1;
+  white-space: nowrap;
+}
+.wm-inner {
+  display: inline-flex;
+  /* slightly condensed proportions for a retro display feel */
+  transform: scaleX(0.86);
+  filter: drop-shadow(0 0.035em 0 #7a2416) drop-shadow(0 0.08em 0.2em rgba(4, 6, 20, 0.55));
+}
+.wm-mask {
+  display: inline-block;
+  overflow: hidden;
+  padding: 0.1em 0.012em 0.04em;
+  margin: -0.1em 0 -0.04em;
+}
+.wm-ch {
+  --sheen: -40%;
+  display: inline-block;
+  color: transparent;
+  background:
+    linear-gradient(110deg, transparent calc(var(--sheen) - 22%), rgba(255, 252, 240, 0.9) var(--sheen), transparent calc(var(--sheen) + 22%)),
+    linear-gradient(176deg, #fff6de 0%, #ffe3a6 36%, #f3b84e 64%, #d9862b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.wm-ch.wm-dot {
+  background:
+    linear-gradient(110deg, transparent calc(var(--sheen) - 22%), rgba(255, 240, 210, 0.8) var(--sheen), transparent calc(var(--sheen) + 22%)),
+    linear-gradient(176deg, #ff9a4a 0%, #e8502d 60%, #b8321f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.ident-tagline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2vmin, 18px);
+  margin: 0.55em 0 0;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: clamp(15px, 2.5vmin, 23px);
+  letter-spacing: 0.05em;
+  color: #fff0d2;
+  text-shadow: 0 1px 10px rgba(4, 6, 20, 0.8);
+}
+.tg-word {
+  display: inline-block;
+}
+.tg-rule {
+  display: block;
+  width: clamp(22px, 5vmin, 60px);
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(245, 199, 106, 0), #f5c76a);
+  transform-origin: 100% 50%;
+}
+.tg-rule:last-child {
+  transform-origin: 0% 50%;
+  background: linear-gradient(270deg, rgba(245, 199, 106, 0), #f5c76a);
+}
+
+/* ---------- entry composition ---------- */
+.ident-layout {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  padding: max(5vh, 22px, env(safe-area-inset-top)) 16px max(12vh, 84px, calc(env(safe-area-inset-bottom) + 76px));
+}
+.brand-slot {
+  height: clamp(92px, 22vh, 224px);
+  width: 1px;
+}
+.ident-entry {
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(16px, 3vh, 26px);
+  max-width: 640px;
+  text-align: center;
+}
+.ident-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: clamp(14px, 3vw, 34px);
+  justify-content: center;
+}
+.ident-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: clamp(15px, 2.1vmin, 19px);
+  line-height: 1.25;
+  color: var(--cream);
+  text-shadow: 0 1px 8px rgba(4, 6, 20, 0.9);
+}
+.ident-step .n {
+  font-family: var(--display);
+  font-size: 1.35em;
+  color: #f5c76a;
+  min-width: 0.7em;
+}
+.ident-cta {
+  pointer-events: auto;
+  font-size: clamp(20px, 2.6vmin, 25px);
+  padding: 10px 30px 8px;
+}
+.ident-cta:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+/* ---------- controls ---------- */
+.ident-controls {
+  position: absolute;
+  z-index: 6;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+.ident-controls > *,
+.ident-controls-end > * {
+  pointer-events: auto;
+}
+.ident-controls-end {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.ident-film .ident-controls {
+  opacity: 0.72;
+}
+.ident-film .ident-controls:hover,
+.ident-film .ident-controls:focus-within {
+  opacity: 1;
+}
+.ident-howto {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  transform: translate(-50%, -50%) rotate(-0.6deg);
+  pointer-events: auto;
+}
+
+/* ---------- painted doors ---------- */
+.ident-doorway {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  perspective: 1500px;
+  perspective-origin: 50% 45%;
+  opacity: 0;
+  visibility: hidden;
+}
+.door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50.4%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+.door-l {
+  left: 0;
+  transform-origin: 0% 50%;
+}
+.door-r {
+  right: 0;
+  transform-origin: 100% 50%;
+}
+.door-face {
+  --brass: #e9b949;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(18px, 5.5vmin, 64px) clamp(12px, 3.6vmin, 44px) clamp(14px, 3.4vmin, 40px);
+  background-color: #0f5f5c;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 11px),
+    linear-gradient(180deg, #14726e 0%, #0d5653 100%);
+  border: clamp(6px, 1.4vmin, 16px) solid #e3a436;
+  box-shadow: inset 0 0 0 clamp(2px, 0.5vmin, 6px) #7a2416, inset 0 0 8vmin rgba(0, 0, 0, 0.35);
+}
+.door-face-l {
+  border-right-width: clamp(3px, 0.7vmin, 8px);
+}
+.door-face-r {
+  border-left-width: clamp(3px, 0.7vmin, 8px);
+}
+.door-panel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  border-radius: clamp(3px, 0.6vmin, 8px);
+  box-shadow: inset 0 0 0 clamp(2px, 0.45vmin, 5px) #f2c14e, inset 0 0 0 clamp(4px, 0.95vmin, 11px) rgba(0, 0, 0, 0.22), 0 0.5vmin 0 rgba(0, 0, 0, 0.28);
+}
+.door-panel.arch {
+  flex: 1.5;
+  background: radial-gradient(circle at 50% 58%, #e0512e 0%, #b22f1d 72%);
+  border-radius: 50% 50% clamp(3px, 0.6vmin, 8px) clamp(3px, 0.6vmin, 8px) / 24% 24% clamp(3px, 0.6vmin, 8px) clamp(3px, 0.6vmin, 8px);
+}
+.door-panel.mid {
+  flex: 0.55;
+  background: linear-gradient(180deg, #cc4386, #9c2b64);
+}
+.door-panel.low {
+  flex: 1.1;
+  background: radial-gradient(circle at 50% 40%, #31439a 0%, #1b2560 80%);
+}
+.door-rail {
+  flex: 0 0 auto;
+  height: clamp(14px, 3vmin, 34px);
+  background: radial-gradient(circle, #ffe08a 0 22%, #b8862e 30%, transparent 38%) 50% 50% / clamp(14px, 3vmin, 34px) 100% repeat-x;
+}
+.motif {
+  width: min(72%, 24vmin);
+  max-height: 80%;
+  overflow: visible;
+}
+.m-petal {
+  fill: #f5b942;
+  stroke: #7a2416;
+  stroke-width: 1.6;
+}
+.m-petal2 {
+  fill: #ffe7a3;
+  stroke: #7a2416;
+  stroke-width: 1.2;
+}
+.m-core {
+  fill: #148c88;
+  stroke: #ffe7a3;
+  stroke-width: 1.6;
+}
+.m-dot {
+  fill: #ffe7a3;
+}
+.m-leaf {
+  fill: #3e8e3a;
+  stroke: #123d1c;
+  stroke-width: 1.2;
+}
+.m-coconut {
+  fill: #a9573b;
+  stroke: #4a2214;
+  stroke-width: 1.2;
+}
+.m-band {
+  stroke: #ce382a;
+  stroke-width: 4;
+  fill: none;
+}
+.door-ring {
+  position: absolute;
+  top: 54%;
+  width: clamp(22px, 5vmin, 54px);
+  height: clamp(22px, 5vmin, 54px);
+  border-radius: 50%;
+  border: clamp(3px, 0.8vmin, 8px) solid var(--brass);
+  box-shadow: 0 0.3vmin 0 #6b4a12, inset 0 0.2vmin 0 rgba(0, 0, 0, 0.3);
+}
+.door-face-l .door-ring {
+  right: clamp(6px, 1.6vmin, 18px);
+}
+.door-face-r .door-ring {
+  left: clamp(6px, 1.6vmin, 18px);
+}
+.door-shade {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(5, 8, 22, 0.95), rgba(5, 8, 22, 0.45));
+}
+.door-r .door-shade {
+  background: linear-gradient(270deg, rgba(5, 8, 22, 0.95), rgba(5, 8, 22, 0.45));
+}
+/* a marigold-and-mango-leaf toran across the top of the doorway */
+.toran {
+  position: absolute;
+  top: 0;
+  left: -2%;
+  right: -2%;
+  height: clamp(48px, 9.5vmin, 96px);
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 96'><path d='M0 5 Q32 11 64 5' stroke='%237A3A14' stroke-width='3' fill='none'/><path d='M16 8 C6 28 8 52 16 70 C24 52 26 28 16 8 Z' fill='%233E8E3A' stroke='%23163F1E' stroke-width='1.5'/><path d='M16 12 V64' stroke='%2378B65A' stroke-width='1.2'/><line x1='46' y1='8' x2='46' y2='80' stroke='%237A3A14' stroke-width='1.5'/><circle cx='46' cy='22' r='8' fill='%23F28C28'/><circle cx='46' cy='40' r='8' fill='%23FFD15A'/><circle cx='46' cy='58' r='8' fill='%23F28C28'/><circle cx='46' cy='78' r='6' fill='%23CE382A'/><circle cx='46' cy='22' r='3' fill='%23C2541A'/><circle cx='46' cy='40' r='3' fill='%23E0A020'/><circle cx='46' cy='58' r='3' fill='%23C2541A'/></svg>")
+    0 0 / auto 100% repeat-x;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.45));
+}
+
+/* ---------- small screens ---------- */
+@media (max-width: 640px) {
+  .ident-steps {
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+  .ident-step {
+    font-size: 16px;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .ident-layout {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 60px));
+  }
+  .brand-slot {
+    height: clamp(70px, 26vh, 120px);
+  }
+  .ident-steps {
+    flex-direction: row;
+  }
+  .ident-step {
+    font-size: 14px;
+  }
+  .ident-entry {
+    gap: 10px;
+  }
+  .wordmark {
+    font-size: clamp(56px, 18vmin, 120px);
+  }
+}
+
+/* the HUD eases in as the doors swing open */
+.hud {
+  animation: hud-in 0.6s 0.45s ease both;
+}
+@keyframes hud-in {
+  from {
+    opacity: 0;
+  }
+}

@@ -23,6 +23,8 @@ export interface CameraApi {
   forward: () => [number, number, number];
   /** Turns the view around the current target by `delta` radians. */
   orbit: (delta: number) => void;
+  /** Jumps straight to a framing with player input off (used behind the intro doors). */
+  snap: (s: CameraState) => void;
 }
 
 export interface CaptureApi {
@@ -46,9 +48,11 @@ export interface WorldEvent {
 }
 
 export const runtime = {
-  assemblyTime: 0,
-  assemblyRunning: false,
-  ghost: 1,
+  // The mohalla starts fully built (past BlockBuilder's CAMERA_SETTLE_END); the intro ident
+  // re-times one building's assembly on top of this clock.
+  assemblyTime: 16,
+  assemblyRunning: true,
+  ghost: 0,
   camera: null as CameraApi | null,
   capture: null as CaptureApi | null,
   /** post-processing composer on High graphics; captures render through it so photos match the screen */
@@ -59,6 +63,8 @@ export const runtime = {
   /** soft key light used while a package is presented */
   reveal: { pos: [0, 0, 0] as Vec3, intensity: 0 },
   hoverPackage: null as PackageId | null,
+  /** Lighting the intro ident drives: `world` scales the night lights, `key` is a warm film light. */
+  intro: { world: 1, key: 0, keyPos: [0, 0, 0] as Vec3, keyColor: [1, 0.78, 0.5] as [number, number, number], assembly: null as number | null },
   stringChase: new Map<number, number>(),
   diyaBoost: new Map<number, number>(),
   listeners: new Set<Listener>(),

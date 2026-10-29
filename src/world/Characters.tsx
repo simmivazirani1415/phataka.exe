@@ -15,7 +15,7 @@ import { audio } from '../audio/AudioEngine';
 const unit = new THREE.BoxGeometry(1, 1, 1);
 const skirtGeo = new THREE.CylinderGeometry(0.17, 0.26, 1, 8);
 
-interface Rig {
+export interface Rig {
   root: THREE.Group;
   body: THREE.Group;
   head: THREE.Group;
@@ -35,7 +35,7 @@ function part(geo: THREE.BufferGeometry, color: string, s: [number, number, numb
   return m;
 }
 
-function buildPerson(spec: CharacterSpec): Rig {
+export function buildPerson(spec: CharacterSpec): Rig {
   const { colors, kind, pose } = spec;
   const root = new THREE.Group();
   const body = new THREE.Group();

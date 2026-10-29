@@ -5,6 +5,7 @@ import { SoundToggle } from './SoundToggle';
 import { IconAlbum, IconBox, IconHint, IconMore, IconSettings, IconTurnLeft, IconTurnRight } from './Icons';
 import { PRESET_LABELS, type PresetName } from '../camera/CameraPresets';
 import { audio } from '../audio/AudioEngine';
+import { SITE } from '../config/site';
 
 const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
@@ -37,8 +38,8 @@ export function GameHUD() {
 
   return (
     <div className={`hud ${busy ? 'hud-busy' : ''}`}>
-      <div className="hud-logo" aria-label="Pataka.exe">
-        Pataka<span>.exe</span>
+      <div className="hud-logo" aria-label={SITE.name}>
+        {SITE.name}
       </div>
       <button className="hud-count" onClick={() => setUi({ tray: !ui.tray })} aria-label={`Collection: ${found} of 8 patakas found. Open collection.`} aria-expanded={ui.tray}>
         <IconBox size={18} />
@@ -123,13 +124,5 @@ function ViewDock() {
         <IconTurnRight size={20} />
       </button>
     </nav>
-  );
-}
-
-export function SkipIntro() {
-  return (
-    <button className="btn ghost small skip-intro" onClick={() => import('../world/WorldScene').then((m) => m.skipAssembly())}>
-      Skip intro
-    </button>
   );
 }

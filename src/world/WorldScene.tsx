@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PostFX } from './PostFX';
 import * as THREE from 'three';
@@ -17,48 +16,20 @@ import { ScreenshotCapture } from '../utils/ScreenshotCapture';
 import { PerformanceMonitor } from '../utils/PerformanceMonitor';
 import { runtime } from '../game/Runtime';
 import { useGame } from '../game/GameState';
-import { ASSEMBLY_END, BLOCK_DURATION, CAMERA_SETTLE_END } from './BlockBuilder';
-import { getWorld } from './WorldBuilder';
-import { audio } from '../audio/AudioEngine';
 import { closeActive } from '../game/DiscoverySystem';
+import { IdentScene } from '../intro/IdentScene';
 
-/** Drives the global assembly clock, the ghost-silhouette fade and the block snap sounds. */
+/** Drives the global assembly clock. While the intro film runs, the film owns the clock. */
 function Director() {
-  const landings = useMemo(() => getWorld().blocks.filter((b) => !b.appearStage).map((b) => b.delay + BLOCK_DURATION * 0.55).sort((a, b) => a - b), []);
-  const cursor = useMemo(() => ({ i: 0 }), []);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1);
-    const st = useGame.getState();
-    if (st.phase !== 'intro') runtime.ghost = Math.max(0, runtime.ghost - dt * 2.2);
-    if (runtime.assemblyRunning) {
-      const speed = st.settings.reducedMotion ? 3 : 1;
-      runtime.assemblyTime += dt * speed;
-      if (st.phase === 'assembling') {
-        while (cursor.i < landings.length && landings[cursor.i] <= runtime.assemblyTime) {
-          cursor.i++;
-          if (cursor.i % 3 === 0) audio.snap();
-        }
-        const end = st.settings.reducedMotion ? ASSEMBLY_END : CAMERA_SETTLE_END;
-        if (runtime.assemblyTime >= end) st.setAssembled();
-      }
-    }
+    const film = runtime.intro.assembly;
+    if (film !== null) runtime.assemblyTime = film;
+    else if (runtime.assemblyRunning) runtime.assemblyTime += dt;
     assemblyUniforms.uTime.value = runtime.assemblyTime;
     assemblyUniforms.uGhost.value = runtime.ghost;
   });
   return null;
-}
-
-export function startAssembly() {
-  runtime.assemblyTime = -0.45;
-  runtime.assemblyRunning = true;
-  useGame.getState().setPhase('assembling');
-}
-
-export function skipAssembly() {
-  runtime.ghost = 0;
-  runtime.assemblyRunning = true;
-  runtime.assemblyTime = Math.max(runtime.assemblyTime, ASSEMBLY_END + 0.2);
-  useGame.getState().setAssembled();
 }
 
 export default function WorldScene() {
@@ -88,6 +59,7 @@ export default function WorldScene() {
       <ParticleSystem />
       <FireworkDirector />
       <ScreenshotCapture />
+      <IdentScene />
       <PostFX />
       <PerformanceMonitor />
     </Canvas>

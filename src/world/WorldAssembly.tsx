@@ -21,6 +21,47 @@ export const assemblyUniforms = {
 
 const HIDDEN_DELAY = 1e6;
 
+// Live instanced groups, so the intro ident can re-time one building's assembly.
+interface Registered {
+  group: Group;
+  mesh: THREE.InstancedMesh;
+}
+const registry = new Set<Registered>();
+
+export interface AssemblyOverride {
+  delay: number;
+  offset: [number, number, number];
+}
+
+/**
+ * Re-times the assembly of selected blocks (blocks with an appearStage are left alone).
+ * `fn` returns new timing for a block, or null to keep it. Passing null restores every block.
+ */
+export function overrideAssembly(fn: ((b: Block, index: number) => AssemblyOverride | null) | null) {
+  for (const { group, mesh } of registry) {
+    const dAttr = mesh.geometry.getAttribute('aDelay') as THREE.InstancedBufferAttribute;
+    const oAttr = mesh.geometry.getAttribute('aOffset') as THREE.InstancedBufferAttribute;
+    const d = dAttr.array as Float32Array;
+    const o = oAttr.array as Float32Array;
+    let changed = false;
+    group.blocks.forEach((b, i) => {
+      if (b.appearStage) return;
+      const ov = fn ? fn(b, i) : null;
+      const delay = ov ? ov.delay : b.delay;
+      const off = ov ? ov.offset : b.offset;
+      if (d[i] !== delay || o[i * 3] !== off[0] || o[i * 3 + 1] !== off[1] || o[i * 3 + 2] !== off[2]) {
+        d[i] = delay;
+        o.set(off, i * 3);
+        changed = true;
+      }
+    });
+    if (changed) {
+      dAttr.needsUpdate = true;
+      oAttr.needsUpdate = true;
+    }
+  }
+}
+
 const VERT_HEAD = /* glsl */ `
 uniform float uTime;
 uniform float uDur;
@@ -248,19 +289,21 @@ function BlockGroup({ group }: { group: Group }) {
     return mesh;
   }, [group]);
 
-  useEffect(() => () => {
-    mesh.geometry.dispose();
-    (mesh.material as THREE.Material).dispose();
-    mesh.dispose();
-  }, [mesh]);
+  useEffect(() => {
+    const entry = { group, mesh };
+    registry.add(entry);
+    return () => {
+      registry.delete(entry);
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+      mesh.dispose();
+    };
+  }, [mesh, group]);
 
-  // shadows switch on once the world has landed (shadow pass has no assembly animation)
-  const assembled = useGame((s) => s.worldAssembled);
   const graphics = useGame((s) => s.settings.graphics);
   useEffect(() => {
-    const casts = !['glass', 'glow', 'stone', 'diya'].includes(group.mat) && graphics === 'high';
-    mesh.castShadow = assembled && casts;
-  }, [assembled, graphics, mesh, group.mat]);
+    mesh.castShadow = !['glass', 'glow', 'stone', 'diya'].includes(group.mat) && graphics === 'high';
+  }, [graphics, mesh, group.mat]);
 
   // progression: hidden blocks appear, emissive blocks light up
   const stage = useGame((s) => Object.values(s.packages).filter((p) => p === 'MEMORY_CAPTURED').length);
