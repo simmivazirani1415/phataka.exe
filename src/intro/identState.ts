@@ -89,3 +89,9 @@ export const ident = {
 export function filmTime() {
   return ident.master ? ident.master.time() : HOLD;
 }
+
+/** Is the film camera the one on screen right now? (After the handoff the street is.) */
+export function filmOnScreen() {
+  const stage = useIdent.getState().stage;
+  return stage !== 'off' && filmTime() < HANDOFF;
+}

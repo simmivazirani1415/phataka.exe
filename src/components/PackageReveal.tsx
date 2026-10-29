@@ -1,15 +1,15 @@
 import { PACKAGE_BY_ID, PACKAGES } from '../assets/AssetRegistry';
 import { useGame } from '../game/GameState';
-import { closeActive, lightActive, openActive, skipAnimation } from '../game/DiscoverySystem';
+import { closeActive, collectActive, openActive, skipAnimation } from '../game/DiscoverySystem';
+import { MAX_USES } from '../game/GameState';
 import { IconClose } from './Icons';
-import { GesturePrompt } from './GestureLayer';
 
 // The printed label strip that accompanies a box in the foreground. The 3D box itself is
-// the hero; this only carries the name, the personality and the next action.
+// the hero; this only carries the name, the personality and the next action: open it,
+// then put its cracker in the tray with MAX_USES lights.
 
 export function PackageReveal() {
   const active = useGame((s) => s.active);
-  const pkgState = useGame((s) => (s.active ? s.packages[s.active.id] : null));
   if (!active) return null;
   const pkg = PACKAGE_BY_ID[active.id];
   const n = PACKAGES.indexOf(pkg) + 1;
@@ -42,19 +42,11 @@ export function PackageReveal() {
             )}
             {step === 'opening' && <span className="reveal-wait">Khul raha hai…</span>}
             {step === 'opened' && (
-              <>
-                <button className="btn cta fire" autoFocus onClick={() => lightActive(false)}>
-                  Light It Up
-                </button>
-                {active.replay && pkgState === 'MEMORY_CAPTURED' && (
-                  <button className="btn ghost small" onClick={() => lightActive(true)}>
-                    Light &amp; take a new photo
-                  </button>
-                )}
-              </>
+              <button className="btn cta fire" autoFocus onClick={collectActive}>
+                {active.replay ? 'Refill' : 'Add to tray'} · x{MAX_USES}
+              </button>
             )}
           </div>
-          {step === 'opened' && <GesturePrompt id={active.id} />}
         </section>
       )}
       {step === 'developing' && <p className="toast soft">Polaroid develop ho rahi hai…</p>}

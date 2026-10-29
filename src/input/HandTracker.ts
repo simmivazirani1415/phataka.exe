@@ -2,14 +2,14 @@ import { create } from 'zustand';
 import type { HandLandmarker } from '@mediapipe/tasks-vision';
 import type { PackageId } from '../assets/AssetRegistry';
 import { useGame } from '../game/GameState';
-import { lightActive } from '../game/DiscoverySystem';
+import { lightPlaced } from '../game/DiscoverySystem';
 import { describeHand, type Frame, type P } from './handFeatures';
 import { createDetector, type Detector } from './gestures';
 
 // Webcam hand tracking with MediaPipe Hand Landmarker, entirely on this device.
 // The model and WASM runtime ship with the app (public/mediapipe) and load only when
-// the player turns gestures on. While a box is open and ready, the frames feed that
-// cracker's detector, and finishing the gesture lights it exactly like the button does.
+// the player turns gestures on. While a cracker waits in the spotlight, the frames feed that
+// cracker's detector, and finishing the gesture lights it exactly like a tap does.
 
 export type HandStatus = 'off' | 'loading' | 'ready' | 'denied' | 'error';
 
@@ -138,13 +138,13 @@ function loop() {
 
   const a = useGame.getState().active;
   let progress = 0;
-  if (a && a.step === 'opened' && now > cooldownUntil) {
+  if (a && a.step === 'spotlight' && now > cooldownUntil) {
     if (!detector || detector.id !== a.id) detector = { id: a.id, d: createDetector(a.id) };
     progress = detector.d.update(frame);
     if (progress >= 1) {
       detector.d.reset();
       cooldownUntil = now + 1500;
-      void lightActive(false);
+      void lightPlaced();
     }
   } else if (detector) {
     detector.d.reset();

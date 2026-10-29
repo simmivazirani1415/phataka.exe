@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGame } from '../game/GameState';
-import { runtime } from '../game/Runtime';
 import { SoundToggle } from './SoundToggle';
-import { IconAlbum, IconBox, IconHint, IconMore, IconSettings, IconTurnLeft, IconTurnRight } from './Icons';
-import { PRESET_LABELS, type PresetName } from '../camera/CameraPresets';
+import { IconAlbum, IconBox, IconHint, IconMore, IconSettings } from './Icons';
 import { audio } from '../audio/AudioEngine';
 import { SITE } from '../config/site';
 
@@ -48,11 +46,9 @@ export function GameHUD() {
 
       {hint && !busy && (
         <p className="hud-hint" aria-live="polite">
-          {isTouch() ? 'One finger to turn · pinch to zoom · tap a glint' : 'Drag to turn · scroll to zoom · right-drag to slide · click a glint'}
+          {isTouch() ? 'Joystick to walk · drag to look · find the glowing boxes' : 'WASD or arrows to walk · drag to look · find the glowing boxes'}
         </p>
       )}
-
-      <ViewDock />
 
       <div className={`hud-actions ${more ? 'open' : ''}`}>
         <button className={`btn fab ${pulse ? 'pulse' : ''}`} onClick={() => { audio.paper(); setUi({ album: true }); }} aria-label="Open memories" title="Memories">
@@ -73,56 +69,5 @@ export function GameHUD() {
         </button>
       </div>
     </div>
-  );
-}
-
-// Bottom dock for 360° navigation: turn the mohalla in 45° steps or jump to a named spot.
-// The highlighted chip clears as soon as the player drags the camera themselves.
-const DOCK_ORDER: PresetName[] = ['overview', 'street', 'shop', 'courtyard', 'rooftops', 'terrace'];
-
-function ViewDock() {
-  const [current, setCurrent] = useState<PresetName | null>('overview');
-  useEffect(() => {
-    const clear = (e: PointerEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'CANVAS') setCurrent(null);
-    };
-    const onKey = (e: KeyboardEvent) => e.key.toLowerCase() === 'r' && setCurrent('overview');
-    window.addEventListener('pointerdown', clear);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('pointerdown', clear);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, []);
-  const turn = (dir: number) => {
-    audio.tap();
-    setCurrent(null);
-    runtime.camera?.orbit((dir * Math.PI) / 4);
-  };
-  return (
-    <nav className="view-dock" aria-label="Camera views">
-      <button className="btn icon dock-turn" onClick={() => turn(-1)} aria-label="Turn left" title="Turn left">
-        <IconTurnLeft size={20} />
-      </button>
-      <div className="dock-chips">
-        {DOCK_ORDER.map((k) => (
-          <button
-            key={k}
-            className={`dock-chip ${current === k ? 'on' : ''}`}
-            aria-pressed={current === k}
-            onClick={() => {
-              audio.tap();
-              setCurrent(k);
-              runtime.camera?.preset(k);
-            }}
-          >
-            {PRESET_LABELS[k]}
-          </button>
-        ))}
-      </div>
-      <button className="btn icon dock-turn" onClick={() => turn(1)} aria-label="Turn right" title="Turn right">
-        <IconTurnRight size={20} />
-      </button>
-    </nav>
   );
 }

@@ -12,21 +12,15 @@ import { makeCanvas, mulberry32 } from '../utils/TextureGenerator';
 import { asmBack, filmFov, HERO_ID, identLayout, rocketDir, rocketPath, type StoryWindow } from './identLayout';
 import { filmCamera } from './identCamera';
 import { chakriSpin, chakriU, FX_T, IdentParticles } from './IdentParticles';
-import { filmTime, HANDOFF, HOLD, ident, useIdent } from './identState';
+import { filmOnScreen, filmTime, HOLD, ident, useIdent } from './identState';
 
 // The 3D half of the intro ident: a film camera, the hero house assembling, three window
 // stories, the rooftop chakri / anaar / rocket and every spark. Nothing here keeps its own
 // clock; each frame is posed from the master timeline's time.
 
 const SNAP_DUR = 0.42;
-const FOG = { color: new THREE.Color('#18224A'), near: 95, far: 170 };
 const FILM_FOG = { color: new THREE.Color('#121A3C'), near: 22, far: 95 };
 
-/** Is the film camera the one on screen right now? */
-function filmOnScreen() {
-  const stage = useIdent.getState().stage;
-  return stage !== 'off' && filmTime() < HANDOFF;
-}
 
 // ---------------------------------------------------------------------------------------
 // Hero house: its pieces snap together along the camera's path, just ahead of the lens.
@@ -370,11 +364,6 @@ function Film() {
       runtime.intro.world = 1;
       runtime.intro.key = 0;
       assemblyUniforms.uDur.value = BLOCK_DURATION;
-      if (scene.fog instanceof THREE.Fog) {
-        scene.fog.color.copy(FOG.color);
-        scene.fog.near = FOG.near;
-        scene.fog.far = FOG.far;
-      }
       particles.dispose();
     };
   }, [gl, scene, persp, particles]);
@@ -407,9 +396,10 @@ function Film() {
     const fire = t > FX_T.chakri[0] && t < FX_T.rocket[0] + 0.3 ? 0.85 + Math.sin(t * 47) * 0.1 + Math.sin(t * 23) * 0.08 : 1;
     runtime.intro.key = onScreen ? ident.key.i * fire : 0;
     runtime.intro.keyPos = [ident.key.x, ident.key.y, ident.key.z];
+    // the street sets its own fog once the film hands over
     const fog = scene.fog;
-    if (fog instanceof THREE.Fog) {
-      const f = onScreen ? FILM_FOG : FOG;
+    if (onScreen && fog instanceof THREE.Fog) {
+      const f = FILM_FOG;
       fog.color.copy(f.color);
       fog.near = f.near;
       fog.far = f.far;

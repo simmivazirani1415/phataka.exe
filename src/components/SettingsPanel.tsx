@@ -3,6 +3,8 @@ import { useGame, type Flash, type Graphics } from '../game/GameState';
 import { IconClose } from './Icons';
 import { SoundToggle } from './SoundToggle';
 import { runtime } from '../game/Runtime';
+import { groundMarks } from '../street/Scorch';
+import { START } from '../street/StreetLayout';
 import { startHands, stopHands, useHands } from '../input/HandTracker';
 import { useIdent } from '../intro/identState';
 
@@ -102,7 +104,8 @@ export function SettingsPanel() {
               onClick={() => {
                 reset();
                 setConfirm(false);
-                runtime.camera?.reset();
+                groundMarks.clear();
+                runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0 });
               }}
             >
               Yes, reset

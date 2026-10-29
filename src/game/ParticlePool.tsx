@@ -31,9 +31,21 @@ varying float vA;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = aSize > 0.0 ? clamp(aSize * uScale, 2.5, 110.0) : 0.0;
+  // perspective: world-size sparks, bigger up close
+  gl_PointSize = aSize > 0.0 ? clamp(aSize * uScale / max(-mv.z, 0.3), 1.5, 160.0) : 0.0;
   vColor = aColor;
   vA = aAlpha;
+}`;
+const smokeFrag = /* glsl */ `
+varying vec3 vColor;
+varying float vA;
+uniform vec3 uGlow;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float d = length(c) * 2.0;
+  if (d > 1.0 || vA <= 0.0) discard;
+  float a = pow(1.0 - d, 1.6) * vA * 0.42;
+  gl_FragColor = vec4(vColor + uGlow * (1.0 - d), a);
 }`;
 const frag = /* glsl */ `
 varying vec3 vColor;
@@ -64,6 +76,7 @@ class Pool {
   grav: Float32Array;
   drag: Float32Array;
   flick: Float32Array;
+  bounce = true;
   free: number[] = [];
   alive = 0;
   density = 1;
@@ -124,6 +137,13 @@ class Pool {
       this.pos[k] += this.vel[k] * dt;
       this.pos[k + 1] += this.vel[k + 1] * dt;
       this.pos[k + 2] += this.vel[k + 2] * dt;
+      // sparks hit the road and skitter along it
+      if (this.bounce && this.pos[k + 1] < 0.02 && this.vel[k + 1] < 0 && this.grav[i] > 0) {
+        this.pos[k + 1] = 0.02;
+        this.vel[k + 1] *= -0.32;
+        this.vel[k] *= 0.6;
+        this.vel[k + 2] *= 0.6;
+      }
       this.col[k] = this.c1[k] + (this.c2[k] - this.c1[k]) * t;
       this.col[k + 1] = this.c1[k + 1] + (this.c2[k + 1] - this.c1[k + 1]) * t;
       this.col[k + 2] = this.c1[k + 2] + (this.c2[k + 2] - this.c1[k + 2]) * t;
@@ -148,49 +168,81 @@ const _c = new THREE.Color();
 const _c2 = new THREE.Color();
 
 export let particles: Pool = new Pool(1);
+/** soft smoke drawn with normal blending, so it can darken as well as glow */
+export let smokePool: Pool = new Pool(1);
+
+function makePoints(pool: Pool, frag: string, uniforms: Record<string, THREE.IUniform>, additive: boolean) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pool.pos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aColor', new THREE.BufferAttribute(pool.col, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(pool.size, 1).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(pool.alpha, 1).setUsage(THREE.DynamicDrawUsage));
+  const mat = new THREE.ShaderMaterial({ vertexShader: vert, fragmentShader: frag, uniforms, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  points.renderOrder = additive ? 10 : 9;
+  points.raycast = () => {};
+  return points;
+}
+
+function flagDirty(points: THREE.Points) {
+  const geo = points.geometry;
+  (geo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+  (geo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
+  (geo.getAttribute('aSize') as THREE.BufferAttribute).needsUpdate = true;
+  (geo.getAttribute('aAlpha') as THREE.BufferAttribute).needsUpdate = true;
+}
 
 export function ParticleSystem() {
   const graphics = useGame((s) => s.settings.graphics);
-  const { gl } = useThree();
-  const { points, pool, uniforms } = useMemo(() => {
-    const cap = graphics === 'high' ? 6000 : 2200;
+  const { gl, size } = useThree();
+  const { points, pool, uniforms, smokePoints, sPool, sUniforms } = useMemo(() => {
+    const cap = graphics === 'high' ? 7000 : 2600;
     const pool = new Pool(cap);
     pool.density = graphics === 'high' ? 1 : 0.45;
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pool.pos, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('aColor', new THREE.BufferAttribute(pool.col, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(pool.size, 1).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('aAlpha', new THREE.BufferAttribute(pool.alpha, 1).setUsage(THREE.DynamicDrawUsage));
-    const uniforms = { uScale: { value: 20 }, uIntensity: { value: 1 } };
-    const mat = new THREE.ShaderMaterial({ vertexShader: vert, fragmentShader: frag, uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-    const points = new THREE.Points(geo, mat);
-    points.frustumCulled = false;
-    points.renderOrder = 10;
-    points.raycast = () => {};
-    return { points, pool, uniforms };
+    const uniforms = { uScale: { value: 400 }, uIntensity: { value: 1 } };
+    const points = makePoints(pool, frag, uniforms, true);
+    const sPool = new Pool(graphics === 'high' ? 900 : 400);
+    sPool.density = graphics === 'high' ? 1 : 0.6;
+    sPool.bounce = false;
+    const sUniforms = { uScale: { value: 400 }, uGlow: { value: new THREE.Color(0, 0, 0) } };
+    const smokePoints = makePoints(sPool, smokeFrag, sUniforms, false);
+    return { points, pool, uniforms, smokePoints, sPool, sUniforms };
   }, [graphics]);
 
   useEffect(() => {
     particles = pool;
+    smokePool = sPool;
     return () => {
       points.geometry.dispose();
       (points.material as THREE.Material).dispose();
+      smokePoints.geometry.dispose();
+      (smokePoints.material as THREE.Material).dispose();
     };
-  }, [pool, points]);
+  }, [pool, points, sPool, smokePoints]);
 
   useFrame(({ camera }, dt) => {
     pool.update(Math.min(dt, 0.05));
-    uniforms.uScale.value = (camera as THREE.OrthographicCamera).zoom * gl.getPixelRatio() * 2.2;
+    sPool.update(Math.min(dt, 0.05));
+    const fov = (camera as THREE.PerspectiveCamera).fov ?? 60;
+    const px = (size.height * gl.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)));
+    uniforms.uScale.value = px * 0.5;
+    sUniforms.uScale.value = px * 0.5;
+    // smoke catches the light of whatever is burning
+    const fl = runtime.fireworkLight;
+    sUniforms.uGlow.value.setRGB(fl.color[0], fl.color[1], fl.color[2]).multiplyScalar(Math.min(0.35, fl.intensity * 0.12));
     // HDR sparks so the bloom pass picks them up on High graphics
     uniforms.uIntensity.value = runtime.composer ? 2.1 : 1;
-    const geo = points.geometry;
-    (geo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
-    (geo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;
-    (geo.getAttribute('aSize') as THREE.BufferAttribute).needsUpdate = true;
-    (geo.getAttribute('aAlpha') as THREE.BufferAttribute).needsUpdate = true;
+    flagDirty(points);
+    flagDirty(smokePoints);
   });
 
-  return <primitive object={points} />;
+  return (
+    <>
+      <primitive object={smokePoints} />
+      <primitive object={points} />
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -241,9 +293,9 @@ export function sparks(pos: [number, number, number], n: number, speed: number, 
 }
 
 export function smoke(pos: [number, number, number], n: number, o: Partial<ParticleOpts> = {}) {
-  const count = Math.max(1, Math.round(n * particles.density));
+  const count = Math.max(1, Math.round(n * smokePool.density));
   for (let i = 0; i < count; i++) {
-    particles.emit({ pos: [pos[0] + rnd(-0.2, 0.2), pos[1], pos[2] + rnd(-0.2, 0.2)], vel: [rnd(-0.2, 0.2), rnd(0.3, 0.8), rnd(-0.2, 0.2)], life: rnd(1.4, 2.4), color: '#3B4152', color2: '#1E2333', size: 0.5, size2: 1.2, gravity: -0.05, drag: 0.6, ...o });
+    smokePool.emit({ pos: [pos[0] + rnd(-0.2, 0.2), pos[1], pos[2] + rnd(-0.2, 0.2)], vel: [rnd(-0.25, 0.25), rnd(0.35, 0.9), rnd(-0.25, 0.25)], life: rnd(2.2, 3.6), color: '#9A9AA6', color2: '#4A4E5E', size: 0.6, size2: 1.8, gravity: -0.06, drag: 0.7, ...o });
   }
 }
 

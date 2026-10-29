@@ -1,14 +1,15 @@
 import { PACKAGES } from '../assets/AssetRegistry';
 import { getThumbUrl, drawFallbackFront } from '../assets/PackageTextures';
 import { useGame, type PackageState } from '../game/GameState';
-import { beginReveal, showMe } from '../game/DiscoverySystem';
+import { showMe } from '../game/DiscoverySystem';
+import { BOX_SPOTS } from '../street/StreetLayout';
 import { IconClose } from './Icons';
 
 const STATE_LABEL: Record<PackageState, string> = {
   HIDDEN: 'Still hiding',
   DISCOVERED: 'Found · not opened',
   OPENING: 'Opening',
-  UNLOCKED: 'Ready to light',
+  UNLOCKED: 'In your tray',
   PLAYED: 'Lit',
   MEMORY_CAPTURED: 'Lit & remembered',
 };
@@ -16,6 +17,7 @@ const STATE_LABEL: Record<PackageState, string> = {
 export function CollectionTray() {
   const open = useGame((s) => s.ui.tray);
   const packages = useGame((s) => s.packages);
+  const uses = useGame((s) => s.uses);
   const setUi = useGame((s) => s.setUi);
   if (!open) return null;
   return (
@@ -47,14 +49,10 @@ export function CollectionTray() {
               </div>
               <div className="tray-info">
                 <b>{found ? p.name : 'Ek chhupa pataka'}</b>
-                <small>{found ? STATE_LABEL[st] : p.locationHint}</small>
-                {found ? (
-                  <button className="btn ghost tiny" onClick={() => beginReveal(p.id)}>
-                    {st === 'DISCOVERED' ? 'Open it' : 'Light again'}
-                  </button>
-                ) : (
+                <small>{found ? `${STATE_LABEL[st]}${st !== 'DISCOVERED' ? ` · x${uses[p.id]}` : ''}` : BOX_SPOTS[p.id].hint}</small>
+                {(!found || st === 'DISCOVERED' || uses[p.id] <= 0) && (
                   <button className="btn ghost tiny" onClick={() => showMe(p.id)}>
-                    Show me
+                    {found ? 'Where is its box?' : 'Show me'}
                   </button>
                 )}
               </div>
