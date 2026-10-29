@@ -1273,6 +1273,14 @@ button {
 .inv::-webkit-scrollbar {
   display: none;
 }
+.inv ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .inv-busy {
   opacity: 0.3;
   pointer-events: none;
@@ -1544,6 +1552,11 @@ button {
   border: 1px solid currentColor;
   border-radius: 4px;
   opacity: 0.8;
+}
+@media (pointer: coarse) {
+  .hud-hint {
+    bottom: max(156px, calc(env(safe-area-inset-bottom) + 146px));
+  }
 }
 @media (max-width: 640px) {
   .inv-item {

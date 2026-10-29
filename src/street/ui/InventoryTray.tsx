@@ -134,7 +134,7 @@ export function InventoryTray() {
       )}
       {placing && !active && (
         <div className={`place-hint ${check && check !== 'ok' ? 'bad' : ''}`} role="status">
-          <span>{check && check !== 'ok' ? REASON[check] : '⬇'}</span>
+          <span>{check && check !== 'ok' ? REASON[check] : 'Yahan rakh do'}</span>
           <button className="btn ghost tiny" onClick={cancelPlacing} aria-label="Put it back in the tray">
             ✕
           </button>
