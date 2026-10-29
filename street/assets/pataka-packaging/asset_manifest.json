@@ -1,0 +1,53 @@
+{
+  "usage": "Illustrative packaging reference crops. These are not flattened print-ready UV textures. Use as visual references or in-game collectible thumbnails; build clean procedural 3D boxes and redraw fronts as needed.",
+  "packages": [
+    {
+      "id": "rocket_bua",
+      "file": "rocket_bua.png",
+      "type": "rocket",
+      "palette": "Royal blue, vermilion, gold"
+    },
+    {
+      "id": "chakri_dadi",
+      "file": "chakri_dadi.png",
+      "type": "chakri",
+      "palette": "Magenta, saffron, teal"
+    },
+    {
+      "id": "anaar_maasi",
+      "file": "anaar_maasi.png",
+      "type": "anaar",
+      "palette": "Red, gold, deep pink"
+    },
+    {
+      "id": "bomb_wale_chacha",
+      "file": "bomb_wale_chacha.png",
+      "type": "bomb",
+      "palette": "Dark green, yellow, vermilion"
+    },
+    {
+      "id": "phuljhadi_mami",
+      "file": "phuljhadi_mami.png",
+      "type": "sparkler",
+      "palette": "Turquoise, pink, yellow"
+    },
+    {
+      "id": "ladi_tauji",
+      "file": "ladi_tauji.png",
+      "type": "ladi",
+      "palette": "Red, yellow, royal blue"
+    },
+    {
+      "id": "snake_wale_nana",
+      "file": "snake_wale_nana.png",
+      "type": "snake",
+      "palette": "Dark green, cream, orange"
+    },
+    {
+      "id": "pop_pop_chotu",
+      "file": "pop_pop_chotu.png",
+      "type": "pop-pop",
+      "palette": "Hot pink, cobalt, bright yellow"
+    }
+  ]
+}
