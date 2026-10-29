@@ -312,3 +312,37 @@ export const DIALOGUE = {
   bomb: ['Arre baap re!', 'Kaan bajj gaye!', 'Chacha, dheere!'],
   chai: ['Chai ready hai!', 'Ek cutting?', 'Garam garam!'],
 };
+
+// ------------------------------------------------------------------------------------------
+// The street cast: Simran's illustrated people and vehicles, cut out on transparent
+// backgrounds (cleaned by tools/prepare_cast.py). They are drawn as upright cut-outs.
+// `height` is the real height in metres; `faces` is which way the artwork looks
+// (1 = to the right of the image, -1 = to the left), so the cut-out can be mirrored to
+// face where it is going.
+
+export interface CastSprite {
+  id: string;
+  url: string;
+  height: number;
+  /** width / height of the image */
+  aspect: number;
+  faces: 1 | -1;
+}
+
+const cast = `${import.meta.env.BASE_URL}assets/`;
+
+export const CAST_PEOPLE: Record<'aunty' | 'boy' | 'girl' | 'uncle' | 'grandpa', CastSprite> = {
+  aunty: { id: 'aunty', url: cast + 'people/aunty_diya.webp', height: 1.6, aspect: 0.523, faces: -1 },
+  boy: { id: 'boy', url: cast + 'people/boy_gift.webp', height: 1.25, aspect: 0.655, faces: 1 },
+  girl: { id: 'girl', url: cast + 'people/girl_marigold.webp', height: 1.35, aspect: 0.759, faces: 1 },
+  uncle: { id: 'uncle', url: cast + 'people/uncle_mithai.webp', height: 1.72, aspect: 0.727, faces: 1 },
+  grandpa: { id: 'grandpa', url: cast + 'people/grandpa_lantern.webp', height: 1.68, aspect: 0.575, faces: -1 },
+};
+
+export const CAST_VEHICLES: Record<'scooter' | 'bicycle' | 'auto' | 'rickshaw' | 'parkedScooter', CastSprite> = {
+  scooter: { id: 'scooter', url: cast + 'vehicles/scooter_rider.webp', height: 1.75, aspect: 0.994, faces: 1 },
+  bicycle: { id: 'bicycle', url: cast + 'vehicles/bicycle_girl.webp', height: 1.75, aspect: 0.975, faces: 1 },
+  auto: { id: 'auto', url: cast + 'vehicles/auto.webp', height: 2.05, aspect: 1.025, faces: -1 },
+  rickshaw: { id: 'rickshaw', url: cast + 'vehicles/rickshaw.webp', height: 2.1, aspect: 0.995, faces: 1 },
+  parkedScooter: { id: 'parkedScooter', url: cast + 'vehicles/scooter_gifts.webp', height: 1.3, aspect: 1.012, faces: 1 },
+};

@@ -3,7 +3,7 @@ import { MAX_USES, useGame } from './GameState';
 import { runtime } from './Runtime';
 import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
-import { BOX_SPOTS, inSideGali, isBurstGround } from '../street/StreetLayout';
+import { BOX_SPOTS, burstOnLevel, currentLevel, inSideGali } from '../street/StreetLayout';
 
 // Orchestrates the package lifecycle:
 // HIDDEN -> DISCOVERED -> OPENING -> UNLOCKED -> PLAYED -> MEMORY_CAPTURED
@@ -29,14 +29,15 @@ export const CLEARANCE: Record<string, number> = { bomb: 1.7, rocket: 1.4, chakr
 
 /** Spotlight framing per cracker: distance, camera height and where to look. */
 const FRAMING: Record<string, { dist: number; height: number; lookY: number }> = {
-  bomb: { dist: 2.6, height: 0.8, lookY: 0.25 },
-  rocket: { dist: 3.4, height: 0.9, lookY: 0.55 },
-  chakri: { dist: 2.4, height: 0.9, lookY: 0.1 },
-  sparkler: { dist: 2.2, height: 0.7, lookY: 0.45 },
-  anaar: { dist: 3.0, height: 0.8, lookY: 0.8 },
-  ladi: { dist: 3.4, height: 1.0, lookY: 0.1 },
-  snake: { dist: 2.0, height: 0.75, lookY: 0.2 },
-  popPop: { dist: 3.0, height: 1.0, lookY: 0.05 },
+  // the camera looks a little below the cracker so it sits above the spotlight card
+  bomb: { dist: 2.8, height: 1.05, lookY: -0.35 },
+  rocket: { dist: 3.6, height: 1.15, lookY: -0.1 },
+  chakri: { dist: 2.7, height: 1.15, lookY: -0.45 },
+  sparkler: { dist: 2.5, height: 0.95, lookY: -0.1 },
+  anaar: { dist: 3.2, height: 1.1, lookY: 0.1 },
+  ladi: { dist: 3.6, height: 1.3, lookY: -0.45 },
+  snake: { dist: 2.3, height: 1.0, lookY: -0.35 },
+  popPop: { dist: 3.2, height: 1.3, lookY: -0.5 },
 };
 
 const isOpened = (id: PackageId) => {
@@ -139,6 +140,48 @@ export function skipAnimation() {
 }
 
 // ------------------------------------------------------------------------------------------
+// The panel: every cracker is on the right from the start. Picking one shows its card;
+// keeping the card adds it to the collection with MAX_USES lights and puts it in hand,
+// ready to drop on the ground. The boxes in the gali are still there to find.
+
+/** Tap a cracker in the panel: show its card, refill it, or pick it up. */
+export function pickFromPanel(id: PackageId) {
+  const g = useGame.getState();
+  if (busy()) return;
+  if (!isOpened(id)) {
+    g.setPlacing(null);
+    g.setUi({ card: id, tray: false, showMe: null });
+    audio.tap();
+    return;
+  }
+  if (g.placing === id) return cancelPlacing();
+  if (g.uses[id] <= 0) {
+    g.setUses(id, MAX_USES);
+    g.setUi({ trayPulse: id, toast: `Refill · x${MAX_USES}` });
+    audio.unlock();
+  }
+  startPlacing(id);
+}
+
+/** Keep the card: the cracker becomes a collectible and goes into the hand. */
+export function keepCard() {
+  const g = useGame.getState();
+  const id = g.ui.card;
+  if (!id) return;
+  for (const to of ['DISCOVERED', 'OPENING', 'UNLOCKED'] as const) useGame.getState().transition(id, to);
+  packageControls.get(id)?.setLidOpen(true);
+  g.setUses(id, MAX_USES);
+  g.setUi({ card: null, trayPulse: id, toast: null });
+  audio.unlock();
+  audio.tap();
+  startPlacing(id);
+}
+
+export function closeCard() {
+  useGame.getState().setUi({ card: null });
+}
+
+// ------------------------------------------------------------------------------------------
 // Placing and lighting
 
 /** Pick a cracker up from the tray; the reticle follows the pointer until it is put down. */
@@ -165,18 +208,20 @@ export function checkSpot(id: PackageId, x: number, z: number): PlaceCheck {
   const R = CLEARANCE[type];
   const d = Math.hypot(x - runtime.player.x, z - runtime.player.z);
   if (d > 14 || d < 1.1) return 'far';
-  if (!isBurstGround(x, z, R)) return 'ground';
+  if (!burstOnLevel(x, z, R)) return 'ground';
   // a ladi lies along the road: both of its ends must be on open ground too
   if (type === 'ladi') {
     const [ax, az] = ladiAxis(x, z);
-    if (!isBurstGround(x + ax * 1.9, z + az * 1.9, 0.8) || !isBurstGround(x - ax * 1.7, z - az * 1.7, 0.8)) return 'ground';
+    if (!burstOnLevel(x + ax * 1.9, z + az * 1.9, 0.8) || !burstOnLevel(x - ax * 1.7, z - az * 1.7, 0.8)) return 'ground';
   }
-  for (const [kind, s] of runtime.solids) if (s(x, z, R)) return kind;
+  const y = currentLevel().floor;
+  for (const [kind, s] of runtime.solids) if (s(x, z, R, y)) return kind;
   return 'ok';
 }
 
 /** Along the road at this spot: the gali and chowk run along x, side galis along z. */
 export function ladiAxis(x: number, z: number): [number, number] {
+  if (currentLevel().walk) return [1, 0];
   return inSideGali(x, z) ? [0, 1] : [1, 0];
 }
 
@@ -186,15 +231,16 @@ export async function placeCracker(id: PackageId, x: number, z: number) {
   if (busy() || g.uses[id] <= 0) return false;
   if (checkSpot(id, x, z) !== 'ok') return false;
   const pkg = PACKAGE_BY_ID[id];
-  const pos: Vec3 = [x, 0, z];
+  const pos: Vec3 = [x, currentLevel().floor, z];
   g.setPlacing(null);
   g.setActive({ id, step: 'spotlight', replay: false, capture: g.packages[id] !== 'MEMORY_CAPTURED', pos });
-  runtime.hazards.push({ id: ++hazardId, pos, radius: CLEARANCE[pkg.crackerType] });
+  // people and traffic on the road keep clear of a cracker down there (a terrace is out of their way)
+  if (pos[1] < 0.5) runtime.hazards.push({ id: ++hazardId, pos, radius: CLEARANCE[pkg.crackerType] });
   runtime.fireworks?.stage(id, pos, ladiAxis(x, z));
   audio.tap();
   const cam = runtime.camera;
   cam?.setUserInput(false);
-  runtime.reveal.pos = [x, 1.3, z];
+  runtime.reveal.pos = [x, pos[1] + 1.3, z];
   runtime.reveal.intensity = 0.6;
   await cam?.frame(pos, FRAMING[pkg.crackerType]);
   return true;

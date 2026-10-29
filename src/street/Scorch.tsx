@@ -28,7 +28,7 @@ export const groundMarks = {
   scorch(pos: Vec3, size: number, strength = 0.85) {
     const m = scorches[nextS++ % SCORCH];
     if (!m) return;
-    m.mesh.position.set(pos[0], 0.02 + (nextS % 7) * 0.0015, pos[2]);
+    m.mesh.position.set(pos[0], pos[1] + 0.02 + (nextS % 7) * 0.0015, pos[2]);
     m.mesh.rotation.z = Math.random() * Math.PI * 2;
     m.mesh.scale.setScalar(size);
     m.age = 0;
@@ -40,7 +40,7 @@ export const groundMarks = {
   flash(pos: Vec3, size: number, color: THREE.ColorRepresentation, strength = 1, life = 0.6) {
     const m = flashes[nextF++ % FLASH];
     if (!m) return;
-    m.mesh.position.set(pos[0], 0.03, pos[2]);
+    m.mesh.position.set(pos[0], pos[1] + 0.03, pos[2]);
     m.mesh.scale.setScalar(size);
     (m.mesh.material as THREE.MeshBasicMaterial).color.set(color);
     m.age = 0;

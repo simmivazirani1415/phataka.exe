@@ -26,7 +26,7 @@ createRoot(document.getElementById('root')!).render(
 
 // Test hook for automated browser checks (?debug)
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  Promise.all([import('./game/Runtime'), import('./game/GameState'), import('./world/WorldBuilder'), import('./game/DiscoverySystem'), import('./input/HandTracker'), import('./input/handFeatures'), import('./intro/identState'), import('./street/StreetLayout'), import('./street/Crowd')]).then(([r, g, w, d, h, f, i, s, c]) => {
-    (window as unknown as Record<string, unknown>).__pataka = { runtime: r.runtime, useGame: g.useGame, world: w.getWorld(), discovery: d, hands: { ...h, describeHand: f.describeHand }, ident: i, street: s, crowd: c.crowd };
+  Promise.all([import('./game/Runtime'), import('./game/GameState'), import('./world/WorldBuilder'), import('./game/DiscoverySystem'), import('./input/HandTracker'), import('./input/handFeatures'), import('./intro/identState'), import('./street/StreetLayout'), import('./street/Crowd'), import('./street/Locations')]).then(([r, g, w, d, h, f, i, s, c, l]) => {
+    (window as unknown as Record<string, unknown>).__pataka = { runtime: r.runtime, useGame: g.useGame, world: w.getWorld(), discovery: d, hands: { ...h, describeHand: f.describeHand }, ident: i, street: s, crowd: c.crowd, locations: l };
   });
 }

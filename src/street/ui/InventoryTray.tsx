@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { PACKAGES, type PackageId } from '../../assets/AssetRegistry';
 import { MAX_USES, useGame } from '../../game/GameState';
-import { cancelPlacing, startPlacing } from '../../game/DiscoverySystem';
+import { cancelPlacing, pickFromPanel } from '../../game/DiscoverySystem';
 import { GESTURE_INFO } from '../../input/gestures';
 import { crackerRender, renderCrackers } from './crackerRenders';
 import { dropHere, pointer, usePlace } from '../Placement';
 
-// The slim tray on the right: every collected cracker as a small render of its real shape,
-// with the lights it has left. Drag one onto the road (or tap it, then tap the road).
+// The slim tray on the right: all eight crackers as small renders of their real shapes.
+// A new one opens its collectible card first; a collected one shows the lights it has left
+// and can be dragged onto the ground (or tapped, then the ground tapped).
 
 const REASON: Record<string, string> = {
-  ground: 'Sirf sadak ya chowk',
+  ground: 'Khuli jagah pe rakho',
   person: 'Logon se door',
   vehicle: 'Gaadi se door',
   far: 'Thoda paas',
@@ -77,49 +78,54 @@ export function InventoryTray() {
     };
   }, []);
 
-  const owned = PACKAGES.filter((p) => {
-    const s = packages[p.id];
-    return s === 'UNLOCKED' || s === 'PLAYED' || s === 'MEMORY_CAPTURED';
-  });
+  const isOwned = (id: PackageId) => {
+    const st = packages[id];
+    return st === 'UNLOCKED' || st === 'PLAYED' || st === 'MEMORY_CAPTURED';
+  };
   if (phase !== 'playing' || album) return null;
   const busy = !!active && active.step !== 'spotlight';
 
   return (
     <>
-      {owned.length > 0 && (
+      {(
         <aside className={`inv ${busy || active ? 'inv-busy' : ''}`} aria-label="Your crackers">
           <ul>
-            {owned.map((p) => {
+            {PACKAGES.map((p) => {
+              const own = isOwned(p.id);
               const n = uses[p.id];
               const img = crackerRender(p.id);
               const on = placing === p.id;
               return (
                 <li key={p.id}>
                   <button
-                    className={`inv-item ${on ? 'on' : ''} ${n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''}`}
+                    className={`inv-item ${on ? 'on' : ''} ${!own ? 'new' : n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''}`}
                     style={{ ['--pk' as string]: p.palette[0] }}
-                    aria-label={`${p.crackerLabel}: ${n} of ${MAX_USES} left${n > 0 ? '. Drag onto the road to place.' : '. Refill at its box.'}`}
+                    aria-label={!own ? `${p.crackerLabel}: new. Open its card.` : `${p.crackerLabel}: ${n} of ${MAX_USES} left${n > 0 ? '. Drag onto the ground to place.' : '. Tap to refill.'}`}
                     title={p.crackerLabel}
-                    disabled={n <= 0 || !!active}
+                    disabled={!!active}
                     onPointerDown={(e) => {
-                      if (n <= 0 || active) return;
+                      if (active) return;
+                      if (!own) {
+                        pickFromPanel(p.id);
+                        return;
+                      }
                       if (placing === p.id) {
                         cancelPlacing();
                         return;
                       }
-                      if (!startPlacing(p.id)) return;
+                      pickFromPanel(p.id);
+                      if (useGame.getState().placing !== p.id) return;
                       drag.current = { id: p.id, pid: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false };
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        if (placing === p.id) cancelPlacing();
-                        else startPlacing(p.id);
+                        pickFromPanel(p.id);
                       }
                     }}
                   >
                     {img ? <img src={img} alt="" draggable={false} /> : <span className="inv-emoji">{GESTURE_INFO[p.id].icon}</span>}
-                    <b className="inv-count">x{n}</b>
+                    <b className="inv-count">{own ? `x${n}` : '+'}</b>
                   </button>
                 </li>
               );

@@ -108,7 +108,8 @@ export function StreetAtmosphere() {
     const fl = runtime.fireworkLight;
     fw.current.position.set(...fl.pos);
     fw.current.color.setRGB(...fl.color);
-    fw.current.intensity = fl.intensity * 70;
+    // on a terrace or balcony the walls are close: the same burst lights them far more
+    fw.current.intensity = fl.intensity * (runtime.player.floor ? 30 : 70);
     reveal.current.position.set(...runtime.reveal.pos);
     reveal.current.intensity = runtime.reveal.intensity * (runtime.composer ? 6 : 10);
 

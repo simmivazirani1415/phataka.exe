@@ -19,6 +19,7 @@ import { StreetChunks } from '../street/StreetChunks';
 import { StreetAtmosphere } from '../street/StreetAtmosphere';
 import { StreetPackages } from '../street/StreetPackages';
 import { Crowd } from '../street/Crowd';
+import { CastSprites } from '../street/CastSprites';
 import { Traffic } from '../street/Traffic';
 import { Placement } from '../street/Placement';
 import { Bubbles } from '../street/Bubbles';
@@ -72,6 +73,7 @@ function Street() {
       <StreetChunks />
       <Crowd />
       <Traffic />
+      <CastSprites />
       <StreetPackages />
       <Placement />
       <Scorch />

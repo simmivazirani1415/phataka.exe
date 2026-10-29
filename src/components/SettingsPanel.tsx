@@ -4,7 +4,7 @@ import { IconClose } from './Icons';
 import { SoundToggle } from './SoundToggle';
 import { runtime } from '../game/Runtime';
 import { groundMarks } from '../street/Scorch';
-import { START } from '../street/StreetLayout';
+import { levelState, START } from '../street/StreetLayout';
 import { startHands, stopHands, useHands } from '../input/HandTracker';
 import { useIdent } from '../intro/identState';
 
@@ -105,7 +105,8 @@ export function SettingsPanel() {
                 reset();
                 setConfirm(false);
                 groundMarks.clear();
-                runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0 });
+                levelState.id = 'street';
+                runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0, floor: 0 });
               }}
             >
               Yes, reset

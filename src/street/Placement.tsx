@@ -7,6 +7,7 @@ import { useGame } from '../game/GameState';
 import { runtime } from '../game/Runtime';
 import { checkSpot, CLEARANCE, placeCracker, type PlaceCheck } from '../game/DiscoverySystem';
 import { audio } from '../audio/AudioEngine';
+import { currentLevel } from './StreetLayout';
 
 // Carrying a cracker from the tray to the ground. A reticle follows the pointer (or the
 // finger) over the road: a gold ring where it may go, a red ring with a cross where it may
@@ -31,6 +32,7 @@ function groundUnder(camera: THREE.Camera, w: number, h: number): THREE.Vector3 
   const y = pointer.has ? pointer.y : h * 0.72;
   _ndc.set((x / w) * 2 - 1, -(y / h) * 2 + 1);
   _ray.setFromCamera(_ndc, camera);
+  GROUND.constant = -currentLevel().floor;
   return _ray.ray.intersectPlane(GROUND, _hit);
 }
 
@@ -138,7 +140,7 @@ export function Placement() {
     if (!r) return;
     const R = CLEARANCE[PACKAGE_BY_ID[id].crackerType];
     const ok = r.check === 'ok';
-    g.position.set(r.x, 0.04, r.z);
+    g.position.set(r.x, currentLevel().floor + 0.04, r.z);
     const t = st.clock.elapsedTime;
     ring.current.scale.setScalar(R * (1 + Math.sin(t * 5) * 0.03));
     const c = ok ? mats.ok : mats.bad;

@@ -8,24 +8,23 @@ import { audio } from '../audio/AudioEngine';
 import { STREET } from './StreetLayout';
 import { crowd, LINES, sayLine, type Agent } from './Crowd';
 import { glowUniforms, pointsFrag, pointsVert } from './StreetChunks';
-import type { PersonKind } from './StreetLayout';
 
 // Slow mohalla traffic: scooters, cycles, autos and the odd small car, keeping left in two
 // lanes along the gali. They follow each other, stop for the player, for anyone stepping
 // into the road and for any cracker on the ground, swerve around crackers when there is
 // room, and brake hard and swerve away when something bursts nearby.
 
-type VType = 'scooter' | 'bicycle' | 'auto' | 'car';
-const TYPES: VType[] = ['scooter', 'bicycle', 'auto', 'car'];
+export type VType = 'scooter' | 'bicycle' | 'auto' | 'rickshaw';
+const TYPES: VType[] = ['scooter', 'bicycle', 'auto', 'rickshaw'];
 const LANE = 1.25;
 const SPEC: Record<VType, { len: number; wid: number; speed: [number, number]; tints: string[]; seat: number; riderZ: number }> = {
   scooter: { len: 1.8, wid: 0.75, speed: [4.2, 5.8], tints: ['#ce382a', '#1e5f8a', '#f2e3c4', '#2f6b4f', '#23242a', '#d64a91', '#8d8f97'], seat: 0.78, riderZ: -0.2 },
   bicycle: { len: 1.75, wid: 0.6, speed: [2.6, 3.4], tints: ['#23242a', '#ce382a', '#1e5f8a', '#2f6b4f'], seat: 0.92, riderZ: -0.25 },
   auto: { len: 2.7, wid: 1.4, speed: [3.4, 4.4], tints: ['#ffd15a', '#2f8a4a', '#ffd15a'], seat: 0.85, riderZ: 0.55 },
-  car: { len: 3.7, wid: 1.62, speed: [3.0, 4.0], tints: ['#f2f2f2', '#8d8f97', '#ce382a', '#1e5f8a', '#23242a', '#f5a623'], seat: 0, riderZ: 0 },
+  rickshaw: { len: 2.3, wid: 1.1, speed: [2.2, 3.0], tints: ['#2f6b4f'], seat: 0, riderZ: 0 },
 };
 
-interface Vehicle {
+export interface Vehicle {
   type: VType;
   slot: number;
   x: number;
@@ -129,7 +128,10 @@ const _s = new THREE.Vector3(1, 1, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
 
-const MIX: VType[] = ['scooter', 'scooter', 'scooter', 'bicycle', 'auto', 'auto', 'car', 'scooter', 'bicycle'];
+const MIX: VType[] = ['scooter', 'scooter', 'bicycle', 'auto', 'rickshaw', 'scooter', 'bicycle', 'auto', 'rickshaw'];
+
+/** The vehicles on the road right now, for the cut-out renderer. */
+export const trafficState: { list: Vehicle[] } = { list: [] };
 
 export function Traffic() {
   const graphics = useGame((s) => s.settings.graphics);
@@ -185,20 +187,7 @@ export function Traffic() {
     const x = first ? p.x + rnd(-70, 70) : p.x - dir * rnd(68, 80) * (Math.random() < 0.7 ? 1 : -1);
     const v: Vehicle = { type, slot, x, z: -dir * LANE, dir, speed: 0, cruise: rnd(...sp.speed), off: 0, offTarget: 0, brakeUntil: 0, waitFor: 0, honked: 0, riders: [] };
     v.speed = v.cruise;
-    // riders
-    if (type !== 'car') {
-      const kind = pickA<PersonKind>(type === 'auto' ? ['man', 'man', 'elder'] : ['man', 'man', 'woman', 'man', 'child']);
-      const r = crowd.spawn(kind === 'child' && type === 'scooter' ? 'man' : kind, x, 0, v.z, 0, 'ride', 'rider');
-      if (r) v.riders.push(r);
-      if (type === 'scooter' && Math.random() < 0.45) {
-        const pil = crowd.spawn(pickA<PersonKind>(['woman', 'child', 'man']), x, 0, v.z, 0, 'ride', 'rider', { pillion: true });
-        if (pil) v.riders.push(pil);
-      }
-      if (type === 'auto' && Math.random() < 0.6) {
-        const pas = crowd.spawn(pickA<PersonKind>(['woman', 'elder', 'woman']), x, 0, v.z, 0, 'ride', 'rider', { pillion: true });
-        if (pas) v.riders.push(pas);
-      }
-    }
+    // the riders are part of each vehicle's illustration
     return v;
   };
 
@@ -210,7 +199,8 @@ export function Traffic() {
 
   // the player cannot walk through traffic
   useEffect(() => {
-    const solid = (x: number, z: number, r: number) => {
+    const solid = (x: number, z: number, r: number, y = 0) => {
+      if (y > 0.5) return false;
       for (const v of list.current) {
         const s = SPEC[v.type];
         if (Math.abs(x - v.x) < s.len / 2 + r && Math.abs(z - (v.z + v.off)) < s.wid / 2 + r) return true;
@@ -237,15 +227,25 @@ export function Traffic() {
           v.brakeUntil = now + rnd(1400, 2200);
           const away = Math.sign(v.z + v.off - e.pos[2]) || -v.dir;
           v.offTarget = THREE.MathUtils.clamp(v.offTarget + away * 0.8, -LANE - 0.9, LANE + 0.9) - 0;
-          if (!spoke && v.riders[0] && d < 9 && Math.random() < 0.6) {
+          if (!spoke && d < 9 && Math.random() < 0.6) {
             spoke = true;
-            const r = v.riders[0];
-            window.setTimeout(() => sayLine(pickA(LINES.rider), r.x, 2.1, r.z), 400);
+            window.setTimeout(() => sayLine(pickA(LINES.rider), v.x, 2.3, v.z + v.off), 400);
           }
-          if (Math.random() < 0.4 && now - v.honked > 4000) {
-            v.honked = now;
-            window.setTimeout(() => audio.horn(), 300);
+        }
+        // somebody always leans on the horn: the nearest vehicle, wherever the burst was
+        let near: Vehicle | null = null;
+        let nd = 34;
+        for (const v of list.current) {
+          const d = Math.hypot(v.x - e.pos[0], v.z - e.pos[2]);
+          if (d < nd) {
+            nd = d;
+            near = v;
           }
+        }
+        if (near && now - near.honked > 1500) {
+          near.honked = now;
+          window.setTimeout(() => audio.horn(), 250 + Math.random() * 200);
+          if (e.kind === 'bomb' && Math.random() < 0.6) window.setTimeout(() => audio.horn(), 900);
         }
       }),
     [],
@@ -256,6 +256,7 @@ export function Traffic() {
     const p = runtime.player;
     const now = performance.now();
     const L = list.current;
+    trafficState.list = L;
     while (L.length < count) {
       const used = new Set(L.map((v) => v.type + v.slot));
       // find a free instance slot for a type
@@ -370,16 +371,16 @@ export function Traffic() {
       const k = i * 3;
       const fx = Math.sin(yaw);
       const fz = Math.cos(yaw);
-      const hy = v.type === 'car' ? 0.72 : v.type === 'auto' ? 0.9 : 1.02;
-      const headOff = v.type === 'car' ? 1.82 : v.type === 'auto' ? 1.24 : 0.68;
-      const wide = v.type === 'car' ? 0.55 : 0;
+      const hy = v.type === 'auto' ? 0.95 : 1.05;
+      const headOff = s.len / 2;
+      const wide = 0;
       pos.setXYZ(k, v.x + fx * headOff - fz * wide, hy, z + fz * headOff + fx * wide);
       pos.setXYZ(k + 1, v.x + fx * headOff + fz * wide, hy, z + fz * headOff - fx * wide);
-      pos.setXYZ(k + 2, v.x - fx * (s.len / 2), v.type === 'car' ? 0.72 : 0.7, z - fz * (s.len / 2));
+      pos.setXYZ(k + 2, v.x - fx * (s.len / 2), 0.7, z - fz * (s.len / 2));
       col.setXYZ(k, 1, 0.93, 0.75);
       col.setXYZ(k + 1, 1, 0.93, 0.75);
       col.setXYZ(k + 2, 1, 0.15, 0.1);
-      size.setX(k, v.type === 'bicycle' ? 0.25 : 0.6);
+      size.setX(k, v.type === 'bicycle' ? 0.25 : v.type === 'rickshaw' ? 0 : 0.6);
       size.setX(k + 1, wide ? 0.6 : 0);
       size.setX(k + 2, v.type === 'bicycle' ? 0.18 : v.speed < 1 ? 0.55 : 0.35);
     }
@@ -392,9 +393,6 @@ export function Traffic() {
 
   return (
     <group>
-      {TYPES.map((t) => (
-        <primitive key={t} object={meshes[t]} />
-      ))}
       <primitive object={lights} />
     </group>
   );

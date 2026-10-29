@@ -76,7 +76,11 @@ class Pool {
   grav: Float32Array;
   drag: Float32Array;
   flick: Float32Array;
+  floor: Float32Array;
   bounce = true;
+  /** the floor that new sparks land on (the road, a terrace, a balcony) */
+  ground = 0;
+  groundAt: [number, number] = [0, 0];
   free: number[] = [];
   alive = 0;
   density = 1;
@@ -96,6 +100,7 @@ class Pool {
     this.grav = new Float32Array(cap);
     this.drag = new Float32Array(cap);
     this.flick = new Float32Array(cap);
+    this.floor = new Float32Array(cap);
     for (let i = cap - 1; i >= 0; i--) this.free.push(i);
   }
   emit(o: ParticleOpts) {
@@ -114,6 +119,7 @@ class Pool {
     this.grav[i] = o.gravity ?? 3;
     this.drag[i] = o.drag ?? 0.8;
     this.flick[i] = o.flicker ?? 0;
+    this.floor[i] = o.pos[1] >= this.ground - 0.1 && Math.hypot(o.pos[0] - this.groundAt[0], o.pos[2] - this.groundAt[1]) < 9 ? this.ground : 0;
     this.alive++;
   }
   update(dt: number) {
@@ -138,8 +144,8 @@ class Pool {
       this.pos[k + 1] += this.vel[k + 1] * dt;
       this.pos[k + 2] += this.vel[k + 2] * dt;
       // sparks hit the road and skitter along it
-      if (this.bounce && this.pos[k + 1] < 0.02 && this.vel[k + 1] < 0 && this.grav[i] > 0) {
-        this.pos[k + 1] = 0.02;
+      if (this.bounce && this.pos[k + 1] < this.floor[i] + 0.02 && this.vel[k + 1] < 0 && this.grav[i] > 0) {
+        this.pos[k + 1] = this.floor[i] + 0.02;
         this.vel[k + 1] *= -0.32;
         this.vel[k] *= 0.6;
         this.vel[k + 2] *= 0.6;

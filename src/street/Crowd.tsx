@@ -468,12 +468,21 @@ function writeAgent(a: Agent, pose: Pose, meshes: THREE.InstancedMesh[], shadow:
   shadow.setMatrixAt(i, _m1);
 }
 
+/** People are drawn as illustrated cut-outs (CastSprites); only their contact shadow is ours. */
+function writeShadowOnly(a: Agent, meshes: THREE.InstancedMesh[], shadow: THREE.InstancedMesh) {
+  const i = a.idx;
+  for (const m of meshes) m.setMatrixAt(i, ZERO);
+  _q.identity();
+  _m1.compose(_p.set(a.x, a.y + 0.015, a.z), _q, _s.set(0.8, 1, 0.8));
+  shadow.setMatrixAt(i, _m1);
+}
+
 function hideAgent(i: number, meshes: THREE.InstancedMesh[], shadow: THREE.InstancedMesh) {
   for (const m of meshes) m.setMatrixAt(i, ZERO);
   shadow.setMatrixAt(i, ZERO);
 }
 
-function shadowTexture() {
+export function shadowTexture() {
   const { c, ctx } = makeCanvas(64, 64);
   const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
   g.addColorStop(0, 'rgba(0,0,0,0.55)');
@@ -549,9 +558,9 @@ export function Crowd() {
 
   // people block the player's way
   useEffect(() => {
-    const solid = (x: number, z: number, r: number) => {
+    const solid = (x: number, z: number, r: number, y = 0) => {
       for (const a of crowd.agents) {
-        if (a.owner === 'rider' || a.y > 0.3 || a.hidden) continue;
+        if (a.owner === 'rider' || Math.abs(a.y - y) > 0.6 || a.hidden) continue;
         const rr = r + (a.kind === 'dog' ? 0.25 : a.kind === 'child' ? 0.2 : 0.26);
         if (Math.abs(a.x - x) < rr && Math.abs(a.z - z) < rr && Math.hypot(a.x - x, a.z - z) < rr) return true;
       }
@@ -643,6 +652,10 @@ export function Crowd() {
       a.hidden = false;
       // far agents are posed every third frame only
       if (d > 38 && (frame.current + a.idx) % 3 !== 0) continue;
+      if (a.kind !== 'dog') {
+        writeShadowOnly(a, meshes, shadow);
+        continue;
+      }
       poseFor(a, t, pose, reduced);
       writeAgent(a, pose, meshes, shadow);
     }

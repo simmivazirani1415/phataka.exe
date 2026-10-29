@@ -9,6 +9,8 @@ export interface ViewState {
   z: number;
   yaw: number;
   pitch: number;
+  /** height of the floor underfoot: 0 on the road, higher on a terrace or balcony */
+  floor?: number;
 }
 
 export interface CameraApi {
@@ -28,6 +30,8 @@ export interface CameraApi {
   reset: () => void;
   /** Jump to a spot (start of the walk, after a reset). */
   teleport: (v: Partial<ViewState>) => void;
+  /** Glide to a new spot (another floor or place) and keep walking from there. */
+  travel: (v: Partial<ViewState>, duration?: number) => Promise<void>;
   forward: () => [number, number, number];
 }
 
@@ -70,7 +74,7 @@ export const runtime = {
   ghost: 0,
   camera: null as CameraApi | null,
   /** the player's walking view, written by the street camera every frame */
-  player: { x: 0, z: 0, yaw: 0, pitch: 0 } as ViewState,
+  player: { x: 0, z: 0, yaw: 0, pitch: 0, floor: 0 } as ViewState,
   /** analog walk input from the on-screen joystick (-1..1) */
   joy: { x: 0, y: 0 },
   /** crackers on the ground right now; people and vehicles keep away */
@@ -80,7 +84,7 @@ export const runtime = {
   /** longest step the firework timeline takes per frame (headless tests raise it) */
   maxDt: 0.05,
   /** moving things the player cannot walk through (vehicles, people) register a test here */
-  solids: new Map<'person' | 'vehicle', (x: number, z: number, r: number) => boolean>(),
+  solids: new Map<'person' | 'vehicle', (x: number, z: number, r: number, y?: number) => boolean>(),
   capture: null as CaptureApi | null,
   /** post-processing composer on High graphics; captures render through it so photos match the screen */
   composer: null as import('postprocessing').EffectComposer | null,

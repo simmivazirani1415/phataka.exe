@@ -105,6 +105,8 @@ export interface VariantData {
   obstacles: Rect[];
   lamps: LampSpot[];
   spawns: Spawn[];
+  /** parked vehicles, drawn as illustrated cut-outs */
+  props: { x: number; z: number; ry: number; sprite: 'parkedScooter' }[];
 }
 
 // ------------------------------------------------------------------------------------------
@@ -139,7 +141,7 @@ class Builder {
   d: VariantData;
   r: () => number;
   constructor(kind: VariantKind, seed: number) {
-    this.d = { kind, shell: [], detail: [], glow: [], points: [], signs: [], rangolis: [], walk: [], burst: [], pave: [], obstacles: [], lamps: [], spawns: [] };
+    this.d = { kind, shell: [], detail: [], glow: [], points: [], signs: [], rangolis: [], walk: [], burst: [], pave: [], obstacles: [], lamps: [], spawns: [], props: [] };
     this.r = mulberry32(seed);
   }
   pick<T>(a: T[]) {
@@ -230,6 +232,8 @@ interface HouseOpts {
   people?: boolean;
   boxSpot?: boolean;
   kind?: 'house' | 'shop' | 'pataka' | 'mithai' | 'temple';
+  /** a clear family terrace on the roof (no tank, antenna or watchers) */
+  terrace?: boolean;
 }
 
 /** One building with its street-facing facade on the frame's a axis from a0 to a1. */
@@ -388,17 +392,17 @@ function building(B: Builder, f: Frame, a0: number, a1: number, o: HouseOpts = {
     }
   }
   // roof: water tank, antenna, a string of lights along the parapet
-  if (r() < 0.75) {
+  if (!o.terrace && r() < 0.75) {
     const [tx, tz] = P(a0 + B.rr(1, Math.max(1.2, w - 1)), D * B.rr(0.4, 0.7));
     B.box('shell', tx, H + 0.4 + 0.65, tz, 1.15, 1.3, 1.15, 0x23242a, 0, 1);
     B.box('detail', tx, H + 0.2, tz, 1.25, 0.4, 1.25, darken(wall, 0.2));
   }
-  if (r() < 0.4) {
+  if (!o.terrace && r() < 0.4) {
     const [ax, az] = P(a0 + w * 0.7, D * 0.3);
     B.box('detail', ax, H + 1.6, az, 0.04, 2.2, 0.04, 0x8d8f97);
     B.box('detail', ax, H + 2.4, az, 0.9, 0.03, 0.03, 0x8d8f97);
   }
-  if (r() < 0.65) {
+  if (o.terrace || r() < 0.65) {
     const [px0, pz0] = P(a0 + 0.1, -0.02);
     const [px1, pz1] = P(a1 - 0.1, -0.02);
     B.fairy([px0, H + 0.98, pz0], [px1, H + 0.98, pz1], 0.3, 0.05);
@@ -412,7 +416,7 @@ function building(B: Builder, f: Frame, a0: number, a1: number, o: HouseOpts = {
     }
   }
   // rooftop watchers
-  if (o.people !== false && r() < 0.18) {
+  if (!o.terrace && o.people !== false && r() < 0.18) {
     const [hx, hz] = P(a0 + B.rr(0.8, w - 0.8), 0.6);
     B.person(B.pick<PersonKind>(['man', 'child', 'woman']), hx, H, hz, f.th + Math.PI, 'look');
   }
@@ -493,20 +497,8 @@ function bunting(B: Builder, a: Vec3, b: Vec3) {
 }
 
 function parkedScooter(B: Builder, x: number, z: number, ry: number) {
-  const col = B.pick([0xce382a, 0x1e5f8a, 0xfff0d2, 0x2f6b4f, 0x23242a]);
-  const c = Math.cos(ry);
-  const s = -Math.sin(ry);
-  const at = (u: number) => [x + u * c, z + u * s] as const;
-  const [w0x, w0z] = at(-0.6);
-  const [w1x, w1z] = at(0.6);
-  B.box('detail', w0x, 0.22, w0z, 0.44, 0.44, 0.12, 0x1a1a1a, ry + Math.PI / 2, 1, 0, 0);
-  B.box('detail', w1x, 0.22, w1z, 0.44, 0.44, 0.12, 0x1a1a1a, ry + Math.PI / 2, 1, 0, 0);
-  B.box('detail', x, 0.5, z, 1.2, 0.36, 0.42, col, ry);
-  const [sx, sz] = at(-0.2);
-  B.box('detail', sx, 0.78, sz, 0.6, 0.12, 0.34, 0x2a2420, ry);
-  const [hx, hz] = at(0.55);
-  B.box('detail', hx, 0.9, hz, 0.16, 0.7, 0.4, col, ry);
-  B.box('detail', hx, 1.2, hz, 0.06, 0.06, 0.66, 0x3a3a3a, ry);
+  // the gift-laden scooter from the cast, standing on its side stand
+  B.d.props.push({ x, z, ry, sprite: 'parkedScooter' });
   B.d.obstacles.push({ x0: x - 0.75, x1: x + 0.75, z0: z - 0.45, z1: z + 0.45 });
 }
 
@@ -550,8 +542,9 @@ function buildChowk(B: Builder) {
   building(B, north, -C / 2, -11.5, { floors: 4 });
   building(B, north, -11.5, -5.5, { shop: 7, kind: 'shop', floors: 3 });
   building(B, north, -5.5, 1.5, { shop: 0, kind: 'pataka', floors: 3 });
-  building(B, north, 1.5, 8, { shop: 1, kind: 'mithai', floors: 2 });
-  building(B, north, 8, C / 2, { floors: 4 });
+  building(B, north, 1.5, 8, { shop: 1, kind: 'mithai', floors: 2, terrace: true });
+  building(B, north, 8, C / 2, { floors: 4, balcony: false });
+  terraceAndBalcony(B);
   row(B, { ox: 0, oz: -H, th: Math.PI }, -C / 2, C / 2, [], { shops: [4, 6, 8], shopChance: 0.7 });
   const west: Frame = { ox: -H, oz: 0, th: -Math.PI / 2 };
   const east: Frame = { ox: H, oz: 0, th: Math.PI / 2 };
@@ -569,7 +562,7 @@ function buildChowk(B: Builder) {
   // a neem tree on its chabutra, benches, lamp posts at the corners
   tree(B, -8.5, 8.5);
   bench(B, -8.5, 5.4, 2.2, true);
-  for (const [x, z] of [[-12.5, -12.5], [12.5, -12.5], [12.5, 12.5], [-12.5, 12.5]]) B.lampPost(x, z, 0);
+  for (const [x, z] of [[-12.5, -12.5], [12.5, -12.5], [12.5, 10.4], [-12.5, 12.5]]) B.lampPost(x, z, 0);
   // a canopy of fairy lights strung across the whole square
   for (let i = 0; i < 9; i++) {
     const x = -H + 1.5 + i * ((2 * H - 3) / 8);
@@ -846,6 +839,120 @@ export function inSideGali(x: number, z: number) {
   if (Math.abs(z) < GH + 0.3) return false;
   if (variantAt(k) === 'chowk' && Math.abs(lx) < STREET.chowkHalf && Math.abs(z) < STREET.chowkHalf) return false;
   return true;
+}
+
+
+// ------------------------------------------------------------------------------------------
+// Places to burst from: the gali and the chowk on the ground, and, above the chowk, the
+// family terrace on the mithai shop's roof and a long balcony next door. Both look out
+// over the square, so the crowd below still sees (and hears) every burst.
+
+export type LevelId = 'street' | 'chowk' | 'terrace' | 'balcony';
+
+export interface Level {
+  id: LevelId;
+  name: string;
+  hint: string;
+  /** floor height; 0 is the road */
+  floor: number;
+  /** where you can walk and place, for the raised floors (the ground uses the chunks) */
+  walk: Rect | null;
+  burst: Rect | null;
+  spawn: { x: number; z: number; yaw: number; pitch: number };
+}
+
+const TERRACE_Y = 2 * FH + 0.25;
+const BALCONY_Y = FH + 0.12;
+const CH = STREET.chowkHalf;
+
+export const LEVELS: Record<LevelId, Level> = {
+  street: { id: 'street', name: 'Gali', hint: 'By the chai stall', floor: 0, walk: null, burst: null, spawn: { x: -C - 9, z: -0.6, yaw: -Math.PI / 2 + 0.06, pitch: 0 } },
+  chowk: { id: 'chowk', name: 'Chowk', hint: 'The open square', floor: 0, walk: null, burst: null, spawn: { x: -9.5, z: -1.5, yaw: -Math.PI / 2 + 0.12, pitch: -0.08 } },
+  terrace: {
+    id: 'terrace',
+    name: 'Chhat',
+    hint: 'The family terrace',
+    floor: TERRACE_Y,
+    walk: { x0: 1.85, x1: 7.65, z0: CH + 0.3, z1: CH + 9.7 },
+    burst: { x0: 2.1, x1: 7.4, z0: CH + 0.5, z1: CH + 7.6 },
+    spawn: { x: 4.75, z: CH + 9.0, yaw: 0, pitch: -0.16 },
+  },
+  balcony: {
+    id: 'balcony',
+    name: 'Balcony',
+    hint: 'Over the chowk',
+    floor: BALCONY_Y,
+    walk: { x0: 8.5, x1: 13.5, z0: CH - 2.05, z1: CH - 0.05 },
+    burst: { x0: 8.7, x1: 13.3, z0: CH - 1.9, z1: CH - 0.25 },
+    spawn: { x: 13.0, z: CH - 0.45, yaw: 0.8, pitch: -0.32 },
+  },
+};
+
+/** The floor the player is on now. */
+export const levelState: { id: LevelId } = { id: 'street' };
+export const currentLevel = () => LEVELS[levelState.id];
+
+/** Walkable here, on the current floor? */
+export function openOnLevel(x: number, z: number, m = STREET.radius) {
+  const L = currentLevel();
+  if (!L.walk) return isOpen(x, z, m);
+  return inRect(L.walk, x, z, m);
+}
+
+/** May a cracker go here, on the current floor? Raised floors only keep it off the railing. */
+export function burstOnLevel(x: number, z: number, clearance: number) {
+  const L = currentLevel();
+  if (!L.burst) return isBurstGround(x, z, clearance);
+  return inRect(L.burst, x, z, Math.min(clearance, 0.3));
+}
+
+/** Which ground level a point counts as, for the map's "you are here". */
+export function groundLevelAt(x: number, z: number): LevelId {
+  return chunkOf(x) === 0 && Math.abs(x) < CH && Math.abs(z) < CH ? 'chowk' : 'street';
+}
+
+function terraceAndBalcony(B: Builder) {
+  // terrace: a durrie, potted plants, diyas along the parapet, a kandil and the family
+  const y = TERRACE_Y;
+  // a tiled terrace floor, a lamp over it
+  B.box('shell', 4.75, y + 0.005, CH + 5, 6.1, 0.01, 9.6, 0xc9a27e);
+  for (let i = 1; i < 6; i++) B.box('detail', 1.7 + i * 1.02, y + 0.012, CH + 5, 0.03, 0.006, 9.6, 0xa9876a);
+  B.d.lamps.push({ x: 4.75, y: y + 2.6, z: CH + 5.5, color: 0xffd9a0 });
+  B.box('detail', 4.75, y + 0.012, CH + 8.4, 3.6, 0.02, 1.8, 0xce382a);
+  B.box('detail', 4.75, y + 0.016, CH + 8.4, 3.0, 0.02, 1.3, 0xf5a623);
+  for (const [x, z] of [[2.2, CH + 0.6], [7.3, CH + 0.6], [2.2, CH + 9.4], [7.3, CH + 9.4]]) B.pottedPlant(x, y, z, 0.9);
+  for (let i = 0; i < 9; i++) {
+    const x = 1.9 + i * 0.72;
+    B.diya(x, y + 0.92, CH + 0.1);
+  }
+  B.kandil(4.75, y + 2.4, CH + 4.5, 0xff6f91);
+  B.fairy([1.6, y + 2.2, CH + 0.2], [7.9, y + 2.2, CH + 9.8], 0.3, 0.6);
+  B.box('detail', 7.2, y + 1.1, CH + 6.0, 0.06, 2.2, 0.06, 0x8d8f97);
+  B.person('woman', 3.0, y, CH + 9.1, Math.PI + 0.3, 'wave');
+  B.person('elder', 6.6, y, CH + 9.2, Math.PI - 0.3, 'look');
+  B.person('child', 7.0, y, CH + 8.2, Math.PI - 0.6, 'talk');
+  B.point(4.75, y + 0.4, CH + 8.4, 0xffb547, 0.6, 2);
+
+  // a long balcony on the first floor next door, with a railing and its own lights
+  const by = FH;
+  const x0 = 8.3;
+  const x1 = 13.7;
+  const xm = (x0 + x1) / 2;
+  const z0 = CH - 2.2;
+  B.box('shell', xm, by + 0.05, CH - 1.1, x1 - x0, 0.14, 2.2, 0xd9c7a3);
+  B.box('shell', xm, by - 0.08, CH - 1.1, x1 - x0, 0.12, 2.2, 0xa9573b);
+  const posts = 20;
+  for (let i = 0; i <= posts; i++) B.box('detail', x0 + (i / posts) * (x1 - x0), by + 0.6, z0 + 0.05, 0.04, 0.95, 0.04, 0x2e2e33);
+  B.box('detail', xm, by + 1.08, z0 + 0.05, x1 - x0, 0.07, 0.09, 0xf5a623);
+  for (const x of [x0, x1]) B.box('detail', x, by + 0.6, CH - 1.1, 0.05, 0.95, 2.2, 0x2e2e33);
+  B.fairy([x0, by + 1.08, z0], [x1, by + 1.08, z0], 0.22, 0.14);
+  B.fairy([x0, by + 2.7, z0 + 0.1], [x1, by + 2.7, z0 + 0.1], 0.3, 0.3);
+  B.box('glow', 9.8, by + 1.15, CH - 0.012, 1.0, 2.0, 0.02, 0xffc874);
+  B.box('glow', 12.4, by + 1.15, CH - 0.012, 1.0, 2.0, 0.02, 0xffd27a);
+  B.pottedPlant(8.6, BALCONY_Y, CH - 0.3, 0.7);
+  for (let i = 0; i < 6; i++) B.diya(x0 + 0.4 + i * 0.95, by + 1.13, z0 + 0.05);
+  B.d.lamps.push({ x: xm, y: by + 2.4, z: CH - 0.6, color: 0xffd9a0 });
+  B.person('woman', 8.9, BALCONY_Y, CH - 0.5, 0.6, 'lean');
 }
 
 // ------------------------------------------------------------------------------------------

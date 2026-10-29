@@ -312,13 +312,13 @@ button {
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: row-reverse;
   align-items: center;
   gap: 12px;
 }
 .hud-more {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: row-reverse;
   gap: 12px;
   align-items: center;
 }
@@ -1188,12 +1188,12 @@ button {
 }
 .toast {
   position: absolute;
-  left: 50%;
+  left: calc(50% - 36px);
   top: max(70px, calc(env(safe-area-inset-top) + 60px));
   transform: translateX(-50%);
   margin: 0;
   padding: 8px 16px;
-  max-width: calc(100% - 32px);
+  max-width: calc(100% - 150px);
   color: var(--ink);
   background: var(--cream);
   border: 2px solid var(--ink);
@@ -1251,15 +1251,15 @@ button {
 
 /* ---------- street: inventory tray (right) ---------- */
 .inv {
+  --inv: clamp(36px, calc((100vh - 230px) / 8 - 6px), 56px);
   position: absolute;
   right: max(10px, env(safe-area-inset-right));
-  top: 50%;
-  transform: translateY(-50%);
+  top: max(72px, calc(env(safe-area-inset-top) + 62px));
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 8px 6px;
-  max-height: calc(100% - 200px);
+  max-height: calc(100% - 150px);
   overflow-y: auto;
   scrollbar-width: none;
   background: rgba(16, 26, 50, 0.55);
@@ -1287,8 +1287,8 @@ button {
 }
 .inv-item {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: var(--inv);
+  height: var(--inv);
   padding: 0;
   border: 1px solid rgba(255, 240, 210, 0.18);
   border-radius: 10px;
@@ -1526,8 +1526,7 @@ button {
   place-items: center;
 }
 .joy.off {
-  opacity: 0.25;
-  pointer-events: none;
+  display: none;
 }
 .joy-knob {
   width: 48px;
@@ -1559,18 +1558,386 @@ button {
   }
 }
 @media (max-width: 640px) {
-  .inv-item {
-    width: 46px;
-    height: 46px;
-  }
-  .inv-emoji {
-    line-height: 46px;
-  }
   .inv {
-    max-height: calc(100% - 240px);
+    --inv: clamp(34px, calc((100vh - 300px) / 8 - 6px), 46px);
   }
   .hud-hint {
     max-width: calc(100% - 180px);
+  }
+}
+
+
+/* ---------- street: collectible card ---------- */
+.ccard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+  padding: 14px 18px 18px;
+  color: var(--ink);
+  background: var(--paper) var(--grain);
+  text-align: center;
+  border-radius: 6px;
+  border-top: 8px solid var(--pk, var(--vermilion));
+  box-shadow: 0 -3px 0 var(--pk2, var(--saffron)) inset, 0 18px 40px rgba(0, 0, 0, 0.55);
+  animation: card-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  z-index: 20;
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -44%) scale(0.92);
+  }
+}
+.ccard-art {
+  height: min(230px, calc(100vh - 290px));
+  min-height: 90px;
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 8px;
+}
+.ccard-art img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35));
+  animation: card-float 3s ease-in-out infinite;
+}
+@keyframes card-float {
+  50% {
+    transform: translateY(-6px) rotate(-1.5deg);
+  }
+}
+.ccard .reveal-copy {
+  margin: 4px 0 14px;
+}
+.ccard ~ .reveal-dim,
+.reveal-dim.on:has(+ .ccard) {
+  pointer-events: auto;
+}
+.inv-item.new img {
+  filter: brightness(0.9) saturate(0.85) drop-shadow(0 0 6px rgba(255, 209, 90, 0.6));
+}
+.inv-item.new .inv-count {
+  color: var(--cream);
+  background: var(--vermilion);
+  font-size: 14px;
+  padding: 1px 5px 0;
+}
+.inv-item.new::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 11px;
+  border: 1px dashed rgba(255, 209, 90, 0.55);
+  pointer-events: none;
+}
+
+
+/* ---------- street: location map (top left) ---------- */
+.locmap {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  top: max(56px, calc(env(safe-area-inset-top) + 46px));
+  z-index: 6;
+}
+.locmap.busy {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.locmap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 2px 14px 0 10px;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--cream);
+  background: rgba(16, 26, 50, 0.7);
+  border: 1px solid rgba(255, 209, 90, 0.5);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.locmap-toggle:hover,
+.locmap.open .locmap-toggle {
+  border-color: var(--saffron);
+}
+.locmap-panel {
+  margin-top: 8px;
+  width: min(280px, calc(100vw - 28px));
+  padding: 10px;
+  background: rgba(16, 26, 50, 0.9);
+  border: 1px solid rgba(255, 209, 90, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  animation: rise 0.25s ease both;
+}
+.locmap-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 8px;
+}
+.m-road {
+  fill: #2c3350;
+}
+.m-chowk {
+  fill: #6b5a48;
+  stroke: rgba(255, 209, 90, 0.4);
+}
+.m-house {
+  fill: #a9573b;
+  opacity: 0.85;
+}
+.m-balcony {
+  fill: #f5a623;
+}
+.m-pin circle {
+  fill: rgba(255, 240, 210, 0.75);
+  stroke: #101a32;
+  stroke-width: 1.5;
+}
+.m-pin.here circle {
+  fill: var(--saffron);
+  animation: pinPulse 1.4s ease-in-out infinite;
+}
+@keyframes pinPulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.locmap-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.locmap-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  text-align: left;
+  color: var(--cream);
+  background: rgba(255, 240, 210, 0.07);
+  border: 1px solid rgba(255, 240, 210, 0.16);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: var(--ui);
+}
+.locmap-item:hover:not(:disabled) {
+  border-color: var(--saffron);
+  background: rgba(255, 209, 90, 0.14);
+}
+.locmap-item.here {
+  border-color: var(--saffron);
+  cursor: default;
+}
+.li-icon {
+  font-size: 20px;
+}
+.li-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.li-text b {
+  font-size: 15px;
+}
+.li-text small {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+
+/* ---------- street: gesture demos (looping, like a GIF) ---------- */
+.gdemo {
+  --d: 2.6s;
+  position: relative;
+  width: 150px;
+  height: 110px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 60%, rgba(255, 209, 90, 0.16), rgba(16, 26, 50, 0.85) 75%);
+  border: 1px solid rgba(255, 209, 90, 0.35);
+  overflow: hidden;
+}
+.gd-guide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.gd-guide * {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gd-trail {
+  stroke: var(--saffron);
+  stroke-width: 3;
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: gdDraw var(--d) ease-in-out infinite;
+  filter: drop-shadow(0 0 3px rgba(255, 209, 90, 0.8));
+}
+@keyframes gdDraw {
+  0%, 12% { stroke-dashoffset: 220; opacity: 1; }
+  80%, 100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.gd-h,
+.gd-sp {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 32px;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+  animation-duration: var(--d);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+/* bomb: pinch an agarbatti to the fuse, hold, let go and pull back */
+.gd-ob { fill: #2f6b4f !important; stroke: #ce382a; stroke-width: 3; }
+.gd-fuse { stroke: #e8d9b5; stroke-width: 3; }
+.gd-spark { fill: #ffd15a !important; opacity: 0; animation: gdSpark var(--d) infinite; }
+@keyframes gdSpark { 0%, 34% { opacity: 0; } 40%, 100% { opacity: 1; filter: drop-shadow(0 0 6px #ffd15a); } }
+.gd-bomb .gd-h1 { animation-name: gdBomb1; }
+.gd-bomb .gd-h2 { animation-name: gdBomb2; }
+@keyframes gdBomb1 {
+  0% { left: 30px; top: 30px; opacity: 1; }
+  35%, 58% { left: 104px; top: 32px; opacity: 1; }
+  62%, 100% { left: 104px; top: 32px; opacity: 0; }
+}
+@keyframes gdBomb2 {
+  0%, 58% { left: 104px; top: 32px; opacity: 0; }
+  62% { left: 104px; top: 32px; opacity: 1; }
+  100% { left: 36px; top: 34px; opacity: 1; }
+}
+/* rocket: a fist that bursts open upward */
+.gd-arrow { stroke: var(--saffron); stroke-width: 3; opacity: 0; animation: gdShow var(--d) infinite; }
+@keyframes gdShow { 0%, 55% { opacity: 0; } 70%, 100% { opacity: 1; } }
+.gd-rocket .gd-h1 { animation-name: gdRocket1; }
+.gd-rocket .gd-h2 { animation-name: gdRocket2; }
+@keyframes gdRocket1 {
+  0%, 30% { left: 75px; top: 86px; opacity: 1; transform: translate(-50%, -50%) scale(0.95); }
+  40% { left: 75px; top: 80px; opacity: 1; transform: translate(-50%, -50%) scale(0.85); }
+  44%, 100% { left: 75px; top: 76px; opacity: 0; }
+}
+@keyframes gdRocket2 {
+  0%, 42% { left: 75px; top: 80px; opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  46% { opacity: 1; }
+  80%, 100% { left: 75px; top: 34px; opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+/* chakri: draw a big circle with one finger */
+.gd-circle { stroke-dasharray: 202; stroke-dashoffset: 202; animation-name: gdCircle; }
+@keyframes gdCircle { 0%, 8% { stroke-dashoffset: 202; } 88%, 100% { stroke-dashoffset: 0; } }
+.gd-chakri .gd-guide { transform: rotate(-90deg) scaleY(-1); }
+.gd-chakri .gd-h1 { animation-name: gdCirc; animation-timing-function: linear; }
+@keyframes gdCirc {
+  0%, 8% { left: 75px; top: 15px; }
+  28% { left: 107px; top: 47px; }
+  48% { left: 75px; top: 79px; }
+  68% { left: 43px; top: 47px; }
+  88%, 100% { left: 75px; top: 15px; }
+}
+/* phuljhadi: pinch the stick and wave it side to side */
+.gd-wave { animation-name: gdDraw; }
+.gd-sparkler .gd-h1 { animation-name: gdWave; }
+.gd-sparkler .gd-sp { animation-name: gdWaveSp; font-size: 22px; }
+@keyframes gdWave {
+  0% { left: 28px; top: 54px; }
+  25% { left: 122px; top: 54px; }
+  50% { left: 28px; top: 54px; }
+  75% { left: 122px; top: 54px; }
+  100% { left: 75px; top: 68px; }
+}
+@keyframes gdWaveSp {
+  0% { left: 22px; top: 36px; }
+  25% { left: 116px; top: 36px; }
+  50% { left: 22px; top: 36px; }
+  75% { left: 116px; top: 36px; }
+  100% { left: 69px; top: 50px; }
+}
+/* anaar: bring both hands together into a triangle and hold */
+.gd-tri { stroke-dasharray: 190; stroke-dashoffset: 190; animation-name: gdTri; }
+@keyframes gdTri { 0%, 40% { stroke-dashoffset: 190; } 80%, 100% { stroke-dashoffset: 0; } }
+.gd-anaar .gd-h1 { animation-name: gdAnaar1; }
+.gd-anaar .gd-h2 { animation-name: gdAnaar2; }
+@keyframes gdAnaar1 { 0% { left: 12px; top: 64px; } 45%, 100% { left: 52px; top: 64px; } }
+@keyframes gdAnaar2 { 0% { left: 138px; top: 64px; } 45%, 100% { left: 98px; top: 64px; } }
+/* ladi: an open palm swipes along the string, the crackers pop in turn */
+.gd-string { stroke: #8a5233; stroke-width: 2; }
+.gd-pop { fill: #ce382a !important; animation: gdPop var(--d) infinite; }
+@keyframes gdPop { 0% { fill: #ce382a; } 6% { fill: #fff3d0; } 14%, 100% { fill: #ffd15a; } }
+.gd-ladi .gd-h1 { animation-name: gdSwipe; }
+@keyframes gdSwipe { 0%, 8% { left: 16px; top: 46px; } 60%, 100% { left: 134px; top: 46px; } }
+/* snake: an open palm rises slowly, the snake grows under it */
+.gd-snakepath { stroke-width: 6; stroke: #7a5a3e; }
+.gd-snake .gd-h1 { animation-name: gdRise; animation-timing-function: linear; }
+@keyframes gdRise { 0%, 8% { left: 75px; top: 88px; } 88%, 100% { left: 75px; top: 18px; } }
+/* pop-pop: flick the hand down fast, they burst on the floor */
+.gd-drop { stroke-dasharray: 70; stroke-dashoffset: 70; animation-name: gdDrop; }
+@keyframes gdDrop { 0%, 30% { stroke-dashoffset: 70; } 46%, 100% { stroke-dashoffset: 0; } }
+.gd-burst line { stroke: #ffd15a; stroke-width: 2.5; }
+.gd-burst { opacity: 0; transform-origin: 75px 92px; animation: gdBurst var(--d) infinite; }
+@keyframes gdBurst { 0%, 44% { opacity: 0; transform: scale(0.3); } 52% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+.gd-popPop .gd-h1 { animation-name: gdFlick; }
+@keyframes gdFlick {
+  0%, 28% { left: 75px; top: 20px; transform: translate(-50%, -50%) rotate(-20deg); }
+  44%, 100% { left: 75px; top: 72px; transform: translate(-50%, -50%) rotate(25deg); }
+}
+.gd-snake .gd-trail { animation-timing-function: linear; }
+
+/* spotlight card: demo, CTA for the camera, tap to light */
+.spot-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: rgba(16, 26, 50, 0.72);
+  border: 1px solid rgba(255, 209, 90, 0.4);
+  border-radius: 18px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.spot-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.btn.cta.spot-cam {
+  min-height: 44px;
+  padding: 6px 16px 3px;
+  font-size: 16px;
+  white-space: nowrap;
+}
+.spot-status {
+  font-size: 12px;
+  color: rgba(255, 240, 210, 0.75);
+  font-family: var(--ui);
+}
+@media (max-width: 480px) {
+  .gdemo {
+    transform: scale(0.8);
+    margin: -11px -15px;
+  }
+  .spot-light {
+    width: 88px;
+    height: 88px;
   }
 }
 

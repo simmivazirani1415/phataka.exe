@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { runtime, type CameraApi, type ViewState } from '../game/Runtime';
 import { useGame } from '../game/GameState';
-import { isOpen, START, STREET } from './StreetLayout';
+import { currentLevel, openOnLevel, START, STREET } from './StreetLayout';
 import type { Vec3 } from '../assets/AssetRegistry';
 
 // The player's eyes: a perspective camera at 1.6 m that walks the gali.
@@ -40,8 +40,9 @@ interface Tween {
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 function blocked(x: number, z: number) {
-  if (!isOpen(x, z)) return true;
-  for (const s of runtime.solids.values()) if (s(x, z, STREET.radius)) return true;
+  if (!openOnLevel(x, z)) return true;
+  const y = currentLevel().floor;
+  for (const s of runtime.solids.values()) if (s(x, z, STREET.radius, y)) return true;
   return false;
 }
 
@@ -74,7 +75,7 @@ export function StreetCamera() {
     camera.updateProjectionMatrix();
   }, [camera, size.width, size.height]);
 
-  const view = useRef<ViewState>({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0 });
+  const view = useRef<ViewState>({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0, floor: 0 });
   const mode = useRef<'walk' | 'tween' | 'framed'>('walk');
   const tween = useRef<Tween | null>(null);
   const input = useRef(false);
@@ -88,7 +89,7 @@ export function StreetCamera() {
 
   const walkPose = (out: THREE.Vector3, q: THREE.Quaternion) => {
     const v = view.current;
-    out.set(v.x, STREET.eye, v.z);
+    out.set(v.x, (v.floor ?? 0) + STREET.eye, v.z);
     _e.set(v.pitch, v.yaw, 0, 'YXZ');
     q.setFromEuler(_e);
   };
@@ -127,8 +128,8 @@ export function StreetCamera() {
           const a = base + off;
           const x = target[0] + Math.sin(a) * dist;
           const z = target[2] + Math.cos(a) * dist;
-          pos = _v.set(x, height, z);
-          if (isOpen(x, z, 0.2)) break;
+          pos = _v.set(x, target[1] + height, z);
+          if (openOnLevel(x, z, 0.2)) break;
         }
         const look = _v2.set(target[0], target[1] + (o.lookY ?? 0.3), target[2]);
         lookQuat(pos, look, _q);
@@ -147,20 +148,27 @@ export function StreetCamera() {
           while (dy > Math.PI) dy -= Math.PI * 2;
           while (dy < -Math.PI) dy += Math.PI * 2;
           const dist = Math.hypot(target[0] - v.x, target[2] - v.z);
-          const pitch = THREE.MathUtils.clamp(Math.atan2(target[1] - STREET.eye, dist), PITCH_MIN, PITCH_MAX);
+          const pitch = THREE.MathUtils.clamp(Math.atan2(target[1] - (v.floor ?? 0) - STREET.eye, dist), PITCH_MIN, PITCH_MAX);
           turnTo.current?.done();
           turnTo.current = { yaw: v.yaw + dy, pitch, t: 0, dur: useGame.getState().settings.reducedMotion ? 0.2 : duration, fy: v.yaw, fp: v.pitch, done: resolve };
         }),
       reset: () => {
         const v = view.current;
         const along = Math.abs(Math.sin(v.yaw)) > 0.5 ? (Math.sin(v.yaw) > 0 ? Math.PI / 2 : -Math.PI / 2) : v.yaw;
-        void api.face([v.x - Math.sin(along) * 10, STREET.eye, v.z - Math.cos(along) * 10], 0.6);
+        void api.face([v.x - Math.sin(along) * 10, (v.floor ?? 0) + STREET.eye, v.z - Math.cos(along) * 10], 0.6);
       },
       teleport: (p) => {
         Object.assign(view.current, p);
+        turnTo.current = null;
         if (mode.current === 'walk') {
           walkPose(camera.position, camera.quaternion);
         }
+      },
+      travel: (p, duration = 1.1) => {
+        Object.assign(view.current, p);
+        turnTo.current = null;
+        walkPose(_v, _q);
+        return startTween(_v, _q, duration, true);
       },
       forward: () => {
         camera.getWorldDirection(_v);
@@ -301,6 +309,7 @@ export function StreetCamera() {
     runtime.player.z = v.z;
     runtime.player.yaw = v.yaw;
     runtime.player.pitch = v.pitch;
+    runtime.player.floor = v.floor ?? 0;
 
     // place the camera
     const tw = tween.current;

@@ -258,7 +258,7 @@ const EFFECTS: Record<CrackerType, EffectSpec> = {
         const p: V3 = [m.position.x, m.position.y + 0.1, m.position.z];
         sphereBurst(p, 26, 2.8, ['#FFF3D0', '#FFD15A', '#FF6A3D'], { life: rnd(0.25, 0.45), gravity: 1, drag: 3, size: 0.16 });
         smoke(p, 2);
-        sparks([p[0], 0.05, p[2]], 6, 2.2, ['#FFF3D0', '#FFD15A'], { gravity: 7 });
+        sparks([p[0], c.o[1] + 0.05, p[2]], 6, 2.2, ['#FFF3D0', '#FFD15A'], { gravity: 7 });
         groundMarks.flash(p, 1.3, '#FFD9A0', 0.8, 0.25);
         if (c.vars.i % 3 === 0) groundMarks.scorch(p, 0.55, 0.6);
         audio.pop(0.13);
@@ -272,7 +272,7 @@ const EFFECTS: Record<CrackerType, EffectSpec> = {
       }
       c.once('finale', 3.9, () => {
         (c.data.fuse as THREE.Mesh).visible = false;
-        const end: V3 = [c.o[0] + c.axis[0] * 1.8, 0.2, c.o[2] + c.axis[1] * 1.8];
+        const end: V3 = [c.o[0] + c.axis[0] * 1.8, c.o[1] + 0.2, c.o[2] + c.axis[1] * 1.8];
         sphereBurst(end, 60, 3.5, ['#FFF3D0', '#FF6A3D'], { life: 0.5 });
         groundMarks.flash(end, 2.4, '#FFE7A3', 1, 0.35);
         runtime.emit({ kind: 'firework', pos: end, strength: 0.6 });
@@ -486,6 +486,9 @@ export function FireworkDirector() {
         }
         staged.current = null;
         const s = st;
+        // sparks land on the floor the cracker stands on (road, terrace or balcony)
+        particles.ground = origin[1];
+        particles.groundAt = [origin[0], origin[2]];
         await new Promise<void>((resolve) => {
           running.current = { spec: EFFECTS[s.ctx.pkg.crackerType], ctx: s.ctx, t: 0, done: resolve, onCapture, captured: false };
         });

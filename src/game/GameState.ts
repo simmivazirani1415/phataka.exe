@@ -76,6 +76,10 @@ interface GameStore {
     toast: string | null;
     /** a cracker that just went into the tray (it pulses once) */
     trayPulse: PackageId | null;
+    /** the collectible card shown when a cracker is picked from the panel */
+    card: PackageId | null;
+    /** the location map is open */
+    map: boolean;
   };
   captions: Caption[];
   worldPhoto: string | null;
@@ -160,7 +164,7 @@ export const useGame = create<GameStore>((set, get) => ({
   active: null,
   uses: restoreUses(),
   placing: null,
-  ui: { tray: false, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null },
+  ui: { tray: false, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false },
   captions: [],
   worldPhoto: null,
 
