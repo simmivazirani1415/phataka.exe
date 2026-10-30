@@ -1213,6 +1213,8 @@ body {
 }
 .page .print {
   width: 100%;
+  max-height: 46vh;
+  object-fit: cover;
   border: 8px solid #fff;
   box-shadow: 0 4px 12px rgba(39, 35, 33, 0.22);
   transform: rotate(-1deg);
@@ -1351,6 +1353,9 @@ body {
 @media (max-width: 640px) {
   .album {
     padding: 16px 12px 10px;
+  }
+  .album-pages {
+    overflow-y: auto;
   }
   .page {
     min-height: 0;
