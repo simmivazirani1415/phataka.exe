@@ -1,4 +1,4 @@
-# Pataka.exe
+# PATAK! (Pataka.exe)
 
 *Har ghar mein ek pataka hai.* A miniature Diwali mohalla that builds itself out of tiny blocks. You find eight hidden pataka boxes, light their (completely virtual) crackers, and keep the moments as Polaroids in a scrapbook you can download.
 
@@ -12,7 +12,7 @@ npm run build    # tsc -b && vite build → dist/ (relative base, can be hosted 
 
 ## Street-level mohalla (v3)
 
-The diorama is now the backdrop of the intro film only. When the TILLI. doors open you are standing in the gali at eye height (1.6 m), and the rest of the game is played on foot.
+The diorama is now the backdrop of the intro film only. When the PATAK! doors open you are standing in the gali at eye height (1.6 m), and the rest of the game is played on foot.
 
 - **Walking.** WASD or arrows to walk, Shift to run, drag to look. On phones a joystick sits bottom left (add `?joystick` to force it). Walls, stalls, people and vehicles block you.
 - **The mohalla.** It is built from 36 m chunks: the chowk (main bursting ground), the chai stall, the temple corner, a house lane, a shop lane and side galis, with balconies, rooftops, signs, rangolis, buntings and fairy lights. Chunks are streamed and reused as you walk, so the gali never ends. Code is in `src/street/` (`StreetLayout.ts` holds the layout, collision and placement rules).
@@ -32,7 +32,7 @@ The diorama is now the backdrop of the intro film only. When the TILLI. doors op
    - Each box is hidden at an anchor in the world, with a glint and a hint beacon.
    - It moves through HIDDEN → DISCOVERED → OPENING → UNLOCKED → PLAYED → MEMORY_CAPTURED.
    - On discovery the box rises, turns to face you and opens, and the cracker hops out.
-4. **Fireworks and progression.** There are eight distinct virtual effects: bomb, rocket, chakri, phuljhadi, anaar, ladi, snake and pop-pops. They use a pooled particle system and a shared light. Each one you find lights up more of the mohalla over stages 1–8: the decorated balcony, the shop sign, distant sky bursts, lanterns, courtyard diyas and zigzag lights.
+4. **Fireworks and progression.** There are eight distinct virtual effects: bomb, rocket, chakri, phuljhadi, anaar, ladi, 7 shot rocket and pop-pops. They use a pooled particle system and a shared light. Each one you find lights up more of the mohalla over stages 1–8: the decorated balcony, the shop sign, distant sky bursts, lanterns, courtyard diyas and zigzag lights.
 5. **Characters, interactions and audio.** There are 19 voxel residents with idle, talk, wave, look, walk and react animations. The nearest one says a line for each event. You can click diyas, light strings, the scooter horn, the chai kettle, the child and the dog. All audio is procedural, and it starts muted.
 6. **Memories.**
    - Each first lighting captures a real rendered frame as a Polaroid, with the package illustration as a stamp. Nothing is faked: if a photo is missing, the memory is dropped.
@@ -51,6 +51,18 @@ No prices, checkout or shopping anywhere, and no real-world handling instruction
 
 - Bloom and grading use [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) and [@react-three/postprocessing](https://github.com/pmndrs/react-postprocessing) (both MIT).
 - The setup follows [deadronos/voxel-celebration](https://github.com/deadronos/voxel-celebration) (MIT), an R3F voxel festival scene. No code or assets were copied from it.
+
+## Round 4: PATAK! redesign and a living mohalla
+
+- **Look.** A contemporary Indian editorial style: ivory paper, marigold, coral, teal and plum on charcoal, DM Sans throughout, thin SVG line icons and no glass panels. Tokens and components live in `src/styles/ui.css`.
+- **HUD.** A small PATAK! mark and the current place at the top left (tap it to change place), the collection count at the top right, and four round buttons at the bottom right: Inventory, Memories, Sound, Settings.
+- **Inventory.** A compact drawer (a bottom sheet on phones) with a 4-column grid of matchbox-label tiles; locked ones are muted with a small lock. Tap a locked one to see its card, drag an owned one onto the ground.
+- **Places.** "Kahan se chalaoge?" lists the Gali, Chowk, Chhat and Balcony with a small illustration each; the current one is tinted coral.
+- **Focus panels.** The collectible card, the box reveal and the spotlight before lighting are one small side panel on desktop and a compact bottom overlay on phones, so the street stays in view.
+- **Album and settings.** The album is a photo book with Download Memory Book, Share a Polaroid and Return to Mohalla on every page. Settings are rows with thin dividers, switches and segmented controls; Reset asks to confirm.
+- **7 Shot Rocket (Saat Shot Nana)** replaces the snake. Seven shots go up one after another; the fourth always goes astray, skittering along the road, bouncing off walls (or round the terrace and down into the chowk), climbing a facade past the balconies and shops, and only then finding the sky, while whoever is nearby shouts. The box art is Nana's box relabelled (`public/assets/pataka-packaging/saat_shot_nana*.{png,jpg}`); drop in a new illustration with the same names to replace it.
+- **People.** The opening is composed: three regulars round their chai, a namaste on the far sidewalk, a family at their door, the bench sitters and balcony watchers, so most people are still. Walkers start staggered and never appear next to the camera; they keep left, fall in behind slower people, step out (or wait) for anyone standing or coming the other way, never pass through anyone, and now and then stop to greet someone they meet. Walking into someone gets a rare "Arre, sambhal ke!" and a "Sorry, sorry!" back. Each walker has a state (walking, approaching, greeting, talking, waiting, avoiding, reacting, returning).
+- **Traffic** is light: two or three moving vehicles (mostly a scooter and a cycle) and two autos parked by the chai stall and at the chowk. Vehicles slow for people near the kerb, stop for anyone in the road and for the camera, and pull out round the parked autos only when the other lane is clear.
 
 ## Tested
 

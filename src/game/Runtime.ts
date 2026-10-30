@@ -66,6 +66,9 @@ export interface Hazard {
   radius: number;
 }
 
+/** The largest step the crowd and traffic take in one frame (tests raise maxDt to speed time up). */
+export const simStep = () => Math.max(0.05, Math.min(runtime.maxDt, 0.15));
+
 export const runtime = {
   // The mohalla starts fully built (past BlockBuilder's CAMERA_SETTLE_END); the intro ident
   // re-times one building's assembly on top of this clock.

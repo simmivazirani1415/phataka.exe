@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PACKAGES, type PackageId } from '../../assets/AssetRegistry';
 import { useGame } from '../../game/GameState';
+import { IconHand } from '../../components/Icons';
 import { beginReveal, canPickUp, distanceToBox, PICKUP_RANGE } from '../../game/DiscoverySystem';
 
 // When the player stands next to a glowing box: one button (or E) to pick it up.
@@ -39,8 +40,8 @@ export function NearPrompt() {
   }, [near]);
   if (!near || active || placing || phase !== 'playing') return null;
   return (
-    <button className="btn cta near-prompt" onClick={() => beginReveal(near)}>
-      <span aria-hidden="true">✋</span> Pick up <kbd>E</kbd>
+    <button className="btn-primary near-prompt" onClick={() => beginReveal(near)}>
+      <IconHand size={17} /> Pick up <kbd>E</kbd>
     </button>
   );
 }

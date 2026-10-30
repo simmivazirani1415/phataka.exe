@@ -28,7 +28,7 @@ export function NewMemory() {
       </p>
       <div className="new-memory-actions">
         <button
-          className="btn ghost small"
+          className="btn-quiet"
           onClick={async () => {
             await savePolaroid(memory);
             setSaved(true);
@@ -37,7 +37,7 @@ export function NewMemory() {
         >
           {saved ? 'Saved ✓' : 'Save'}
         </button>
-        <button className="btn cta small" autoFocus onClick={close}>
+        <button className="btn-primary" autoFocus onClick={close}>
           Continue Exploring
         </button>
       </div>

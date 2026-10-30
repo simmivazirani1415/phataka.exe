@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { runtime, type WorldEvent } from '../game/Runtime';
+import { runtime, simStep, type WorldEvent } from '../game/Runtime';
 import { useGame } from '../game/GameState';
 import { audio } from '../audio/AudioEngine';
 import { chunkOf, getVariants, isOpen, STREET, variantAt, type PersonAnim, type PersonKind, type Rect } from './StreetLayout';
@@ -55,7 +55,19 @@ export interface Agent {
   hidden: boolean;
   /** rider pose details */
   pillion?: boolean;
+  /** what a walker is doing right now (for the street's own bookkeeping and for tests) */
+  state: AgentState;
+  /** walkers: the person they stopped to greet, and until when */
+  meet: Agent | null;
+  meetUntil: number;
+  meetFrom: number;
+  greetCd: number;
+  /** walkers: speed this frame, and how long they have been held up */
+  cur: number;
+  blockT: number;
 }
+
+export type AgentState = 'idle' | 'walking' | 'approaching' | 'greeting' | 'talking' | 'waiting' | 'avoiding' | 'reacting' | 'returning';
 
 interface Part {
   geo: THREE.BufferGeometry;
@@ -92,7 +104,7 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 // Agent store
 
 const CAP_HIGH = 220;
-const CAP_LOW = 120;
+const CAP_LOW = 140;
 
 class CrowdStore {
   agents: Agent[] = [];
@@ -140,6 +152,13 @@ class CrowdStore {
       baseRy: ry,
       lookUp: 0,
       hidden: false,
+      state: anim === 'walk' ? 'walking' : 'idle',
+      meet: null,
+      meetUntil: 0,
+      meetFrom: 0,
+      greetCd: 0,
+      cur: 0,
+      blockT: 0,
       ...extra,
     };
     this.agents.push(a);
@@ -150,6 +169,7 @@ class CrowdStore {
   remove(a: Agent) {
     const i = this.agents.indexOf(a);
     if (i < 0) return;
+    if (a.meet) a.meet.meet = null;
     this.agents.splice(i, 1);
     this.free.push(a.idx);
     this.colorsDirty.add(-1 - a.idx); // hide its instances
@@ -504,6 +524,9 @@ export const LINES = {
   rocket: ['Upar dekho!', 'Seedha chaand tak!', 'Woh gaya!'],
   dog: ['Bhow bhow!'],
   rider: ['Arre bhai!', 'Dhyaan se, bhaiya!'],
+  bump: ['Arre, sambhal ke!', 'Arre bhai!', 'Dekh ke!'],
+  sorry: ['Sorry, sorry!', 'Koi baat nahi!'],
+  greet: ['Happy Diwali!', 'Ram Ram ji!', 'Arre, kaise ho?', 'Namaste aunty ji!', 'Mithai khayi?'],
 };
 
 let lastLine = 0;
@@ -515,6 +538,36 @@ export function sayLine(text: string, x: number, y: number, z: number, force = f
 }
 
 // ------------------------------------------------------------------------------------------
+
+const lastPlayer = { x: 0, z: 0 };
+let lastBump = -1e9;
+let lastGreet = -1e9;
+
+/** A small collision: a line, a sorry back, a step aside. Rare, with a long cooldown. */
+function bump(a: Agent, b: Agent | null) {
+  const now = performance.now();
+  if (now - lastBump < 25000) return;
+  lastBump = now;
+  const say = (who: Agent, line: string, delay: number) => window.setTimeout(() => sayLine(line, who.x, who.y + (who.kind === 'child' ? 1.25 : 1.95), who.z, true), delay);
+  const nudge = (who: Agent, from: { x: number; z: number }) => {
+    if (who.react !== 'none') return;
+    const dx = who.x - from.x;
+    const dz = who.z - from.z;
+    const d = Math.hypot(dx, dz) || 1;
+    who.react = 'step';
+    who.reactT = 0;
+    who.reactDur = 0.9;
+    who.fx = dx / d;
+    who.fz = dz / d;
+  };
+  const line = LINES.bump[(a.idx + Math.floor(now / 1000)) % LINES.bump.length];
+  say(a, line, 120);
+  nudge(a, b ?? runtime.player);
+  if (b) {
+    nudge(b, a);
+    say(b, LINES.sorry[(b.idx + a.idx) % LINES.sorry.length], 1300);
+  }
+}
 
 export function Crowd() {
   const graphics = useGame((s) => s.settings.graphics);
@@ -582,7 +635,7 @@ export function Crowd() {
   );
 
   useFrame((st, rawDt) => {
-    const dt = Math.min(rawDt, 0.05);
+    const dt = Math.min(rawDt, simStep());
     const t = st.clock.elapsedTime;
     const p = runtime.player;
     const reduced = useGame.getState().settings.reducedMotion;
@@ -597,11 +650,14 @@ export function Crowd() {
         for (const a of [...crowd.agents]) if (a.owner === k) crowd.remove(a);
       }
     }
-    for (let k = kp - 2; k <= kp + 2; k++) {
+    // nearest chunks first, so the one you stand in is never short of its people
+    for (const k of [kp, kp - 1, kp + 1, kp - 2, kp + 2]) {
       if (spawned.current.has(k)) continue;
       spawned.current.set(k, true);
       const ox = k * STREET.chunk;
       for (const s of V[variantAt(k)].spawns) {
+        // always leave room for the walkers
+        if (crowd.agents.length >= cap - (high ? 18 : 10)) break;
         if (!high && (s.anim === 'wander' || s.anim === 'talk') && Math.random() < 0.4) continue;
         const zone = s.zone ? { x0: s.zone.x0 + ox, x1: s.zone.x1 + ox, z0: s.zone.z0, z1: s.zone.z1 } : undefined;
         const a = crowd.spawn(s.kind, s.x + ox, s.y, s.z, s.ry, s.anim, k, { sit: !!s.sit, zone });
@@ -609,33 +665,41 @@ export function Crowd() {
       }
     }
     // walkers stream along the sidewalks around the player
-    const wantWalkers = high ? 34 : 16;
+    const wantWalkers = high ? 18 : 10;
     let walkers = 0;
     for (const a of crowd.agents) if (a.owner === 'walker') walkers++;
     while (walkers < wantWalkers) {
       const first = frame.current < 3;
       const side = Math.random() < 0.5 ? 1 : -1;
-      const x = first ? p.x + rnd(-60, 60) : p.x + (Math.random() < 0.5 ? -1 : 1) * rnd(55, 68);
+      // at the start they are already about, but never right beside the camera
+      const x = p.x + (Math.random() < 0.5 ? -1 : 1) * (first ? rnd(14, 60) : rnd(55, 68));
       const lane = side * rnd(GH - 0.95, GH - 0.7);
       const kind = pick<PersonKind>(['man', 'woman', 'woman', 'man', 'elder', 'child', 'woman', 'man']);
-      const a = crowd.spawn(kind, x, 0, lane, 0, 'walk', 'walker', { lane, dir: Math.random() < 0.5 ? 1 : -1 });
+      const a = crowd.spawn(kind, x, 0, lane, 0, 'walk', 'walker', { lane, dir: Math.random() < 0.5 ? 1 : -1, wait: first ? rnd(0, 4) : 0 });
       if (!a) break;
       if (kind === 'child') a.speed = rnd(1.3, 1.7);
       walkers++;
     }
 
+    const pm = Math.hypot(p.x - lastPlayer.x, p.z - lastPlayer.z);
+    lastPlayer.x = p.x;
+    lastPlayer.z = p.z;
     for (const a of [...crowd.agents]) {
       const dx = a.x - p.x;
       const dz = a.z - p.z;
       const d = Math.hypot(dx, dz);
+      // walking into someone gets a word (rarely: there is a long cooldown)
+      if (d < 0.75 && pm > 0.004 && a.kind !== 'dog' && a.owner !== 'rider' && Math.abs(a.y - (p.floor ?? 0)) < 0.6) bump(a, null);
       if (a.owner === 'walker' && Math.abs(dx) > 72) {
         crowd.remove(a);
         continue;
       }
       if (a.react !== 'none') {
         a.reactT += dt;
+        a.state = 'reacting';
         if (a.reactT >= a.reactDur) {
           a.react = 'none';
+          a.state = a.owner === 'walker' ? 'returning' : 'idle';
           if (a.owner !== 'walker' && a.anim !== 'wander' && a.anim !== 'play') a.ry = a.baseRy;
         }
       }
@@ -756,21 +820,126 @@ function move(a: Agent, dt: number) {
   if (a.react !== 'flee') a.phase += dt * a.moving * 2.4;
 }
 
+/** Someone standing near (x, z) on this floor, other than `self` (riders do not count). */
+function personAt(x: number, z: number, y: number, r: number, self: Agent) {
+  for (const o of crowd.agents) {
+    if (o === self || o.owner === 'rider' || o.hidden || Math.abs(o.y - y) > 0.5) continue;
+    if (Math.abs(o.x - x) < r && Math.abs(o.z - z) < r && Math.hypot(o.x - x, o.z - z) < r) return o;
+  }
+  return null;
+}
+
+// Walkers keep to the left of their sidewalk, follow slower people, step aside (or wait) for
+// anyone standing or coming the other way, and now and then stop to greet someone they meet.
 function walker(a: Agent, dt: number) {
   const p = runtime.player;
-  // sidestep towards the road when something blocks the sidewalk, and wait for the player
-  const ahead = a.x + a.dir * 0.9;
-  const blockedAhead = !isOpen(ahead, a.lane + a.laneOff, 0.3) || runtime.hazards.some((h) => Math.abs(h.pos[0] - ahead) < h.radius + 0.6 && Math.abs(h.pos[2] - a.z) < h.radius + 0.6);
-  const toRoad = -Math.sign(a.lane);
-  const want = blockedAhead ? toRoad * 1.1 : 0;
-  a.laneOff += (want - a.laneOff) * Math.min(1, dt * 2.5);
+  const now = performance.now();
+  // a greeting: walk up to about a metre apart, wave, chat, then carry on
+  if (a.meet) {
+    const b = a.meet;
+    const d = Math.hypot(b.x - a.x, b.z - a.z);
+    a.ry = Math.atan2(b.x - a.x, b.z - a.z);
+    a.cur = 0;
+    if (now > a.meetUntil || b.meet !== a || b.react !== 'none') {
+      a.meet = null;
+      a.meetFrom = 0;
+      a.anim = 'walk';
+      a.state = 'returning';
+      a.greetCd = now + 45000;
+      return;
+    }
+    if (d > 1.05) {
+      a.state = 'approaching';
+      const s = Math.min(d - 1.0, a.speed * 0.6 * dt);
+      const nx = a.x + ((b.x - a.x) / d) * s;
+      if (!personAt(nx, a.z, a.y, 0.45, a) || personAt(nx, a.z, a.y, 0.45, a) === b) stepTo(a, nx, a.z);
+      a.cur = s / Math.max(dt, 1e-4);
+      return;
+    }
+    if (!a.meetFrom) a.meetFrom = now;
+    a.state = now - a.meetFrom < 1800 ? 'greeting' : 'talking';
+    a.anim = a.state === 'greeting' ? 'wave' : 'talk';
+    return;
+  }
+  if (a.wait > 0) {
+    a.wait -= dt;
+    a.state = 'idle';
+    a.cur = 0;
+    return;
+  }
+  // keep left: walking +x that is towards -z
+  const keep = -a.dir * 0.2;
+  let want = keep;
+  let sp = a.speed;
+  let blocked = false;
+  for (const o of crowd.agents) {
+    if (o === a || o.owner === 'rider' || o.hidden || Math.abs(o.y - a.y) > 0.5) continue;
+    const ahead = (o.x - a.x) * a.dir;
+    if (ahead <= 0 || ahead > 2.6) continue;
+    const lat = o.z - a.z;
+    if (Math.abs(lat) > 0.9) continue;
+    // somebody coming the other way: maybe it is someone to greet
+    if (o.owner === 'walker' && o.dir !== a.dir && !o.meet && ahead < 2.4 && o.kind !== 'dog' && a.kind !== 'dog' && now > a.greetCd && now > o.greetCd && now - lastGreet > 10000 && o.react === 'none') {
+      lastGreet = now;
+      const dur = 6000 + ((a.idx + o.idx) % 4) * 900;
+      a.meet = o;
+      o.meet = a;
+      a.meetUntil = o.meetUntil = now + dur;
+      const line = LINES.greet[(a.idx + o.idx) % LINES.greet.length];
+      window.setTimeout(() => sayLine(line, a.x, a.y + (a.kind === 'child' ? 1.25 : 1.95), a.z, true), 900);
+      return;
+    }
+    if (Math.abs(lat) > 0.5) continue;
+    if (o.owner === 'walker' && o.dir === a.dir && !o.meet && o.react === 'none') {
+      // the same way: fall in behind
+      if (ahead < 1.3) sp = Math.min(sp, ahead < 0.7 ? 0 : o.cur * 0.95);
+    } else if (ahead < 1.8) blocked = true;
+  }
+  // a cracker on the sidewalk, or a wall ahead, blocks too
+  const look = a.x + a.dir * 0.9;
+  if (!isOpen(look, a.lane + a.laneOff, 0.3) || runtime.hazards.some((h) => Math.abs(h.pos[0] - look) < h.radius + 0.6 && Math.abs(h.pos[2] - a.z) < h.radius + 0.6)) blocked = true;
+  if (blocked) {
+    // step out towards the road if that side is clear, otherwise wait
+    const toRoad = -Math.sign(a.lane) * 0.75;
+    if (!personAt(a.x + a.dir * 0.8, a.lane + toRoad, a.y, 0.5, a) && isOpen(a.x + a.dir * 0.8, a.lane + toRoad, 0.3)) {
+      want = toRoad;
+      a.state = 'avoiding';
+    } else {
+      sp = 0;
+      a.state = 'waiting';
+    }
+  } else if (a.state !== 'returning' || Math.abs(a.laneOff - keep) < 0.05) a.state = 'walking';
+  // wait for the player too
   const pd = Math.hypot(p.x - (a.x + a.dir * 0.7), p.z - a.z);
-  const sp = pd < 0.9 ? 0 : a.speed;
+  if (pd < 0.9) {
+    sp = 0;
+    a.state = 'waiting';
+  }
+  a.laneOff += (want - a.laneOff) * Math.min(1, dt * 2.5);
   const nx = a.x + a.dir * sp * dt;
   const nz = a.lane + a.laneOff;
-  if (!stepTo(a, nx, nz)) {
-    if (!stepTo(a, nx, a.z)) a.dir *= Math.random() < 0.02 ? -1 : 1;
+  // never through another person: hold position until there is room
+  const other = personAt(nx + a.dir * 0.15, nz, a.y, 0.42, a);
+  if (other) {
+    if (other.owner === 'walker' && other.dir !== a.dir && Math.hypot(other.x - a.x, other.z - a.z) < 0.5 && (a.idx + other.idx) % 3 === 0) bump(a, other);
+    sp = 0;
   }
+  const px = a.x;
+  if (sp > 0 && !stepTo(a, nx, nz) && !stepTo(a, nx, a.z)) a.blockT += dt;
+  else if (sp === 0) {
+    a.blockT += dt;
+    // sideways only
+    if (!personAt(a.x, nz, a.y, 0.42, a)) stepTo(a, a.x, nz);
+  } else a.blockT = 0;
+  // held up for a while (a wall, a group that won't budge, a vehicle waiting on them): turn
+  // back the way they came rather than stand there forever
+  if (a.blockT > 3) {
+    a.dir *= -1;
+    a.blockT = 0;
+    a.laneOff = keep;
+    a.state = 'returning';
+  }
+  a.cur = Math.abs(a.x - px) / Math.max(dt, 1e-4);
   a.ry = a.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
 }
 

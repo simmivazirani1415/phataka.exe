@@ -643,12 +643,22 @@ function buildChai(B: Builder) {
   B.person('man', -4.9, 0.5, GH + 2.0, Math.PI / 2, 'talk', { sit: true });
   B.person('man', 2.9, 0.5, GH + 1.2, -Math.PI / 2, 'sip', { sit: true });
   B.person('elder', 2.9, 0.5, GH + 2.2, -Math.PI / 2, 'talk', { sit: true });
-  B.person('man', 0.6, 0, GH + 1.7, Math.PI * 0.85, 'sip');
+  // three regulars standing round their chai in a loose semicircle, open to the street
+  B.person('man', 0.3, 0, GH + 1.65, Math.PI / 2 + 0.2, 'sip');
+  B.person('elder', 1.0, 0, GH + 2.3, Math.PI, 'talk');
+  B.person('woman', 1.7, 0, GH + 1.6, -Math.PI / 2 - 0.2, 'sip');
   B.person('dog', 1.6, 0, GH + 3.1, 2.6, 'sleep');
   parkedScooter(B, 7.5, GH - 1.0, 0.05);
   parkedScooter(B, -10, -GH + 1.0, Math.PI);
   B.person('woman', 10, 0, -GH + 1.2, 0.3, 'talk');
   B.person('woman', 10.7, 0, -GH + 1.6, -2.6, 'talk');
+  // two neighbours meeting on the far sidewalk, hands joined in a namaste
+  B.person('elder', -5.2, 0, -GH + 0.95, Math.PI / 2, 'pray');
+  B.person('woman', -4.25, 0, -GH + 0.95, -Math.PI / 2, 'pray');
+  // a family out at their decorated door
+  B.person('man', 1.2, 0, -GH + 0.6, 0.2, 'look');
+  B.person('woman', 2.0, 0, -GH + 0.55, -0.2, 'wave');
+  B.person('child', 1.6, 0, -GH + 1.0, 0, 'talk');
 }
 
 function buildTemple(B: Builder) {
@@ -971,7 +981,7 @@ export const BOX_SPOTS: Record<PackageId, BoxSpot> = {
   phuljhadi_mami: { pos: [-2 * C - 1 - 1.2, 0, GH + 12.5], ry: Math.PI / 2, hint: 'Up the side gali, two lanes before the chowk.' },
   anaar_maasi: { pos: [2 * C + 3.5, 0, -GH + 0.7], ry: 0, hint: 'On a doorstep in the house lane past the temple.' },
   ladi_tauji: { pos: [C + 8 + 1.2, 0, -GH - 1.8], ry: -Math.PI / 2, hint: 'At the mouth of the side gali by the temple.' },
-  snake_wale_nana: { pos: [-C - 4.9, 0, GH - 0.1], ry: Math.PI, hint: 'Beside the bench at the chai stall.' },
+  saat_shot_nana: { pos: [-C - 4.9, 0, GH - 0.1], ry: Math.PI, hint: 'Beside the bench at the chai stall.' },
   pop_pop_chotu: { pos: [-10.2, 0, -11.2], ry: 0.6, hint: 'Next to the parked scooters in the chowk.' },
 };
 

@@ -1,9 +1,14 @@
 // Procedural Web Audio sound design. Nothing is created until the user enables sound,
 // so the experience always begins silent.
 
-type Category = 'ambience' | 'world' | 'fireworks' | 'ui';
+type Category = 'ambience' | 'world' | 'fireworks' | 'ui' | 'samples';
 
-const CATEGORY_GAIN: Record<Category, number> = { ambience: 0.45, world: 0.75, fireworks: 0.62, ui: 0.42 };
+const CATEGORY_GAIN: Record<Category, number> = { ambience: 0.45, world: 0.75, fireworks: 0.62, ui: 0.42, samples: 0.7 };
+
+/** Simran's burst tracks, one per cracker type, in public/assets/sounds/<type>.mp3. */
+const SAMPLE_NAMES = ['rocket', 'chakri', 'anaar', 'sparkler', 'ladi', 'bomb', 'skyshot', 'popPop'];
+/** Where each of the seven reports sits in the 7 shot track (seconds), found from its envelope. */
+export const SKYSHOT_REPORTS = [0.5, 1.05, 1.58, 2.08, 2.6, 3.14, 3.74];
 
 class Engine {
   ctx: AudioContext | null = null;
@@ -15,6 +20,9 @@ class Engine {
   private ambienceTimer: number | null = null;
   private hum: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
   private lastSnap = 0;
+  private samples = new Map<string, AudioBuffer>();
+  private samplesLoading = false;
+  private duckUntil = 0;
 
   private ensure() {
     if (this.ctx) return this.ctx;
@@ -43,7 +51,53 @@ class Engine {
     this.noise = buf;
     this.ctx = ctx;
     this.master = master;
+    this.loadSamples(ctx);
     return ctx;
+  }
+
+  /** Fetch and decode the burst tracks once sound is on; a missing file just keeps the synth. */
+  private loadSamples(ctx: AudioContext) {
+    if (this.samplesLoading) return;
+    this.samplesLoading = true;
+    for (const name of SAMPLE_NAMES) {
+      fetch(`${import.meta.env.BASE_URL}assets/sounds/${name}.mp3`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+        .then((b) => ctx.decodeAudioData(b))
+        .then((buf) => this.samples.set(name, buf))
+        .catch(() => {});
+    }
+  }
+
+  /**
+   * Play a burst track (or one slice of it). While it plays, the synthesised firework sounds
+   * are ducked well down so the two don't pile up. Returns false when the track isn't loaded.
+   */
+  sample(name: string, o: { offset?: number; duration?: number; gain?: number; delay?: number } = {}) {
+    const ctx = this.live();
+    const buf = this.samples.get(name);
+    if (!ctx || !buf) return false;
+    const t = ctx.currentTime + (o.delay ?? 0);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = o.gain ?? 1;
+    const dur = o.duration ?? buf.duration - (o.offset ?? 0);
+    if (o.duration) {
+      // a short fade at the end of a slice so it never clicks
+      g.gain.setValueAtTime(o.gain ?? 1, t + Math.max(0, dur - 0.06));
+      g.gain.linearRampToValueAtTime(0, t + dur);
+    }
+    src.connect(g).connect(this.out('samples'));
+    src.start(t, o.offset ?? 0, dur);
+    const fw = this.cats.fireworks;
+    if (fw) {
+      const until = t + dur + 0.2;
+      fw.gain.cancelScheduledValues(ctx.currentTime);
+      fw.gain.setTargetAtTime(CATEGORY_GAIN.fireworks * 0.25, ctx.currentTime, 0.03);
+      this.duckUntil = Math.max(this.duckUntil, until);
+      fw.gain.setTargetAtTime(CATEGORY_GAIN.fireworks, this.duckUntil, 0.25);
+    }
+    return true;
   }
 
   setEnabled(on: boolean) {

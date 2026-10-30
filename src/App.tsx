@@ -7,7 +7,6 @@ import { useIdent } from './intro/identState';
 import { SITE } from './config/site';
 import { PackageReveal } from './components/PackageReveal';
 import { NewMemory } from './components/PolaroidCard';
-import { CollectionTray } from './components/CollectionTray';
 import { MemoryAlbum } from './components/MemoryAlbum';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GestureLayer } from './components/GestureLayer';
@@ -23,6 +22,7 @@ import { SpotlightCard } from './street/ui/SpotlightCard';
 import { Joystick } from './street/ui/Joystick';
 import { NearPrompt } from './street/ui/NearPrompt';
 import { audio } from './audio/AudioEngine';
+import { IconClose } from './components/Icons';
 
 const WorldScene = lazy(() => import('./world/WorldScene'));
 
@@ -77,10 +77,10 @@ function FinalBanner() {
     <div className="final-banner" role="dialog" aria-label="Your Diwali is complete">
       <h2>Your Diwali, Your Memories.</h2>
       <p className="hand">Poora mohalla jagmaga raha hai.</p>
-      <button className="btn cta" autoFocus onClick={() => setUi({ album: true, finalSeen: true })}>
+      <button className="btn-primary" autoFocus onClick={() => setUi({ album: true, finalSeen: true })}>
         Open My Memory Book
       </button>
-      <button className="btn ghost small" onClick={() => setUi({ finalSeen: true })}>
+      <button className="btn-quiet" onClick={() => setUi({ finalSeen: true })}>
         Keep exploring
       </button>
     </div>
@@ -103,8 +103,8 @@ function ShowMePrompt() {
       <span>
         {BOX_SPOTS[id].hint} <b>~{Math.round(distanceToBox(id))} m</b>
       </span>
-      <button className="btn ghost tiny" onClick={() => setUi({ showMe: null })} aria-label="Hide the hint">
-        ✕
+      <button className="icon-btn" onClick={() => setUi({ showMe: null })} aria-label="Hide the hint">
+        <IconClose size={16} />
       </button>
     </div>
   );
@@ -130,7 +130,7 @@ function Toasts() {
         <div className="toast action" role="status">
           <span>The mohalla is running a little slowly. Switch to Low Graphics?</span>
           <button
-            className="btn cta tiny"
+            className="btn-primary small"
             onClick={() => {
               update({ graphics: 'low' });
               setUi({ perfSuggest: false });
@@ -138,7 +138,7 @@ function Toasts() {
           >
             Switch
           </button>
-          <button className="btn ghost tiny" onClick={() => setUi({ perfSuggest: false })}>
+          <button className="icon-btn" onClick={() => setUi({ perfSuggest: false })}>
             Keep High
           </button>
         </div>
@@ -217,7 +217,6 @@ export default function App() {
       <PackageReveal />
       <GestureLayer />
       <NewMemory />
-      <CollectionTray />
       <InventoryTray />
       <CollectCard />
       <LocationMap />

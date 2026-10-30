@@ -3,6 +3,7 @@ import { useGame } from '../game/GameState';
 import { downloadBlob, generateMemoryBook, PDF_FILENAME } from '../utils/PDFGenerator';
 import { copyText, sharePolaroid, SHARE_TEXT } from '../utils/Share';
 import { PACKAGE_BY_ID } from '../assets/AssetRegistry';
+import { IconDownload, IconShare } from './Icons';
 
 // Download the PDF scrapbook, share a Polaroid, or go back to the mohalla.
 
@@ -42,7 +43,8 @@ export function ExportPanel() {
 
   return (
     <div className="export">
-      <button className="btn cta" onClick={download} disabled={progress !== null}>
+      <button className="btn-primary" onClick={download} disabled={progress !== null}>
+        <IconDownload size={17} />
         {progress !== null ? `Making your book… ${Math.round(progress * 100)}%` : 'Download Memory Book'}
       </button>
       <div className="export-share">
@@ -58,15 +60,15 @@ export function ExportPanel() {
                 </option>
               ))}
             </select>
-            <button className="btn ghost small" onClick={share}>
-              Share a Polaroid
+            <button className="btn-line" onClick={share}>
+              <IconShare size={16} /> Share a Polaroid
             </button>
           </>
         ) : (
-          <small className="hand">Light a pataka to get a Polaroid to share.</small>
+          <small>Light a pataka to get a Polaroid to share.</small>
         )}
       </div>
-      <button className="btn ghost small" onClick={() => setUi({ album: false })}>
+      <button className="btn-quiet" onClick={() => setUi({ album: false })}>
         Return to Mohalla
       </button>
       {msg && (

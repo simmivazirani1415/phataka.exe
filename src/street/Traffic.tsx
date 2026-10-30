@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { runtime, type WorldEvent } from '../game/Runtime';
+import { runtime, simStep, type WorldEvent } from '../game/Runtime';
 import { useGame } from '../game/GameState';
 import { audio } from '../audio/AudioEngine';
 import { STREET } from './StreetLayout';
@@ -42,7 +42,16 @@ export interface Vehicle {
   riders: Agent[];
   /** heading, as a rotation about y (the model faces +z) */
   yaw: number;
+  /** parked at the roadside: never moves, never recycled */
+  parked?: boolean;
 }
+
+// A few vehicles stand parked for good: an auto waiting by the chai stall and another at the
+// mouth of the chowk, nose to the kerb on their own side of the road.
+const PARKED: { type: VType; x: number; z: number; dir: 1 | -1 }[] = [
+  { type: 'auto', x: -24.5, z: 1.85, dir: -1 },
+  { type: 'auto', x: -16.5, z: -1.85, dir: 1 },
+];
 
 const pickA = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -53,7 +62,8 @@ const _s = new THREE.Vector3(1, 1, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
 
-const MIX: VType[] = ['scooter', 'scooter', 'bicycle', 'auto', 'rickshaw', 'scooter', 'bicycle', 'auto', 'rickshaw'];
+// light traffic: mostly a scooter and a cycle, now and then a rickshaw or an auto
+const MIX: VType[] = ['scooter', 'bicycle', 'scooter', 'bicycle', 'rickshaw', 'scooter', 'bicycle', 'auto'];
 
 /** The vehicles on the road right now, for the cut-out renderer. */
 export const trafficState: { list: Vehicle[]; fades: Record<VType, THREE.InstancedBufferAttribute> | null } = { list: [], fades: null };
@@ -61,7 +71,9 @@ export const trafficState: { list: Vehicle[]; fades: Record<VType, THREE.Instanc
 export function Traffic() {
   const graphics = useGame((s) => s.settings.graphics);
   const high = graphics === 'high';
-  const count = high ? 14 : 8;
+  // instance slots per type; only `moving` of them are on the road at once
+  const count = 6;
+  const moving = high ? 3 : 2;
   const { camera } = useThree();
   const list = useRef<Vehicle[]>([]);
 
@@ -164,7 +176,7 @@ export function Traffic() {
         let nd = 34;
         for (const v of list.current) {
           const d = Math.hypot(v.x - e.pos[0], v.z - e.pos[2]);
-          if (d < nd) {
+          if (d < nd && !v.parked) {
             nd = d;
             near = v;
           }
@@ -179,19 +191,24 @@ export function Traffic() {
   );
 
   useFrame((_, rawDt) => {
-    const dt = Math.min(rawDt, 0.05);
+    const dt = Math.min(rawDt, simStep());
     const p = runtime.player;
     const now = performance.now();
     const L = list.current;
     trafficState.list = L;
     trafficState.fades = fades;
-    while (L.length < count) {
+    if (!L.some((v) => v.parked)) {
+      PARKED.forEach((pv, i) => {
+        L.push({ type: pv.type, slot: count - 1 - i, x: pv.x, z: pv.z, dir: pv.dir, speed: 0, cruise: 0, off: 0, offTarget: 0, brakeUntil: 0, waitFor: 0, honked: 0, riders: [], yaw: pv.dir > 0 ? Math.PI / 2 : -Math.PI / 2, parked: true });
+      });
+    }
+    while (L.filter((v) => !v.parked).length < moving) {
       const used = new Set(L.map((v) => v.type + v.slot));
       // find a free instance slot for a type
       let v: Vehicle | null = null;
       for (let tries = 0; tries < 8 && !v; tries++) {
         const cand = spawn(0, L.length === 0 || now < 4000);
-        for (let s = 0; s < count; s++) {
+        for (let s = 0; s < count - PARKED.length; s++) {
           if (!used.has(cand.type + s)) {
             cand.slot = s;
             v = cand;
@@ -202,7 +219,9 @@ export function Traffic() {
       }
       if (!v) break;
       // don't spawn on top of another vehicle in the same lane
-      if (L.some((o) => o.dir === v!.dir && Math.abs(o.x - v!.x) < 8)) v.x -= v.dir * 10;
+      if (L.some((o) => !o.parked && o.dir === v!.dir && Math.abs(o.x - v!.x) < 8)) v.x -= v.dir * 10;
+      // and never right beside the camera
+      if (Math.abs(v.x - p.x) < 14) v.x = p.x - v.dir * rnd(20, 40);
       L.push(v);
     }
 
@@ -216,6 +235,14 @@ export function Traffic() {
     for (let i = L.length - 1; i >= 0; i--) {
       const v = L[i];
       const s = SPEC[v.type];
+      if (v.parked) {
+        _q.setFromAxisAngle(Y, v.yaw);
+        _m.compose(_p.set(v.x, 0, v.z), _q, _s);
+        meshes[v.type].setMatrixAt(v.slot, _m);
+        const k = i * 3;
+        for (let j = 0; j < 3; j++) size.setX(k + j, 0);
+        continue;
+      }
       if (Math.abs(v.x - p.x) > 88) {
         recycle(v);
         L.splice(i, 1);
@@ -228,7 +255,7 @@ export function Traffic() {
       const inBand = (z: number, half: number) => Math.abs(z - (laneZ + v.off)) < s.wid / 2 + half;
       // follow the vehicle in front
       for (const o of L) {
-        if (o === v || o.dir !== v.dir) continue;
+        if (o === v || o.dir !== v.dir || o.parked) continue;
         const gap = ahead(o.x - o.dir * (SPEC[o.type].len / 2));
         if (gap > 0 && gap < 10) target = Math.min(target, Math.max(0, (gap - 2.2) * 0.8));
       }
@@ -241,14 +268,19 @@ export function Traffic() {
         }
         return false;
       };
+      // ...and for the camera itself, always, so nothing ever drives through the view
       let forPlayer = stopFor(p.x, p.z, 0.6);
-      if (active) forPlayer = stopFor(camX, camZ, 0.6) || forPlayer;
-      // anyone who stepped into the road
+      forPlayer = stopFor(camX, camZ, 0.6) || forPlayer;
+      if (active) forPlayer = stopFor(camX, camZ, 0.9) || forPlayer;
+      // anyone who stepped into the road (slowing early for people at the kerb)
       for (const a of crowd.agents) {
         if (a.owner === 'rider' || a.hidden || a.y > 0.3) continue;
-        if (Math.abs(a.x - v.x) > 8) continue;
-        stopFor(a.x, a.z, 0.5);
+        if (Math.abs(a.x - v.x) > 9) continue;
+        if (stopFor(a.x, a.z, 0.5)) continue;
+        const ah = ahead(a.x);
+        if (ah > 0 && ah < 6 && Math.abs(a.z) < STREET.roadHalf + 0.4) target = Math.min(target, 1.6);
       }
+
       // crackers on the ground: swerve round when there is room, otherwise wait
       let want = 0;
       for (const h of runtime.hazards) {
@@ -261,6 +293,18 @@ export function Traffic() {
         const zNew = laneZ + off;
         if (Math.abs(zNew) < STREET.galiHalf - 0.8 - s.wid / 2) want = Math.abs(off) > Math.abs(want) ? off : want;
         else if (a > 0) target = Math.min(target, Math.max(0, (a - h.radius - 1.5) * 0.7));
+      }
+      // parked autos: pull out round them, or wait when the other lane is busy
+      for (const o of L) {
+        if (!o.parked) continue;
+        const a = ahead(o.x);
+        if (a < -s.len - 2 || a > 10) continue;
+        const clear = SPEC[o.type].wid / 2 + s.wid / 2 + 0.35;
+        if (Math.abs(laneZ - o.z) >= clear) continue;
+        const off = o.z + (laneZ >= o.z ? 1 : -1) * clear - laneZ;
+        const oncoming = L.some((u) => !u.parked && u.dir !== v.dir && Math.abs(u.x - o.x) < 9);
+        if (!oncoming && Math.abs(laneZ + off) < STREET.galiHalf - 0.8 - s.wid / 2) want = Math.abs(off) > Math.abs(want) ? off : want;
+        else if (a > 0) target = Math.min(target, Math.max(0, (a - SPEC[o.type].len / 2 - 1.5) * 0.7));
       }
       v.offTarget += ((now < v.brakeUntil ? v.offTarget : want) - v.offTarget) * Math.min(1, dt * 1.5);
       if (now >= v.brakeUntil && want === 0) v.offTarget *= Math.max(0, 1 - dt * 0.8);

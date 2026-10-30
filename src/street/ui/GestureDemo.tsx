@@ -67,10 +67,13 @@ export function GestureDemo({ type }: { type: CrackerType }) {
           <span className="gd-h gd-h1">🖐️</span>
         </>
       )}
-      {type === 'snake' && (
+      {type === 'skyshot' && (
         <>
           <svg viewBox="0 0 150 110" className="gd-guide">
-            <path d="M75 96 C55 84 95 72 75 60 C55 48 95 36 75 24" className="gd-trail gd-snakepath" />
+            <path d="M75 96 L75 22" className="gd-trail gd-shotpath" />
+            {[0, 1, 2].map((i) => (
+              <circle key={i} cx={52 + i * 23} cy={20 + (i % 2) * 8} r="4" className="gd-pop" style={{ animationDelay: `${0.9 + i * 0.2}s` }} />
+            ))}
           </svg>
           <span className="gd-h gd-h1">🖐️</span>
         </>

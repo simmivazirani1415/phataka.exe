@@ -41,7 +41,7 @@ export function renderCrackers(): Promise<void> {
         for (const p of PACKAGES) {
           const m = createCrackerModel(p.crackerType, p.palette);
           // flat crackers are shown from higher up so their shape reads
-          const flat = p.crackerType === 'snake' || p.crackerType === 'popPop' || p.crackerType === 'chakri';
+          const flat = p.crackerType === 'skyshot' || p.crackerType === 'popPop' || p.crackerType === 'chakri';
           m.rotation.set(p.crackerType === 'ladi' ? 0 : 0, 0.6, p.crackerType === 'ladi' ? -0.25 : 0);
           scene.add(m);
           box.setFromObject(m);

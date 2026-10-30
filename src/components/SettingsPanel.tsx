@@ -1,40 +1,43 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useGame, type Flash, type Graphics } from '../game/GameState';
-import { IconClose } from './Icons';
-import { SoundToggle } from './SoundToggle';
+import { IconBolt, IconClose, IconEye, IconHand, IconHint, IconMonitor, IconReplay, IconSoundOn, IconSpark, IconTrash } from './Icons';
+import { audio } from '../audio/AudioEngine';
 import { runtime } from '../game/Runtime';
 import { groundMarks } from '../street/Scorch';
 import { levelState, START } from '../street/StreetLayout';
 import { startHands, stopHands, useHands } from '../input/HandTracker';
 import { useIdent } from '../intro/identState';
 
-function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
+function Row({ icon, label, note, children }: { icon: ReactNode; label: string; note?: string; children: ReactNode }) {
   return (
-    <div className="setting">
-      <span className="setting-label" id={`lbl-${label}`}>
+    <div className="set-row">
+      <span className="set-icon">{icon}</span>
+      <span className="set-label">
         {label}
+        {note && <small>{note}</small>}
       </span>
-      <div className="segmented" role="radiogroup" aria-labelledby={`lbl-${label}`}>
-        {options.map(([v, l]) => (
-          <button key={v} role="radio" aria-checked={value === v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>
-            {l}
-          </button>
-        ))}
-      </div>
+      {children}
     </div>
   );
 }
 
-function Toggle({ label, value, onChange, note }: { label: string; value: boolean; onChange: (v: boolean) => void; note?: string }) {
+function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return (
-    <label className="setting toggle">
-      <span>
-        <span className="setting-label">{label}</span>
-        {note && <small>{note}</small>}
-      </span>
-      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
-      <span className="switch" aria-hidden="true" />
-    </label>
+    <div className="seg" role="radiogroup" aria-label={label}>
+      {options.map(([v, l]) => (
+        <button key={v} role="radio" aria-checked={value === v} className={value === v ? 'on' : ''} onClick={() => onChange(v)}>
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Switch({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button className={`switch ${value ? 'on' : ''}`} role="switch" aria-checked={value} aria-label={label} onClick={() => onChange(!value)}>
+      <i />
+    </button>
   );
 }
 
@@ -48,39 +51,50 @@ export function SettingsPanel() {
   const [confirm, setConfirm] = useState(false);
   const hands = useHands((s) => s.status);
   if (!open) return null;
+  const close = () => {
+    setConfirm(false);
+    setUi({ settings: false });
+  };
   return (
-    <aside className="settings" role="dialog" aria-label="Settings">
-      <header className="tray-head">
+    <aside className="panel settings" role="dialog" aria-label="Settings">
+      <header className="panel-head">
         <h2>Settings</h2>
-        <button className="btn icon" onClick={() => setUi({ settings: false })} aria-label="Close settings">
-          <IconClose />
+        <button className="icon-btn" onClick={close} aria-label="Close settings">
+          <IconClose size={18} />
         </button>
       </header>
-      <div className="setting">
-        <span className="setting-label">Sound</span>
-        <SoundToggle labelled />
-      </div>
-      <Segmented<Graphics> label="Graphics" value={settings.graphics} options={[['high', 'High'], ['low', 'Low']]} onChange={(graphics) => update({ graphics })} />
-      <Segmented<Flash> label="Flash intensity" value={settings.flash} options={[['off', 'Minimal'], ['low', 'Soft'], ['full', 'Full']]} onChange={(flash) => update({ flash })} />
-      <Toggle label="Reduced motion" note="Shorter transitions, no camera shake" value={settings.reducedMotion} onChange={(reducedMotion) => update({ reducedMotion })} />
-      <Toggle label="Quick reveals" note="Skip the slow box animation" value={settings.quickReveal} onChange={(quickReveal) => update({ quickReveal })} />
-      <Toggle
-        label="Hand gestures"
-        note={hands === 'denied' || hands === 'error' ? 'Camera not available here' : 'Light each pataka with your webcam. Video stays on this device.'}
-        value={hands === 'loading' || hands === 'ready'}
-        onChange={(on) => (on ? void startHands() : stopHands())}
-      />
-      <div className="setting">
-        <button
-          className="btn ghost small"
-          onClick={() => {
-            setUi({ settings: false, hintUntil: performance.now() + 4500 });
+      <Row icon={<IconSoundOn size={18} />} label="Sound">
+        <Switch
+          label="Sound"
+          value={settings.sound}
+          onChange={(sound) => {
+            update({ sound });
+            audio.setEnabled(sound);
+            if (sound) audio.tap();
           }}
-        >
-          Highlight hidden patakas
+        />
+      </Row>
+      <Row icon={<IconMonitor size={18} />} label="Graphics">
+        <Segmented<Graphics> label="Graphics" value={settings.graphics} options={[['high', 'High'], ['low', 'Low']]} onChange={(graphics) => update({ graphics })} />
+      </Row>
+      <Row icon={<IconSpark size={18} />} label="Flash intensity">
+        <Segmented<Flash> label="Flash intensity" value={settings.flash} options={[['off', 'Minimal'], ['low', 'Soft'], ['full', 'Full']]} onChange={(flash) => update({ flash })} />
+      </Row>
+      <Row icon={<IconEye size={18} />} label="Reduced motion" note="Shorter transitions, no camera shake">
+        <Switch label="Reduced motion" value={settings.reducedMotion} onChange={(reducedMotion) => update({ reducedMotion })} />
+      </Row>
+      <Row icon={<IconBolt size={18} />} label="Quick reveals" note="Skip the slow box animation">
+        <Switch label="Quick reveals" value={settings.quickReveal} onChange={(quickReveal) => update({ quickReveal })} />
+      </Row>
+      <Row icon={<IconHand size={18} />} label="Hand gestures" note={hands === 'denied' || hands === 'error' ? 'Camera not available here' : 'Uses your webcam; video stays on this device'}>
+        <Switch label="Hand gestures" value={hands === 'loading' || hands === 'ready'} onChange={(on) => (on ? void startHands() : stopHands())} />
+      </Row>
+      <div className="set-actions">
+        <button className="btn-line" onClick={() => setUi({ settings: false, hintUntil: performance.now() + 4500 })}>
+          <IconHint size={16} /> Highlight hidden patakas
         </button>
         <button
-          className="btn ghost small"
+          className="btn-line"
           disabled={!!active}
           onClick={() => {
             setUi({ settings: false, tray: false, album: false, newMemory: null, showMe: null });
@@ -88,32 +102,34 @@ export function SettingsPanel() {
             useIdent.getState().replay();
           }}
         >
-          Replay intro
+          <IconReplay size={16} /> Replay intro
         </button>
       </div>
-      <div className="setting danger">
+      <div className={`set-danger ${confirm ? 'confirm' : ''}`}>
         {!confirm ? (
-          <button className="btn ghost small" onClick={() => setConfirm(true)}>
-            Reset Experience
+          <button className="btn-danger" onClick={() => setConfirm(true)}>
+            <IconTrash size={16} /> Reset experience
           </button>
         ) : (
           <>
-            <span>Clear every pataka and memory?</span>
-            <button
-              className="btn cta small"
-              onClick={() => {
-                reset();
-                setConfirm(false);
-                groundMarks.clear();
-                levelState.id = 'street';
-                runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0, floor: 0 });
-              }}
-            >
-              Yes, reset
-            </button>
-            <button className="btn ghost small" onClick={() => setConfirm(false)}>
-              Keep them
-            </button>
+            <p>Clear every pataka and memory? This can't be undone.</p>
+            <div>
+              <button className="btn-line" autoFocus onClick={() => setConfirm(false)}>
+                Keep them
+              </button>
+              <button
+                className="btn-danger solid"
+                onClick={() => {
+                  reset();
+                  setConfirm(false);
+                  groundMarks.clear();
+                  levelState.id = 'street';
+                  runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0, floor: 0 });
+                }}
+              >
+                Yes, reset
+              </button>
+            </div>
           </>
         )}
       </div>

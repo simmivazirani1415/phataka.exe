@@ -25,7 +25,7 @@ export interface PackageControl {
 export const packageControls = new Map<PackageId, PackageControl>();
 
 /** How far from a cracker people, vehicles and walls must be, by cracker. */
-export const CLEARANCE: Record<string, number> = { bomb: 1.7, rocket: 1.4, chakri: 1.6, sparkler: 1.2, anaar: 1.6, ladi: 2.1, snake: 1.2, popPop: 1.9 };
+export const CLEARANCE: Record<string, number> = { bomb: 1.7, rocket: 1.4, chakri: 1.6, sparkler: 1.2, anaar: 1.6, ladi: 2.1, skyshot: 1.6, popPop: 1.9 };
 
 /** Spotlight framing per cracker: distance, camera height and where to look. */
 const FRAMING: Record<string, { dist: number; height: number; lookY: number }> = {
@@ -36,7 +36,7 @@ const FRAMING: Record<string, { dist: number; height: number; lookY: number }> =
   sparkler: { dist: 2.5, height: 0.95, lookY: -0.1 },
   anaar: { dist: 3.2, height: 1.1, lookY: 0.1 },
   ladi: { dist: 3.6, height: 1.3, lookY: -0.45 },
-  snake: { dist: 2.3, height: 1.0, lookY: -0.35 },
+  skyshot: { dist: 3.0, height: 1.1, lookY: -0.3 },
   popPop: { dist: 3.2, height: 1.3, lookY: -0.5 },
 };
 

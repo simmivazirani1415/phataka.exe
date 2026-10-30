@@ -2,19 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { PACKAGES, type PackageId } from '../../assets/AssetRegistry';
 import { MAX_USES, useGame } from '../../game/GameState';
 import { cancelPlacing, pickFromPanel } from '../../game/DiscoverySystem';
-import { GESTURE_INFO } from '../../input/gestures';
+import { IconClose, IconCracker, IconLock } from '../../components/Icons';
 import { crackerRender, renderCrackers } from './crackerRenders';
 import { dropHere, pointer, usePlace } from '../Placement';
 
-// The tray on the right: all eight crackers as glowing renders of their real shapes.
-// A new one opens its collectible card first; a collected one shows the lights it has left
-// and can be dragged onto the ground (or tapped, then the ground tapped).
+// The inventory drawer (a narrow panel on the right, a bottom sheet on phones): the eight
+// crackers as small renders, like matchbox labels. A locked one opens its collectible card;
+// a collected one shows the lights it has left and can be dragged onto the ground (or
+// tapped, then the ground tapped).
 
 const REASON: Record<string, string> = {
-  ground: 'Khuli jagah pe rakho',
-  person: 'Logon se door',
-  vehicle: 'Gaadi se door',
-  far: 'Thoda paas',
+  ground: 'Find open ground',
+  person: 'Too close to people',
+  vehicle: 'Too close to a vehicle',
+  far: 'A little closer',
 };
 
 export function InventoryTray() {
@@ -24,6 +25,7 @@ export function InventoryTray() {
   const active = useGame((s) => s.active);
   const phase = useGame((s) => s.phase);
   const album = useGame((s) => s.ui.album);
+  const open = useGame((s) => s.ui.tray);
   const pulse = useGame((s) => s.ui.trayPulse);
   const setUi = useGame((s) => s.setUi);
   const check = usePlace((s) => s.check);
@@ -46,7 +48,10 @@ export function InventoryTray() {
       const d = drag.current;
       if (!d || e.pointerId !== d.pid) return;
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) d.moved = true;
-      if (d.moved) setGhost({ id: d.id, x: e.clientX, y: e.clientY });
+      if (d.moved) {
+        setGhost({ id: d.id, x: e.clientX, y: e.clientY });
+        if (useGame.getState().ui.tray && !(document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.inv')) useGame.getState().setUi({ tray: false });
+      }
       const canvas = document.querySelector('.world-canvas canvas');
       const under = document.elementFromPoint(e.clientX, e.clientY);
       pointer.overUi = under !== canvas;
@@ -62,7 +67,11 @@ export function InventoryTray() {
       if (!d || e.pointerId !== d.pid) return;
       drag.current = null;
       setGhost(null);
-      if (!d.moved) return; // a tap: stay in placing mode, tap the road next
+      if (!d.moved) {
+        // a tap: stay in placing mode with the drawer out of the way, tap the road next
+        useGame.getState().setUi({ tray: false });
+        return;
+      }
       const canvas = document.querySelector('.world-canvas canvas');
       const under = document.elementFromPoint(e.clientX, e.clientY);
       pointer.overUi = under !== canvas;
@@ -83,16 +92,22 @@ export function InventoryTray() {
     return st === 'UNLOCKED' || st === 'PLAYED' || st === 'MEMORY_CAPTURED';
   };
   if (phase !== 'playing' || album) return null;
-  const busy = !!active && active.step !== 'spotlight';
+  const owned = PACKAGES.filter((p) => isOwned(p.id)).length;
 
   return (
     <>
-      {(
-        <aside className={`inv ${busy || active ? 'inv-busy' : ''}`} aria-label="Your crackers">
-          <p className="inv-title" aria-hidden="true">
-            Pataka
-          </p>
-          <ul>
+      {open && !active && (
+        <aside className="panel inv" aria-label="Your patakas">
+          <header className="panel-head">
+            <h2>Pataka</h2>
+            <span className="inv-total">
+              <IconCracker size={15} /> {owned} / 8
+            </span>
+            <button className="icon-btn" onClick={() => setUi({ tray: false })} aria-label="Close inventory">
+              <IconClose size={18} />
+            </button>
+          </header>
+          <ul className="inv-grid">
             {PACKAGES.map((p) => {
               const own = isOwned(p.id);
               const n = uses[p.id];
@@ -101,15 +116,15 @@ export function InventoryTray() {
               return (
                 <li key={p.id}>
                   <button
-                    className={`inv-item ${on ? 'on' : ''} ${!own ? 'new' : n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''}`}
+                    className={`inv-item ${on ? 'on' : ''} ${!own ? 'locked' : n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''}`}
                     style={{ ['--pk' as string]: p.palette[0] }}
-                    aria-label={!own ? `${p.crackerLabel}: new. Open its card.` : `${p.crackerLabel}: ${n} of ${MAX_USES} left${n > 0 ? '. Drag onto the ground to place.' : '. Tap to refill.'}`}
+                    aria-label={!own ? `${p.crackerLabel}: not collected yet. Open its card.` : `${p.crackerLabel}: ${n} of ${MAX_USES} left${n > 0 ? '. Drag onto the ground to place.' : '. Tap to refill.'}`}
                     title={p.crackerLabel}
-                    disabled={!!active}
                     onPointerDown={(e) => {
                       if (active) return;
                       if (!own) {
                         pickFromPanel(p.id);
+                        setUi({ tray: false });
                         return;
                       }
                       if (placing === p.id) {
@@ -124,31 +139,37 @@ export function InventoryTray() {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         pickFromPanel(p.id);
+                        setUi({ tray: false });
                       }
                     }}
                   >
-                    {img ? <img src={img} alt="" draggable={false} /> : <span className="inv-emoji">{GESTURE_INFO[p.id].icon}</span>}
-                    <b className="inv-count">{own ? `x${n}` : 'NEW'}</b>
-                    <span className="inv-name" aria-hidden="true">
-                      {p.crackerLabel}
-                    </span>
+                    <span className="inv-art">{img ? <img src={img} alt="" draggable={false} /> : <IconCracker size={26} />}</span>
+                    <span className="inv-name">{p.crackerLabel}</span>
+                    {own ? (
+                      <b className="inv-count">x{n}</b>
+                    ) : (
+                      <b className="inv-lock" aria-hidden="true">
+                        <IconLock size={11} />
+                      </b>
+                    )}
                   </button>
                 </li>
               );
             })}
           </ul>
+          <p className="inv-foot">{owned < 8 ? 'Tap a locked pataka to find its box. Drag a collected one onto the ground.' : 'Drag a pataka onto the ground to light it.'}</p>
         </aside>
       )}
       {ghost && (
         <div className="inv-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">
-          {crackerRender(ghost.id) ? <img src={crackerRender(ghost.id)!} alt="" /> : GESTURE_INFO[ghost.id].icon}
+          {crackerRender(ghost.id) ? <img src={crackerRender(ghost.id)!} alt="" /> : <IconCracker size={30} />}
         </div>
       )}
       {placing && !active && (
         <div className={`place-hint ${check && check !== 'ok' ? 'bad' : ''}`} role="status">
-          <span>{check && check !== 'ok' ? REASON[check] : 'Yahan rakh do · phir haath se jalao ✋'}</span>
-          <button className="btn ghost tiny" onClick={cancelPlacing} aria-label="Put it back in the tray">
-            ✕
+          <span>{check && check !== 'ok' ? REASON[check] : 'Tap the ground to place it'}</span>
+          <button className="icon-btn" onClick={cancelPlacing} aria-label="Put it back">
+            <IconClose size={16} />
           </button>
         </div>
       )}

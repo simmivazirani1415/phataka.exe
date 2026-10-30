@@ -6,6 +6,7 @@ import { arriveAtGuide, stopGuide } from '../../game/DiscoverySystem';
 import { crackerRender } from './crackerRenders';
 import { guidePath, pathLength, pointAlong } from '../Guide';
 import { goToLevel } from '../Locations';
+import { IconArrow, IconClose } from '../../components/Icons';
 
 // While the player follows the arrows to a box: a pill at the top with an arrow that turns
 // to point the way and the distance left. Walking up to the box opens it.
@@ -51,14 +52,14 @@ export function GuideHUD() {
           <span className="guide-text">
             <b>{pkg.crackerLabel}</b> neeche gali mein hai
           </span>
-          <button className="btn cta tiny" onClick={() => goToLevel('chowk')}>
+          <button className="btn-primary small" onClick={() => goToLevel('chowk')}>
             Neeche chalo
           </button>
         </>
       ) : (
         <>
-          <span className="guide-arrow" aria-hidden="true" style={{ transform: `rotate(${info.turn - Math.PI / 2}rad)` }}>
-            ➤
+          <span className="guide-arrow" aria-hidden="true" style={{ transform: `rotate(${info.turn}rad)` }}>
+            <IconArrow size={18} />
           </span>
           <span className="guide-text">
             <b>{info.d < 3 ? 'Yahin hai!' : `${Math.round(info.d)} m`}</b>
@@ -66,8 +67,8 @@ export function GuideHUD() {
           </span>
         </>
       )}
-      <button className="btn ghost tiny" onClick={stopGuide} aria-label="Stop showing the way">
-        ✕
+      <button className="icon-btn" onClick={stopGuide} aria-label="Stop showing the way">
+        <IconClose size={16} />
       </button>
     </div>
   );

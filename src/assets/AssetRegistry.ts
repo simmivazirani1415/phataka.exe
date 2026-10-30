@@ -22,7 +22,7 @@ export type CrackerType =
   | 'sparkler'
   | 'anaar'
   | 'ladi'
-  | 'snake'
+  | 'skyshot'
   | 'popPop';
 
 export type PackageId =
@@ -32,7 +32,7 @@ export type PackageId =
   | 'phuljhadi_mami'
   | 'anaar_maasi'
   | 'ladi_tauji'
-  | 'snake_wale_nana'
+  | 'saat_shot_nana'
   | 'pop_pop_chotu';
 
 /** Front UV quad in BL, BR, TR, TL order (0..1). Rectangular unless the artwork is tapered. */
@@ -232,18 +232,18 @@ export const PACKAGES: PackageAsset[] = [
     interaction: { hitPadding: 0.35, focusZoom: 3.2 },
   },
   {
-    id: 'snake_wale_nana',
+    id: 'saat_shot_nana',
     type: 'package',
-    name: 'Snake Wale Nana',
-    crackerType: 'snake',
-    crackerLabel: 'Magic Snake',
-    personality: 'Quiet until he suddenly surprises everyone.',
+    name: 'Saat Shot Nana',
+    crackerType: 'skyshot',
+    crackerLabel: '7 Shot Rocket',
+    personality: 'Quiet until he surprises everyone, seven times over.',
     copy: 'Picture abhi baaki hai.',
-    polaroidCaption: 'Dheere dheere, surprise.',
+    polaroidCaption: 'Ek ke baad ek, surprise.',
     locationHint: 'Tucked near the chai stall.',
     palette: ['#1E6B47', '#FFF0D2', '#E3A12F', '#0F2A1D'],
-    image: { front: base + 'snake_wale_nana_front.jpg', reference: base + 'snake_wale_nana.png', frontUV: RECT },
-    proceduralFallback: 'snakeBox',
+    image: { front: base + 'saat_shot_nana_front.jpg', reference: base + 'saat_shot_nana.png', frontUV: RECT },
+    proceduralFallback: 'skyshotBox',
     box: { w: 0.6, h: 0.7, d: 0.52, taper: 1, lid: 0.2 },
     scale: 1.2,
     anchor: 'chai.tucked',
