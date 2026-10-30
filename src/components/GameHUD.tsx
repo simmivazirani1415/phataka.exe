@@ -46,7 +46,7 @@ export function GameHUD() {
 
       {hint && !busy && (
         <p className="hud-hint" aria-live="polite">
-          {isTouch() ? 'Pick a cracker on the right · drop it on the ground · joystick to walk' : 'Pick a cracker on the right · drop it on the ground · WASD to walk'}
+          {isTouch() ? 'Pick a cracker on the right · follow the arrows to its box · joystick to walk' : 'Pick a cracker on the right · follow the arrows to its box · WASD to walk'}
         </p>
       )}
 

@@ -18,6 +18,7 @@ import { BOX_SPOTS } from './street/StreetLayout';
 import { InventoryTray } from './street/ui/InventoryTray';
 import { CollectCard } from './street/ui/CollectCard';
 import { LocationMap } from './street/ui/LocationMap';
+import { GuideHUD } from './street/ui/GuideHUD';
 import { SpotlightCard } from './street/ui/SpotlightCard';
 import { Joystick } from './street/ui/Joystick';
 import { NearPrompt } from './street/ui/NearPrompt';
@@ -220,6 +221,7 @@ export default function App() {
       <InventoryTray />
       <CollectCard />
       <LocationMap />
+      <GuideHUD />
       <SpotlightCard />
       <NearPrompt />
       <Joystick />

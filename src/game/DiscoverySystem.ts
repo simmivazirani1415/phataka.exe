@@ -117,6 +117,11 @@ export async function collectActive() {
   useGame.getState().setActive(null);
   useGame.getState().setUi({ toast: null, trayPulse: a.id });
   runtime.camera?.setUserInput(true);
+  // found by following the arrows: straight into the hand, ready to put down and light
+  if (useGame.getState().ui.guide === a.id) {
+    useGame.getState().setUi({ guide: null });
+    startPlacing(a.id);
+  }
 }
 
 /** Close the presented package without taking the cracker (Escape / close). */
@@ -141,8 +146,8 @@ export function skipAnimation() {
 
 // ------------------------------------------------------------------------------------------
 // The panel: every cracker is on the right from the start. Picking one shows its card;
-// keeping the card adds it to the collection with MAX_USES lights and puts it in hand,
-// ready to drop on the ground. The boxes in the gali are still there to find.
+// collecting the card lays a trail of arrows to its box in the mohalla. Walking up to the
+// box opens it, and collecting it puts the cracker in hand with MAX_USES lights.
 
 /** Tap a cracker in the panel: show its card, refill it, or pick it up. */
 export function pickFromPanel(id: PackageId) {
@@ -163,18 +168,28 @@ export function pickFromPanel(id: PackageId) {
   startPlacing(id);
 }
 
-/** Keep the card: the cracker becomes a collectible and goes into the hand. */
+/** Collect the card: show the way to its box. */
 export function keepCard() {
   const g = useGame.getState();
   const id = g.ui.card;
   if (!id) return;
-  for (const to of ['DISCOVERED', 'OPENING', 'UNLOCKED'] as const) useGame.getState().transition(id, to);
-  packageControls.get(id)?.setLidOpen(true);
-  g.setUses(id, MAX_USES);
-  g.setUi({ card: null, trayPulse: id, toast: null });
+  g.setPlacing(null);
+  g.setUi({ card: null, guide: id, showMe: null, toast: null });
   audio.unlock();
   audio.tap();
-  startPlacing(id);
+}
+
+export function stopGuide() {
+  useGame.getState().setUi({ guide: null });
+}
+
+/** Arrived at the guided box: open it straight away. */
+export async function arriveAtGuide() {
+  const g = useGame.getState();
+  const id = g.ui.guide;
+  if (!id || busy() || g.placing || distanceToBox(id) > PICKUP_RANGE - 0.6) return;
+  await beginReveal(id);
+  if (useGame.getState().active?.id === id && useGame.getState().active?.step === 'presented') await openActive();
 }
 
 export function closeCard() {

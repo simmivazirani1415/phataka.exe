@@ -6,7 +6,7 @@ import { GESTURE_INFO } from '../../input/gestures';
 import { crackerRender, renderCrackers } from './crackerRenders';
 import { dropHere, pointer, usePlace } from '../Placement';
 
-// The slim tray on the right: all eight crackers as small renders of their real shapes.
+// The tray on the right: all eight crackers as glowing renders of their real shapes.
 // A new one opens its collectible card first; a collected one shows the lights it has left
 // and can be dragged onto the ground (or tapped, then the ground tapped).
 
@@ -89,6 +89,9 @@ export function InventoryTray() {
     <>
       {(
         <aside className={`inv ${busy || active ? 'inv-busy' : ''}`} aria-label="Your crackers">
+          <p className="inv-title" aria-hidden="true">
+            Pataka
+          </p>
           <ul>
             {PACKAGES.map((p) => {
               const own = isOwned(p.id);
@@ -125,7 +128,10 @@ export function InventoryTray() {
                     }}
                   >
                     {img ? <img src={img} alt="" draggable={false} /> : <span className="inv-emoji">{GESTURE_INFO[p.id].icon}</span>}
-                    <b className="inv-count">{own ? `x${n}` : '+'}</b>
+                    <b className="inv-count">{own ? `x${n}` : 'NEW'}</b>
+                    <span className="inv-name" aria-hidden="true">
+                      {p.crackerLabel}
+                    </span>
                   </button>
                 </li>
               );
@@ -140,7 +146,7 @@ export function InventoryTray() {
       )}
       {placing && !active && (
         <div className={`place-hint ${check && check !== 'ok' ? 'bad' : ''}`} role="status">
-          <span>{check && check !== 'ok' ? REASON[check] : 'Yahan rakh do'}</span>
+          <span>{check && check !== 'ok' ? REASON[check] : 'Yahan rakh do · phir haath se jalao ✋'}</span>
           <button className="btn ghost tiny" onClick={cancelPlacing} aria-label="Put it back in the tray">
             ✕
           </button>

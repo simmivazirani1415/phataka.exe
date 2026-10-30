@@ -472,9 +472,8 @@ function writeAgent(a: Agent, pose: Pose, meshes: THREE.InstancedMesh[], shadow:
 function writeShadowOnly(a: Agent, meshes: THREE.InstancedMesh[], shadow: THREE.InstancedMesh) {
   const i = a.idx;
   for (const m of meshes) m.setMatrixAt(i, ZERO);
-  _q.identity();
-  _m1.compose(_p.set(a.x, a.y + 0.015, a.z), _q, _s.set(0.8, 1, 0.8));
-  shadow.setMatrixAt(i, _m1);
+  // the cut-out (CastSprites) draws its own contact shadow
+  shadow.setMatrixAt(i, ZERO);
 }
 
 function hideAgent(i: number, meshes: THREE.InstancedMesh[], shadow: THREE.InstancedMesh) {

@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { PACKAGE_BY_ID, PACKAGES } from '../../assets/AssetRegistry';
 import { MAX_USES, useGame } from '../../game/GameState';
+import { BOX_SPOTS } from '../StreetLayout';
 import { closeCard, keepCard } from '../../game/DiscoverySystem';
 import { IconClose } from '../../components/Icons';
 
 // The collectible card for a cracker picked from the panel: its box, its name and its
-// personality. Keeping it adds the cracker to the collection and puts it in hand.
+// personality. Collecting it shows the way to the box in the mohalla.
 
 export function CollectCard() {
   const id = useGame((s) => s.ui.card);
@@ -45,8 +46,9 @@ export function CollectCard() {
         </p>
         <h2 className="reveal-name">{pkg.name}</h2>
         <p className="reveal-copy">“{pkg.copy}”</p>
+        <p className="ccard-where">📍 {BOX_SPOTS[id].hint} Follow the arrows, pick it up, light it with your hand. x{MAX_USES}</p>
         <button className="btn cta fire" autoFocus onClick={keepCard}>
-          Collect · x{MAX_USES}
+          Collect · show me where
         </button>
       </section>
     </>

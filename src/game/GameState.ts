@@ -78,8 +78,10 @@ interface GameStore {
     trayPulse: PackageId | null;
     /** the collectible card shown when a cracker is picked from the panel */
     card: PackageId | null;
-    /** the location map is open */
+    /** the location panel is open */
     map: boolean;
+    /** a collected card whose box the player is being guided to */
+    guide: PackageId | null;
   };
   captions: Caption[];
   worldPhoto: string | null;
@@ -164,7 +166,7 @@ export const useGame = create<GameStore>((set, get) => ({
   active: null,
   uses: restoreUses(),
   placing: null,
-  ui: { tray: false, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false },
+  ui: { tray: false, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null },
   captions: [],
   worldPhoto: null,
 
@@ -207,7 +209,7 @@ export const useGame = create<GameStore>((set, get) => ({
       memories: [],
       active: null,
       worldPhoto: null,
-      ui: { ...get().ui, tray: false, album: false, settings: false, newMemory: null, showMe: null, finalSeen: false, toast: 'Mohalla reset. Naye sire se Diwali!' },
+      ui: { ...get().ui, tray: false, album: false, settings: false, newMemory: null, showMe: null, guide: null, card: null, finalSeen: false, toast: 'Mohalla reset. Naye sire se Diwali!' },
     });
   },
 }));

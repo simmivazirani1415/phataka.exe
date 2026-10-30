@@ -86,6 +86,8 @@ export const runtime = {
   /** moving things the player cannot walk through (vehicles, people) register a test here */
   solids: new Map<'person' | 'vehicle', (x: number, z: number, r: number, y?: number) => boolean>(),
   capture: null as CaptureApi | null,
+  /** turn the cut-out cast towards a camera other than the player's (overview photos) */
+  billboard: null as ((x: number, y: number, z: number) => void) | null,
   /** post-processing composer on High graphics; captures render through it so photos match the screen */
   composer: null as import('postprocessing').EffectComposer | null,
   fireworks: null as FireworkApi | null,

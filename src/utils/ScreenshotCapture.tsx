@@ -52,6 +52,7 @@ export function ScreenshotCapture() {
     cam.lookAt(10, 2, -3);
     cam.updateMatrixWorld();
     let url: string | null = null;
+    runtime.billboard?.(cam.position.x, cam.position.y, cam.position.z);
     try {
       const composer = runtime.composer;
       if (composer) {
@@ -63,6 +64,7 @@ export function ScreenshotCapture() {
     } catch {
       url = null;
     }
+    runtime.billboard?.(camera.position.x, camera.position.y, camera.position.z);
     jobs.forEach((j) => j.resolve(url));
   });
 

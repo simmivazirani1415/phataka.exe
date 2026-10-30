@@ -339,10 +339,19 @@ export const CAST_PEOPLE: Record<'aunty' | 'boy' | 'girl' | 'uncle' | 'grandpa',
   grandpa: { id: 'grandpa', url: cast + 'people/grandpa_lantern.webp', height: 1.68, aspect: 0.575, faces: -1 },
 };
 
+/** The same people standing still, drawn from the front: used while someone stands about. */
+export const CAST_PEOPLE_STAND: Record<keyof typeof CAST_PEOPLE, CastSprite> = {
+  aunty: { id: 'aunty_stand', url: cast + 'people/aunty_stand.webp', height: 1.6, aspect: 0.341, faces: 1 },
+  boy: { id: 'boy_stand', url: cast + 'people/boy_stand.webp', height: 1.22, aspect: 0.333, faces: 1 },
+  girl: { id: 'girl_stand', url: cast + 'people/girl_stand.webp', height: 1.35, aspect: 0.53, faces: 1 },
+  uncle: { id: 'uncle_stand', url: cast + 'people/uncle_stand.webp', height: 1.72, aspect: 0.683, faces: 1 },
+  grandpa: { id: 'grandpa_stand', url: cast + 'people/grandpa_stand.webp', height: 1.68, aspect: 0.511, faces: 1 },
+};
+
 export const CAST_VEHICLES: Record<'scooter' | 'bicycle' | 'auto' | 'rickshaw' | 'parkedScooter', CastSprite> = {
   scooter: { id: 'scooter', url: cast + 'vehicles/scooter_rider.webp', height: 1.75, aspect: 0.994, faces: 1 },
   bicycle: { id: 'bicycle', url: cast + 'vehicles/bicycle_girl.webp', height: 1.75, aspect: 0.975, faces: 1 },
   auto: { id: 'auto', url: cast + 'vehicles/auto.webp', height: 2.05, aspect: 1.025, faces: -1 },
-  rickshaw: { id: 'rickshaw', url: cast + 'vehicles/rickshaw.webp', height: 2.1, aspect: 0.995, faces: 1 },
-  parkedScooter: { id: 'parkedScooter', url: cast + 'vehicles/scooter_gifts.webp', height: 1.3, aspect: 1.012, faces: 1 },
+  rickshaw: { id: 'rickshaw', url: cast + 'vehicles/rickshaw.webp', height: 2.2, aspect: 0.995, faces: 1 },
+  parkedScooter: { id: 'parkedScooter', url: cast + 'vehicles/scooter_gifts.webp', height: 1.72, aspect: 1.012, faces: 1 },
 };

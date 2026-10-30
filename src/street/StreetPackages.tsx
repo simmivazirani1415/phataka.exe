@@ -171,7 +171,7 @@ function PackageBox({ pkg }: { pkg: PackageAsset }) {
     if (!g.visible) return;
     const glowing = canPickUp(pkg.id) && s.active?.id !== pkg.id;
     const now = performance.now();
-    const hinted = (s.ui.hintUntil > now && glowing) || s.ui.showMe === pkg.id;
+    const hinted = (s.ui.hintUntil > now && glowing) || s.ui.showMe === pkg.id || (s.ui.guide === pkg.id && glowing);
     const hovered = runtime.hoverPackage === pkg.id;
     // brighter as the player gets close: 0.35 far away, 1 within a couple of metres
     const near = THREE.MathUtils.smoothstep(22 - dist, 0, 19.5);

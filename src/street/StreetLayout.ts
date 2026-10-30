@@ -499,7 +499,7 @@ function bunting(B: Builder, a: Vec3, b: Vec3) {
 function parkedScooter(B: Builder, x: number, z: number, ry: number) {
   // the gift-laden scooter from the cast, standing on its side stand
   B.d.props.push({ x, z, ry, sprite: 'parkedScooter' });
-  B.d.obstacles.push({ x0: x - 0.75, x1: x + 0.75, z0: z - 0.45, z1: z + 0.45 });
+  B.d.obstacles.push({ x0: x - 0.9, x1: x + 0.9, z0: z - 0.4, z1: z + 0.4 });
 }
 
 function bench(B: Builder, x: number, z: number, len: number, alongX: boolean) {

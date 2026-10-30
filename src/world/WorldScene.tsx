@@ -18,6 +18,7 @@ import { StreetCamera } from '../street/StreetCamera';
 import { StreetChunks } from '../street/StreetChunks';
 import { StreetAtmosphere } from '../street/StreetAtmosphere';
 import { StreetPackages } from '../street/StreetPackages';
+import { GuidePath } from '../street/GuidePath';
 import { Crowd } from '../street/Crowd';
 import { CastSprites } from '../street/CastSprites';
 import { Traffic } from '../street/Traffic';
@@ -75,6 +76,7 @@ function Street() {
       <Traffic />
       <CastSprites />
       <StreetPackages />
+      <GuidePath />
       <Placement />
       <Scorch />
       <Bubbles />

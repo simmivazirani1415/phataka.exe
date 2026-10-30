@@ -1,6 +1,7 @@
 """Clean and size the cut-out people and vehicle images for the street.
 
 Usage: python3 tools/prepare_cast.py <source-dir>
+       python3 tools/prepare_cast.py --stand <source-dir>   (needs `pip install rembg onnxruntime`)
 
 Each source PNG has a transparent background, but the cut-out edges carry a red/orange
 fringe from the background removal. For every image this script:
@@ -8,6 +9,9 @@ fringe from the background removal. For every image this script:
   2. replaces the colour of the edge band with colour pulled in from the solid interior
      (so the fringe disappears instead of being darkened),
   3. crops to the figure, scales it to 640 px tall and writes a WebP to public/assets/.
+
+The standing, front-facing set (--stand) comes on a plain light background instead; it is
+cut out with rembg, then cropped to the visible figure so the bottom edge is the soles.
 """
 import os
 import sys
@@ -27,6 +31,14 @@ CAST = {
     '9db438b2': ('vehicles', 'auto'),
     'ac328e04': ('vehicles', 'scooter_rider'),
     'c19a5329': ('vehicles', 'bicycle_girl'),
+}
+# the standing, front-facing poses (used while someone stands about)
+STAND = {
+    'b1639886': 'aunty_stand',
+    '2930faf5': 'grandpa_stand',
+    'fd34a3f7': 'boy_stand',
+    '9b4e3379': 'girl_stand',
+    '1949d273': 'uncle_stand',
 }
 OUT_H = 640
 
@@ -75,6 +87,25 @@ def clean(path: str) -> Image.Image:
     return img.resize((max(1, round(img.width * s)), OUT_H), Image.LANCZOS)
 
 
+def stand(src: str):
+    from rembg import new_session, remove
+
+    root = os.path.join(os.path.dirname(__file__), '..', 'public', 'assets', 'people')
+    session = new_session('isnet-general-use')
+    for f in sorted(os.listdir(src)):
+        name = STAND.get(f[:8])
+        if not name:
+            continue
+        cut = remove(Image.open(os.path.join(src, f)).convert('RGB'), session=session, post_process_mask=True).convert('RGBA')
+        a = np.asarray(cut, dtype=np.uint8)[:, :, 3]
+        img = cut.crop(Image.fromarray(((a > 24) * 255).astype(np.uint8)).getbbox())
+        s = OUT_H / img.height
+        img = img.resize((max(1, round(img.width * s)), OUT_H), Image.LANCZOS)
+        dst = os.path.join(root, name + '.webp')
+        img.save(dst, 'WEBP', quality=88, method=6)
+        print(f'{dst}  {img.width}x{img.height}  aspect {img.width / img.height:.3f}')
+
+
 def main(src: str):
     root = os.path.join(os.path.dirname(__file__), '..', 'public', 'assets')
     for f in sorted(os.listdir(src)):
@@ -90,4 +121,7 @@ def main(src: str):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    if sys.argv[1] == '--stand':
+        stand(sys.argv[2])
+    else:
+        main(sys.argv[1])

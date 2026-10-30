@@ -1,27 +1,29 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { runtime, type WorldEvent } from '../game/Runtime';
 import { useGame } from '../game/GameState';
 import { audio } from '../audio/AudioEngine';
 import { STREET } from './StreetLayout';
 import { crowd, LINES, sayLine, type Agent } from './Crowd';
 import { glowUniforms, pointsFrag, pointsVert } from './StreetChunks';
+import { vehicleModel } from './VehicleModels';
+import { addFade, withFade } from './castFade';
 
-// Slow mohalla traffic: scooters, cycles, autos and the odd small car, keeping left in two
-// lanes along the gali. They follow each other, stop for the player, for anyone stepping
+// Slow mohalla traffic: scooters, cycles, autos and cycle-rickshaws, keeping left in two
+// lanes along the gali. Each is drawn as Simran's illustration while it is seen side-on
+// (CastSprites) and as a matching low-poly model when seen from the front, behind or above. They follow each other, stop for the player, for anyone stepping
 // into the road and for any cracker on the ground, swerve around crackers when there is
 // room, and brake hard and swerve away when something bursts nearby.
 
 export type VType = 'scooter' | 'bicycle' | 'auto' | 'rickshaw';
 const TYPES: VType[] = ['scooter', 'bicycle', 'auto', 'rickshaw'];
 const LANE = 1.25;
-const SPEC: Record<VType, { len: number; wid: number; speed: [number, number]; tints: string[]; seat: number; riderZ: number }> = {
-  scooter: { len: 1.8, wid: 0.75, speed: [4.2, 5.8], tints: ['#ce382a', '#1e5f8a', '#f2e3c4', '#2f6b4f', '#23242a', '#d64a91', '#8d8f97'], seat: 0.78, riderZ: -0.2 },
-  bicycle: { len: 1.75, wid: 0.6, speed: [2.6, 3.4], tints: ['#23242a', '#ce382a', '#1e5f8a', '#2f6b4f'], seat: 0.92, riderZ: -0.25 },
-  auto: { len: 2.7, wid: 1.4, speed: [3.4, 4.4], tints: ['#ffd15a', '#2f8a4a', '#ffd15a'], seat: 0.85, riderZ: 0.55 },
-  rickshaw: { len: 2.3, wid: 1.1, speed: [2.2, 3.0], tints: ['#2f6b4f'], seat: 0, riderZ: 0 },
+const SPEC: Record<VType, { len: number; wid: number; speed: [number, number]; seat: number; riderZ: number }> = {
+  scooter: { len: 1.8, wid: 0.75, speed: [4.2, 5.8], seat: 0.78, riderZ: -0.2 },
+  bicycle: { len: 1.75, wid: 0.6, speed: [2.6, 3.4], seat: 0.92, riderZ: -0.25 },
+  auto: { len: 2.7, wid: 1.4, speed: [3.4, 4.4], seat: 0.85, riderZ: 0.55 },
+  rickshaw: { len: 2.3, wid: 1.1, speed: [2.2, 3.0], seat: 0, riderZ: 0 },
 };
 
 export interface Vehicle {
@@ -38,85 +40,8 @@ export interface Vehicle {
   waitFor: number;
   honked: number;
   riders: Agent[];
-}
-
-// --- geometry: boxes and cylinders with baked vertex colours (white parts take the tint)
-
-function part(geo: THREE.BufferGeometry, color: string, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) {
-  const g = geo.toNonIndexed();
-  g.rotateX(rx);
-  g.rotateY(ry);
-  g.rotateZ(rz);
-  g.translate(x, y, z);
-  const c = new THREE.Color(color);
-  const n = g.getAttribute('position').count;
-  const col = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
-  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  g.deleteAttribute('uv');
-  return g;
-}
-const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
-const CY = (r: number, h: number, s = 14) => new THREE.CylinderGeometry(r, r, h, s);
-const TINT = '#ffffff';
-const DARK = '#1c1c20';
-const CHROME = '#b8bcc4';
-
-// all models face +z (the direction of travel)
-function model(type: VType) {
-  const ps: THREE.BufferGeometry[] = [];
-  const wheel = (r: number, w: number, x: number, z: number) => ps.push(part(CY(r, w, 16), DARK, x, r, z, 0, 0, Math.PI / 2));
-  if (type === 'scooter') {
-    wheel(0.24, 0.12, 0, 0.62);
-    wheel(0.24, 0.12, 0, -0.6);
-    ps.push(part(B(0.42, 0.36, 1.0), TINT, 0, 0.5, -0.2));
-    ps.push(part(B(0.36, 0.12, 0.62), '#2a2420', 0, 0.76, -0.25));
-    ps.push(part(B(0.4, 0.75, 0.16), TINT, 0, 0.72, 0.45, -0.25));
-    ps.push(part(B(0.3, 0.06, 0.5), DARK, 0, 0.36, 0.25));
-    ps.push(part(B(0.08, 0.5, 0.08), CHROME, 0, 0.95, 0.56, -0.3));
-    ps.push(part(B(0.7, 0.05, 0.05), DARK, 0, 1.18, 0.6));
-    ps.push(part(B(0.16, 0.12, 0.08), '#fff6d8', 0, 1.02, 0.66));
-  } else if (type === 'bicycle') {
-    wheel(0.33, 0.04, 0, 0.55);
-    wheel(0.33, 0.04, 0, -0.55);
-    ps.push(part(B(0.04, 0.04, 1.0), TINT, 0, 0.62, 0, 0.35));
-    ps.push(part(B(0.04, 0.6, 0.04), TINT, 0, 0.6, -0.25, 0.2));
-    ps.push(part(B(0.04, 0.6, 0.04), TINT, 0, 0.66, 0.5, -0.3));
-    ps.push(part(B(0.18, 0.06, 0.26), '#2a2420', 0, 0.94, -0.3));
-    ps.push(part(B(0.6, 0.04, 0.04), DARK, 0, 1.0, 0.5));
-    ps.push(part(B(0.36, 0.05, 0.3), DARK, 0, 0.72, -0.62));
-  } else if (type === 'auto') {
-    wheel(0.22, 0.14, -0.6, -0.75);
-    wheel(0.22, 0.14, 0.6, -0.75);
-    wheel(0.22, 0.14, 0, 0.95);
-    // tub, cowl, black canopy on posts, a meter flag
-    ps.push(part(B(1.36, 0.6, 1.7), TINT, 0, 0.58, -0.35));
-    ps.push(part(B(1.0, 0.85, 0.7), TINT, 0, 0.72, 0.85, -0.12));
-    ps.push(part(B(1.4, 0.08, 2.5), DARK, 0, 1.78, -0.05));
-    ps.push(part(B(1.4, 0.55, 0.06), DARK, 0, 1.5, -1.28));
-    for (const x of [-0.66, 0.66]) for (const z of [-1.2, 1.1]) ps.push(part(B(0.05, 0.95, 0.05), DARK, x, 1.3, z));
-    ps.push(part(B(1.1, 0.5, 0.04), '#9bb4c9', 0, 1.42, 1.17, 0.15));
-    ps.push(part(B(1.2, 0.1, 0.5), '#2a2420', 0, 0.92, -0.7));
-    ps.push(part(B(0.2, 0.14, 0.06), '#fff6d8', 0, 0.9, 1.22));
-  } else {
-    wheel(0.3, 0.2, -0.72, 1.15);
-    wheel(0.3, 0.2, 0.72, 1.15);
-    wheel(0.3, 0.2, -0.72, -1.15);
-    wheel(0.3, 0.2, 0.72, -1.15);
-    ps.push(part(B(1.6, 0.6, 3.6), TINT, 0, 0.62, 0));
-    ps.push(part(B(1.44, 0.55, 2.0), TINT, 0, 1.18, -0.25));
-    ps.push(part(B(1.46, 0.42, 1.6), '#26303e', 0, 1.18, -0.25));
-    ps.push(part(B(1.3, 0.4, 0.06), '#26303e', 0, 1.16, 0.77, -0.6));
-    ps.push(part(B(1.62, 0.16, 0.08), DARK, 0, 0.42, 1.82));
-    ps.push(part(B(1.62, 0.16, 0.08), DARK, 0, 0.42, -1.82));
-    ps.push(part(B(0.3, 0.12, 0.04), '#fff6d8', -0.55, 0.72, 1.81));
-    ps.push(part(B(0.3, 0.12, 0.04), '#fff6d8', 0.55, 0.72, 1.81));
-    ps.push(part(B(0.3, 0.12, 0.04), '#c4302b', -0.55, 0.72, -1.81));
-    ps.push(part(B(0.3, 0.12, 0.04), '#c4302b', 0.55, 0.72, -1.81));
-  }
-  const g = mergeGeometries(ps, false);
-  ps.forEach((p) => p.dispose());
-  return g;
+  /** heading, as a rotation about y (the model faces +z) */
+  yaw: number;
 }
 
 const pickA = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
@@ -131,7 +56,7 @@ const Y = new THREE.Vector3(0, 1, 0);
 const MIX: VType[] = ['scooter', 'scooter', 'bicycle', 'auto', 'rickshaw', 'scooter', 'bicycle', 'auto', 'rickshaw'];
 
 /** The vehicles on the road right now, for the cut-out renderer. */
-export const trafficState: { list: Vehicle[] } = { list: [] };
+export const trafficState: { list: Vehicle[]; fades: Record<VType, THREE.InstancedBufferAttribute> | null } = { list: [], fades: null };
 
 export function Traffic() {
   const graphics = useGame((s) => s.settings.graphics);
@@ -140,14 +65,16 @@ export function Traffic() {
   const { camera } = useThree();
   const list = useRef<Vehicle[]>([]);
 
-  const { meshes, mat, lights } = useMemo(() => {
-    const mat = high ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15 }) : new THREE.MeshLambertMaterial({ vertexColors: true });
+  const { meshes, fades, mat, lights } = useMemo(() => {
+    const mat = withFade(high ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.08 }) : new THREE.MeshLambertMaterial({ vertexColors: true }));
     const meshes = {} as Record<VType, THREE.InstancedMesh>;
+    const fades = {} as Record<VType, THREE.InstancedBufferAttribute>;
     for (const t of TYPES) {
-      const m = new THREE.InstancedMesh(model(t), mat, count);
+      const m = new THREE.InstancedMesh(vehicleModel(t), mat, count);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       for (let i = 0; i < count; i++) m.setMatrixAt(i, ZERO);
-      m.setColorAt(0, new THREE.Color(1, 1, 1));
+      fades[t] = addFade(m, count);
+      m.castShadow = false;
       m.frustumCulled = false;
       m.raycast = () => {};
       meshes[t] = m;
@@ -165,7 +92,7 @@ export function Traffic() {
     lights.frustumCulled = false;
     lights.raycast = () => {};
     lights.renderOrder = 6;
-    return { meshes, mat, lights };
+    return { meshes, fades, mat, lights };
   }, [count, high]);
   useEffect(
     () => () => {
@@ -185,7 +112,7 @@ export function Traffic() {
     const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
     const sp = SPEC[type];
     const x = first ? p.x + rnd(-70, 70) : p.x - dir * rnd(68, 80) * (Math.random() < 0.7 ? 1 : -1);
-    const v: Vehicle = { type, slot, x, z: -dir * LANE, dir, speed: 0, cruise: rnd(...sp.speed), off: 0, offTarget: 0, brakeUntil: 0, waitFor: 0, honked: 0, riders: [] };
+    const v: Vehicle = { type, slot, x, z: -dir * LANE, dir, speed: 0, cruise: rnd(...sp.speed), off: 0, offTarget: 0, brakeUntil: 0, waitFor: 0, honked: 0, riders: [], yaw: dir > 0 ? Math.PI / 2 : -Math.PI / 2 };
     v.speed = v.cruise;
     // the riders are part of each vehicle's illustration
     return v;
@@ -257,6 +184,7 @@ export function Traffic() {
     const now = performance.now();
     const L = list.current;
     trafficState.list = L;
+    trafficState.fades = fades;
     while (L.length < count) {
       const used = new Set(L.map((v) => v.type + v.slot));
       // find a free instance slot for a type
@@ -266,9 +194,6 @@ export function Traffic() {
         for (let s = 0; s < count; s++) {
           if (!used.has(cand.type + s)) {
             cand.slot = s;
-            meshes[cand.type].setColorAt(s, new THREE.Color(pickA(SPEC[cand.type].tints)));
-            const ic = meshes[cand.type].instanceColor;
-            if (ic) ic.needsUpdate = true;
             v = cand;
             break;
           }
@@ -356,6 +281,8 @@ export function Traffic() {
 
       const z = laneZ + v.off;
       const yaw = (v.dir > 0 ? Math.PI / 2 : -Math.PI / 2) - (v.offTarget - v.off) * 0.25 * v.dir;
+      // the model's fade (against the cut-out) is set by CastSprites from the camera
+      v.yaw = yaw;
       _q.setFromAxisAngle(Y, yaw);
       _m.compose(_p.set(v.x, 0, z), _q, _s);
       meshes[v.type].setMatrixAt(v.slot, _m);
@@ -393,6 +320,9 @@ export function Traffic() {
 
   return (
     <group>
+      {TYPES.map((t) => (
+        <primitive key={t} object={meshes[t]} />
+      ))}
       <primitive object={lights} />
     </group>
   );
