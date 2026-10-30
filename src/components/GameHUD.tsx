@@ -64,9 +64,8 @@ export function GameHUD() {
   return (
     <div className={`hud ${busy ? 'hud-busy' : ''}`}>
       <div className="hud-tl">
-        <div className="hud-logo" aria-label={SITE.name}>
-          {SITE.name.replace(/!$/, '')}
-          {SITE.name.endsWith('!') && <i>!</i>}
+        <div className="hud-logo">
+          <img src={`${import.meta.env.BASE_URL}assets/intro/bombastic_logo.webp`} alt={SITE.name} draggable={false} />
         </div>
         <button className={`hud-place ${ui.map ? 'on' : ''}`} onClick={() => open({ map: !ui.map })} aria-expanded={ui.map} aria-label={`Choose location. You are at the ${LEVELS[here].name}.`} disabled={busy}>
           <IconPin size={16} />

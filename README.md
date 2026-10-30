@@ -1,4 +1,4 @@
-# PATAK! (Pataka.exe)
+# BOMBASTIC (Pataka.exe)
 
 *Har ghar mein ek pataka hai.* A miniature Diwali mohalla that builds itself out of tiny blocks. You find eight hidden pataka boxes, light their (completely virtual) crackers, and keep the moments as Polaroids in a scrapbook you can download.
 
@@ -76,3 +76,14 @@ No prices, checkout or shopping anywhere, and no real-world handling instruction
 - Some effects read small from their effect camera, mainly the ladi cracker model, which can hide behind its box.
 - Sound design is procedural and simple. There are no recorded samples.
 - Web Share with files works only where the browser supports it. Otherwise the PNG downloads and the share text is copied.
+
+## BOMBASTIC entrance
+
+The site is now BOMBASTIC. It opens with Simran's five-second film (`public/assets/intro/`, VP9 WebM where supported, H.264 MP4 otherwise). The real street renders behind the film from the start, with the camera standing at the head of the gali. As the film's doors finish opening, it dissolves from the doorway outward into the live mohalla. The street settles under a soft blur for the welcome: the logo, the tagline, three steps and *Enter the Mohalla*. Entering clears the blur, walks the camera a few steps in, and hands over the controls.
+
+The intro has five stages: VIDEO_PLAYING, TRANSITIONING_TO_WORLD, WELCOME_VISIBLE, ENTERING_WORLD and GAMEPLAY_ACTIVE. The code is in `src/intro/IntroOverlay.tsx` and `introState.ts`, with styles in `src/styles/intro.css`. The fallbacks:
+- If autoplay is blocked, a *Play the intro* button appears.
+- A video error or stall goes straight to the welcome.
+- Reduced motion skips the film.
+- *Skip intro* and Escape still show the welcome.
+

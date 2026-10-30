@@ -2,8 +2,8 @@ import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from '
 import { useGame, hydrateMemories } from './game/GameState';
 import { runtime } from './game/Runtime';
 import { GameHUD } from './components/GameHUD';
-import { IdentOverlay } from './intro/IdentOverlay';
-import { useIdent } from './intro/identState';
+import { IntroOverlay } from './intro/IntroOverlay';
+import { useIntro } from './intro/introState';
 import { SITE } from './config/site';
 import { PackageReveal } from './components/PackageReveal';
 import { NewMemory } from './components/PolaroidCard';
@@ -180,7 +180,7 @@ async function fontsReady() {
 
 export default function App() {
   const phase = useGame((s) => s.phase);
-  const identStage = useIdent((s) => s.stage);
+  const introStage = useIntro((s) => s.stage);
   const reducedMotion = useGame((s) => s.settings.reducedMotion);
   const [ready, setReady] = useState(false);
   const [webgl] = useState(hasWebGL);
@@ -188,7 +188,7 @@ export default function App() {
   useEffect(() => {
     // ?skipintro goes straight into the street (used by automated checks)
     if (new URLSearchParams(location.search).has('skipintro')) {
-      useIdent.setState({ stage: 'off', play: false });
+      useIntro.setState({ stage: 'GAMEPLAY_ACTIVE' });
       useGame.getState().setPhase('playing');
     }
     fontsReady().then(() => setReady(true));
@@ -217,9 +217,9 @@ export default function App() {
             <WorldScene />
           </Suspense>
         )}
-        {ready && identStage !== 'off' && <IdentOverlay />}
       </WorldBoundary>
       {!ready && <div className="loading">Mohalla jag raha hai…</div>}
+      {introStage !== 'GAMEPLAY_ACTIVE' && <IntroOverlay />}
       {phase === 'playing' && <GameHUD />}
       <PackageReveal />
       <GestureLayer />

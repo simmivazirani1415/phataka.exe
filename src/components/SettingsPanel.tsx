@@ -6,7 +6,7 @@ import { runtime } from '../game/Runtime';
 import { groundMarks } from '../street/Scorch';
 import { levelState, START } from '../street/StreetLayout';
 import { startHands, stopHands, useHands } from '../input/HandTracker';
-import { useIdent } from '../intro/identState';
+import { useIntro } from '../intro/introState';
 
 function Row({ icon, label, note, children }: { icon: ReactNode; label: string; note?: string; children: ReactNode }) {
   return (
@@ -99,7 +99,7 @@ export function SettingsPanel() {
           onClick={() => {
             setUi({ settings: false, tray: false, album: false, newMemory: null, showMe: null });
             useGame.getState().setPhase('intro');
-            useIdent.getState().replay();
+            useIntro.getState().replay();
           }}
         >
           <IconReplay size={16} /> Replay intro

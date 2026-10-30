@@ -76,6 +76,8 @@ export const runtime = {
   assemblyRunning: true,
   ghost: 0,
   camera: null as CameraApi | null,
+  /** frames the 3D world has drawn; the intro waits for a few before revealing it */
+  frames: 0,
   /** the player's walking view, written by the street camera every frame */
   player: { x: 0, z: 0, yaw: 0, pitch: 0, floor: 0 } as ViewState,
   /** analog walk input from the on-screen joystick (-1..1) */

@@ -3,8 +3,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { runtime } from '../game/Runtime';
 import { useGame } from '../game/GameState';
-import { filmOnScreen } from '../intro/identState';
-import { skyTexture } from '../world/EnvironmentEffects';
 import { pick, rnd, sphereBurst } from '../game/ParticlePool';
 import { audio } from '../audio/AudioEngine';
 import { chunkOf, getVariants, STREET, variantAt } from './StreetLayout';
@@ -15,15 +13,11 @@ import { glowUniforms } from './StreetChunks';
 // gali, cool moonlight and a small pool of real point lights handed to the street lamps and
 // shop bulbs nearest the player. Fireworks get one shared light that washes the walls.
 
-const FILM_FOG = () => new THREE.Fog('#121A3C', 22, 95);
-
 export function StreetAtmosphere() {
   const { scene } = useThree();
   const graphics = useGame((s) => s.settings.graphics);
   const high = graphics === 'high';
   const fog = useMemo(() => new THREE.Fog('#151c3d', high ? 34 : 22, high ? 128 : 88), [high]);
-  const filmFog = useMemo(FILM_FOG, []);
-  const filmSky = useMemo(skyTexture, []);
   const night = useMemo(() => new THREE.Color('#080c1c'), []);
   const dome = useRef<THREE.Mesh>(null!);
   const hemi = useRef<THREE.HemisphereLight>(null!);
@@ -49,13 +43,6 @@ export function StreetAtmosphere() {
   );
 
   useFrame((st, dt) => {
-    const film = filmOnScreen();
-    // the intro film keeps its own sky and haze; the street takes over at the handoff
-    if (film) {
-      if (scene.fog !== filmFog) scene.fog = filmFog;
-      scene.background = filmSky;
-      return;
-    }
     if (scene.fog !== fog) scene.fog = fog;
     scene.background = night;
     glowUniforms.uFar.value = fog.far;
