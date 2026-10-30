@@ -1,5 +1,5 @@
 import { PACKAGE_BY_ID, type PackageId, type Vec3 } from '../assets/AssetRegistry';
-import { MAX_USES, useGame } from './GameState';
+import { keepTray, MAX_USES, useGame } from './GameState';
 import { runtime } from './Runtime';
 import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
@@ -79,7 +79,7 @@ export async function beginReveal(id: PackageId) {
   const replay = isOpened(id);
   g.setPlacing(null);
   g.setActive({ id, step: 'focusing', replay, capture: false });
-  g.setUi({ tray: false, showMe: null, newMemory: null });
+  g.setUi({ tray: keepTray(), showMe: null, newMemory: null });
   audio.tap();
   cam.setUserInput(false);
   await cam.face(ctl.worldPos(), 0.45);
@@ -155,7 +155,7 @@ export function pickFromPanel(id: PackageId) {
   if (busy()) return;
   if (!isOpened(id)) {
     g.setPlacing(null);
-    g.setUi({ card: id, tray: false, showMe: null });
+    g.setUi({ card: id, tray: keepTray(), showMe: null });
     audio.tap();
     return;
   }
@@ -204,7 +204,7 @@ export function startPlacing(id: PackageId) {
   const g = useGame.getState();
   if (busy() || g.uses[id] <= 0) return false;
   g.setPlacing(id);
-  g.setUi({ tray: false });
+  g.setUi({ tray: keepTray() });
   audio.tap();
   return true;
 }
@@ -313,7 +313,7 @@ export function showMe(id: PackageId) {
   const g = useGame.getState();
   if (g.active) return;
   const p = BOX_SPOTS[id].pos;
-  g.setUi({ showMe: id, tray: false });
+  g.setUi({ showMe: id, tray: keepTray() });
   void runtime.camera?.face([p[0], p[1] + 2, p[2]], 1.0);
   window.setTimeout(() => {
     if (useGame.getState().ui.showMe === id) useGame.getState().setUi({ showMe: null });

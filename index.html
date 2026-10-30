@@ -11,6 +11,18 @@
   <body>
     <div id="root"></div>
     <noscript>Pataka.exe needs JavaScript to build its mohalla.</noscript>
+    <script>
+      // ?fresh starts the mohalla from scratch: saved progress and photos are cleared first
+      (function () {
+        var q = new URLSearchParams(location.search);
+        if (!q.has('fresh')) return;
+        try { localStorage.removeItem('pataka.exe.street.v1'); } catch (e) {}
+        try { indexedDB.deleteDatabase('pataka-exe-street'); } catch (e) {}
+        q.delete('fresh');
+        var s = q.toString();
+        history.replaceState(null, '', location.pathname + (s ? '?' + s : '') + location.hash);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

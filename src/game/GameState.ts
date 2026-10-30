@@ -166,7 +166,7 @@ export const useGame = create<GameStore>((set, get) => ({
   active: null,
   uses: restoreUses(),
   placing: null,
-  ui: { tray: false, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null },
+  ui: { tray: wide(), album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: wide(), guide: null },
   captions: [],
   worldPhoto: null,
 
@@ -244,5 +244,16 @@ export async function hydrateMemories() {
   }
   useGame.setState({ memories: restored, packages: pk });
 }
+
+/**
+ * On wide screens the places (left) and the patakas (right) stay open as side panels until you
+ * close them; on phones they are bottom sheets that get out of the way after each pick.
+ */
+export function wide() {
+  return typeof window !== 'undefined' && window.innerWidth > 640;
+}
+/** Keep the drawer as it is on wide screens, close it on phones. */
+export const keepTray = () => wide() && useGame.getState().ui.tray;
+export const keepMap = () => wide() && useGame.getState().ui.map;
 
 export const flashScale = (f: Flash) => (f === 'off' ? 0.2 : f === 'low' ? 0.55 : 1);

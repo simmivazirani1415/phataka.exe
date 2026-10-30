@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGame } from '../../game/GameState';
+import { useGame, wide } from '../../game/GameState';
 import { LEVELS, type LevelId } from '../StreetLayout';
 import { goToLevel, whereNow } from '../Locations';
 import { IconChevron, IconClose } from '../../components/Icons';
@@ -78,7 +78,8 @@ export function LocationMap() {
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [open, setUi]);
-  if (phase !== 'playing' || album || !open || active) return null;
+  const card = useGame((s) => s.ui.card);
+  if (phase !== 'playing' || album || !open || active || card) return null;
   return (
     <aside className="panel locpanel" role="dialog" aria-label="Kahan se chalaoge?">
       <header className="panel-head">
@@ -90,7 +91,7 @@ export function LocationMap() {
       <ul className="loc-rows">
         {ORDER.map((id) => (
           <li key={id}>
-            <button className={`loc-row ${here === id ? 'here' : ''}`} onClick={() => (here === id ? setUi({ map: false }) : goToLevel(id))} aria-current={here === id ? 'location' : undefined}>
+            <button className={`loc-row ${here === id ? 'here' : ''}`} onClick={() => (here === id ? !wide() && setUi({ map: false }) : goToLevel(id))} aria-current={here === id ? 'location' : undefined}>
               <span className="loc-icon">
                 <PlaceIcon id={id} />
               </span>

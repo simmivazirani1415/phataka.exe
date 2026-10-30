@@ -1404,3 +1404,4 @@ body {
   }
 }
 .hand.muted { opacity: 0.6; }
+.toast.action .btn-quiet { white-space: nowrap; }

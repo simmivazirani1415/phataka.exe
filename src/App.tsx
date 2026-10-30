@@ -138,7 +138,7 @@ function Toasts() {
           >
             Switch
           </button>
-          <button className="icon-btn" onClick={() => setUi({ perfSuggest: false })}>
+          <button className="btn-quiet small" onClick={() => setUi({ perfSuggest: false })}>
             Keep High
           </button>
         </div>

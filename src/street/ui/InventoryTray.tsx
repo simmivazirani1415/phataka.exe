@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PACKAGES, type PackageId } from '../../assets/AssetRegistry';
-import { MAX_USES, useGame } from '../../game/GameState';
+import { keepTray, MAX_USES, useGame, wide } from '../../game/GameState';
 import { cancelPlacing, pickFromPanel } from '../../game/DiscoverySystem';
 import { IconClose, IconCracker, IconLock } from '../../components/Icons';
 import { crackerRender, renderCrackers } from './crackerRenders';
@@ -50,7 +50,7 @@ export function InventoryTray() {
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) d.moved = true;
       if (d.moved) {
         setGhost({ id: d.id, x: e.clientX, y: e.clientY });
-        if (useGame.getState().ui.tray && !(document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.inv')) useGame.getState().setUi({ tray: false });
+        if (!wide() && useGame.getState().ui.tray && !(document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.inv')) useGame.getState().setUi({ tray: false });
       }
       const canvas = document.querySelector('.world-canvas canvas');
       const under = document.elementFromPoint(e.clientX, e.clientY);
@@ -69,7 +69,7 @@ export function InventoryTray() {
       setGhost(null);
       if (!d.moved) {
         // a tap: stay in placing mode with the drawer out of the way, tap the road next
-        useGame.getState().setUi({ tray: false });
+        useGame.getState().setUi({ tray: keepTray() });
         return;
       }
       const canvas = document.querySelector('.world-canvas canvas');
@@ -124,7 +124,7 @@ export function InventoryTray() {
                       if (active) return;
                       if (!own) {
                         pickFromPanel(p.id);
-                        setUi({ tray: false });
+                        setUi({ tray: keepTray() });
                         return;
                       }
                       if (placing === p.id) {
@@ -139,7 +139,7 @@ export function InventoryTray() {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         pickFromPanel(p.id);
-                        setUi({ tray: false });
+                        setUi({ tray: keepTray() });
                       }
                     }}
                   >

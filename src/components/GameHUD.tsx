@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGame } from '../game/GameState';
+import { useGame, wide } from '../game/GameState';
 import { IconAlbum, IconCracker, IconGrid, IconPin, IconSettings, IconSoundOff, IconSoundOn } from './Icons';
 import { audio } from '../audio/AudioEngine';
 import { SITE } from '../config/site';
@@ -55,7 +55,10 @@ export function GameHUD() {
   };
   const open = (u: Partial<typeof ui>) => {
     audio.tap();
-    setUi({ tray: false, map: false, settings: false, ...u });
+    // on phones one sheet at a time; on wide screens the side panels stay, but the settings
+    // panel and the inventory share the right-hand side
+    if (!wide()) setUi({ tray: false, map: false, settings: false, ...u });
+    else setUi({ ...(u.settings ? { tray: false } : {}), ...(u.tray ? { settings: false } : {}), ...u });
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useGame } from '../game/GameState';
+import { keepMap, useGame } from '../game/GameState';
 import { runtime } from '../game/Runtime';
 import { audio } from '../audio/AudioEngine';
 import { groundLevelAt, LEVELS, levelState, type LevelId } from './StreetLayout';
@@ -10,7 +10,7 @@ export async function goToLevel(id: LevelId) {
   const g = useGame.getState();
   if (g.active || runtime.fireworks?.busy()) return;
   const L = LEVELS[id];
-  g.setUi({ map: false });
+  g.setUi({ map: keepMap() });
   audio.whoosh(0.8);
   levelState.id = id;
   const cam = runtime.camera;
