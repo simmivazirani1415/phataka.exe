@@ -8,8 +8,8 @@ import { GestureDemo } from './GestureDemo';
 import { crackerRender } from './crackerRenders';
 
 // While a cracker waits on the ground: a small focus panel at the side (a compact overlay at
-// the bottom on phones) so the cracker and its burst stay in view. "Light it" lights it; the
-// hand option turns the camera on, shows the gesture as a loop, and fills a ring as you do it.
+// the bottom on phones) so the cracker and its burst stay in view. "Light it yourself" turns the
+// camera on, shows the gesture as a loop and fills a ring as you do it; "Let it burst" lights it.
 
 export function SpotlightCard() {
   const active = useGame((s) => s.active);
@@ -40,14 +40,15 @@ export function SpotlightCard() {
       <p className="focus-kicker">{pkg.crackerLabel}</p>
       <h2 className="focus-name">{pkg.name}</h2>
       <p className="focus-line">{pkg.personality}</p>
-      <button className="btn-primary" autoFocus onClick={() => lightPlaced()}>
-        <IconSpark size={18} /> Light it
-      </button>
-      {(status === 'off' || status === 'error' || status === 'denied') && (
-        <button className="btn-quiet" onClick={startHands}>
-          <IconHand size={16} /> {status === 'off' ? 'Light it with your hand' : 'Camera not available'}
+      {status === 'off' && (
+        <button className="btn-primary" autoFocus onClick={startHands}>
+          <IconHand size={18} /> Light it yourself
         </button>
       )}
+      {(status === 'error' || status === 'denied') && <p className="spot-note">Camera not available, so let it burst.</p>}
+      <button className={status === 'error' || status === 'denied' ? 'btn-primary' : 'btn-line'} autoFocus={status !== 'off'} onClick={() => lightPlaced()}>
+        <IconSpark size={16} /> Let it burst
+      </button>
     </section>
   );
 }

@@ -3,7 +3,8 @@ import { keepTray, MAX_USES, useGame } from './GameState';
 import { runtime } from './Runtime';
 import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
-import { BOX_SPOTS, burstOnLevel, currentLevel, inSideGali } from '../street/StreetLayout';
+import { BOX_SPOTS, burstOnLevel, currentLevel, inSideGali, isBurstGround } from '../street/StreetLayout';
+import { goToLevel } from '../street/Locations';
 
 // Orchestrates the package lifecycle:
 // HIDDEN -> DISCOVERED -> OPENING -> UNLOCKED -> PLAYED -> MEMORY_CAPTURED
@@ -217,23 +218,73 @@ let hazardId = 0;
 
 export type PlaceCheck = 'ok' | 'ground' | 'person' | 'vehicle' | 'far' | 'near';
 
+/** Pop-pops are thrown: from a terrace or balcony they land on the street below. */
+export function throwsDown(id: PackageId) {
+  return PACKAGE_BY_ID[id].crackerType === 'popPop' && currentLevel().floor > 0.5;
+}
+
+/** The floor this cracker goes down on. */
+export function placeFloor(id: PackageId) {
+  return throwsDown(id) ? 0 : currentLevel().floor;
+}
+
 /** Is this a good spot for the cracker? Any open ground with room, clear of people and vehicles. */
 export function checkSpot(id: PackageId, x: number, z: number): PlaceCheck {
   const type = PACKAGE_BY_ID[id].crackerType;
   const R = CLEARANCE[type];
+  const thrown = throwsDown(id);
   const d = Math.hypot(x - runtime.player.x, z - runtime.player.z);
-  if (d > 16) return 'far';
-  if (d < 1.1) return 'near';
-  if (!burstOnLevel(x, z, R)) return 'ground';
+  if (d > (thrown ? 22 : 16)) return 'far';
+  if (d < 1.1 && !thrown) return 'near';
+  if (thrown ? !isBurstGround(x, z, 0.8) : !burstOnLevel(x, z, R)) return 'ground';
   // a ladi lies along the road: both of its ends must be on open ground too
   if (type === 'ladi') {
     const [ax, az] = ladiAxis(x, z);
     if (!burstOnLevel(x + ax * 1.9, z + az * 1.9, 0.6) || !burstOnLevel(x - ax * 1.7, z - az * 1.7, 0.6)) return 'ground';
   }
-  const y = currentLevel().floor;
-  // people and vehicles nearby: only the cracker's own blast radius needs to be clear
-  for (const [kind, s] of runtime.solids) if (s(x, z, Math.min(R, 1.4), y)) return kind;
+  const y = placeFloor(id);
+  // people and vehicles nearby: only the cracker's own blast radius needs to be clear.
+  // Pop-pops are harmless snappers, so they may land right at people's feet.
+  for (const [kind, s] of runtime.solids) {
+    if (type === 'popPop' && kind === 'person') continue;
+    if (s(x, z, Math.min(R, 1.4), y)) return kind;
+  }
   return 'ok';
+}
+
+/** The nearest good spot to (x, z), searching outward; null when there is none close by. */
+export function findSpot(id: PackageId, x: number, z: number, maxR = 8): [number, number] | null {
+  if (checkSpot(id, x, z) === 'ok') return [x, z];
+  for (let r = 0.5; r <= maxR; r += 0.5) {
+    const n = Math.max(8, Math.round(r * 6));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const px = x + Math.cos(a) * r;
+      const pz = z + Math.sin(a) * r;
+      if (checkSpot(id, px, pz) === 'ok') return [px, pz];
+    }
+  }
+  return null;
+}
+
+/**
+ * Put the carried cracker down as close to (x, z) as it can go. A bad spot never blocks the
+ * player: the nearest good one is used, then one near the player, and failing that the player
+ * is taken to the chowk and it goes down there.
+ */
+export async function placeNear(id: PackageId, x: number, z: number) {
+  const pl = runtime.player;
+  const fx = -Math.sin(pl.yaw);
+  const fz = -Math.cos(pl.yaw);
+  let spot = findSpot(id, x, z) ?? findSpot(id, pl.x + fx * 3.5, pl.z + fz * 3.5, 10);
+  if (!spot) {
+    await goToLevel('chowk');
+    await new Promise((r) => setTimeout(r, 120));
+    const p = runtime.player;
+    spot = findSpot(id, p.x - Math.sin(p.yaw) * 4, p.z - Math.cos(p.yaw) * 4, 12);
+  }
+  if (!spot) return false;
+  return placeCracker(id, spot[0], spot[1]);
 }
 
 /** Along the road at this spot: the gali and chowk run along x, side galis along z. */
@@ -248,7 +299,8 @@ export async function placeCracker(id: PackageId, x: number, z: number) {
   if (busy() || g.uses[id] <= 0) return false;
   if (checkSpot(id, x, z) !== 'ok') return false;
   const pkg = PACKAGE_BY_ID[id];
-  const pos: Vec3 = [x, currentLevel().floor, z];
+  const thrown = throwsDown(id);
+  const pos: Vec3 = [x, placeFloor(id), z];
   g.setPlacing(null);
   g.setActive({ id, step: 'spotlight', replay: false, capture: g.packages[id] !== 'MEMORY_CAPTURED', pos });
   // people and traffic on the road keep clear of a cracker down there (a terrace is out of their way)
@@ -259,7 +311,17 @@ export async function placeCracker(id: PackageId, x: number, z: number) {
   cam?.setUserInput(false);
   runtime.reveal.pos = [x, pos[1] + 1.3, z];
   runtime.reveal.intensity = 0.6;
-  await cam?.frame(pos, FRAMING[pkg.crackerType]);
+  // thrown from above: step to the edge nearest it and look down over the parapet
+  const L = currentLevel();
+  if (thrown && L.walk && cam) {
+    const w = L.walk;
+    const ex = Math.min(w.x1 - 0.35, Math.max(w.x0 + 0.35, x));
+    const ez = Math.min(w.z1 - 0.35, Math.max(w.z0 + 0.35, z));
+    const dist = Math.max(0.5, Math.hypot(x - ex, z - ez));
+    const yaw = Math.atan2(-(x - ex), -(z - ez));
+    const pitch = Math.max(-0.95, -Math.atan2(L.floor + 1.6, dist) + 0.12);
+    await cam.travel({ x: ex, z: ez, yaw, pitch, floor: L.floor }, 0.9);
+  } else await cam?.frame(pos, FRAMING[pkg.crackerType]);
   return true;
 }
 

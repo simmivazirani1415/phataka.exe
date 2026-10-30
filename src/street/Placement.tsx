@@ -5,13 +5,13 @@ import { create } from 'zustand';
 import { PACKAGE_BY_ID, type PackageId } from '../assets/AssetRegistry';
 import { useGame } from '../game/GameState';
 import { runtime } from '../game/Runtime';
-import { checkSpot, CLEARANCE, placeCracker, type PlaceCheck } from '../game/DiscoverySystem';
+import { checkSpot, CLEARANCE, placeFloor, placeNear, type PlaceCheck } from '../game/DiscoverySystem';
 import { audio } from '../audio/AudioEngine';
-import { currentLevel } from './StreetLayout';
 
 // Carrying a cracker from the tray to the ground. A reticle follows the pointer (or the
-// finger) over the road: a gold ring where it may go, a red ring with a cross where it may
-// not (walls, sidewalks, people, vehicles, animals). Releasing a drag, or tapping, puts it down.
+// finger) over the road: a gold ring where it may go, an orange one where it is too tight
+// (walls, people, vehicles). Releasing a drag, or tapping, puts it down, at the nearest good
+// spot if that one is too tight.
 
 interface PlaceStore {
   check: PlaceCheck | null;
@@ -27,12 +27,12 @@ const _hit = new THREE.Vector3();
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 /** Where on the ground is the pointer (or, without one, the middle of the view ahead)? */
-function groundUnder(camera: THREE.Camera, w: number, h: number): THREE.Vector3 | null {
+function groundUnder(camera: THREE.Camera, w: number, h: number, id: PackageId): THREE.Vector3 | null {
   const x = pointer.has ? pointer.x : w / 2;
   const y = pointer.has ? pointer.y : h * 0.72;
   _ndc.set((x / w) * 2 - 1, -(y / h) * 2 + 1);
   _ray.setFromCamera(_ndc, camera);
-  GROUND.constant = -currentLevel().floor;
+  GROUND.constant = -placeFloor(id);
   return _ray.ray.intersectPlane(GROUND, _hit);
 }
 
@@ -42,11 +42,9 @@ export function dropHere(): boolean {
   const id = g.placing;
   const r = runtime.reticle;
   if (!id || !r) return false;
-  if (r.check !== 'ok') {
-    audio.tap();
-    return false;
-  }
-  void placeCracker(id, r.x, r.z);
+  // a bad spot never blocks: it goes down at the nearest good one instead
+  if (r.check !== 'ok') audio.tap();
+  void placeNear(id, r.x, r.z);
   return true;
 }
 
@@ -58,12 +56,14 @@ export function Placement() {
   const disc = useRef<THREE.Mesh>(null!);
   const cross = useRef<THREE.Group>(null!);
   const arrow = useRef<THREE.Mesh>(null!);
-  const last = useRef<{ id: PackageId | null; x: number; z: number }>({ id: null, x: 0, z: 0 });
+  const last = useRef<{ id: PackageId | null; x: number; z: number } | null>(null);
+  /** the latest reticle update, so the pointer listeners (bound once) never use a stale view size */
+  const update = useRef<() => unknown>(() => null);
 
   const mats = useMemo(
     () => ({
       ok: new THREE.Color('#FFD15A'),
-      bad: new THREE.Color('#FF4D3D'),
+      bad: new THREE.Color('#F08A3C'),
     }),
     [],
   );
@@ -91,7 +91,7 @@ export function Placement() {
       if (tap && useGame.getState().placing) {
         move(e);
         // re-evaluate exactly under the finger before deciding
-        updateReticle();
+        update.current();
         dropHere();
       }
     };
@@ -112,9 +112,12 @@ export function Placement() {
       runtime.reticle = null;
       return null;
     }
-    const hit = groundUnder(camera, size.width, size.height);
+    const hit = groundUnder(camera, size.width, size.height, id);
     if (!hit) {
-      runtime.reticle = { x: last.current.x, z: last.current.z, check: 'far' };
+      // pointing at the sky: aim a few steps ahead instead
+      const p = runtime.player;
+      const l = last.current?.id === id ? last.current : { x: p.x - Math.sin(p.yaw) * 3.5, z: p.z - Math.cos(p.yaw) * 3.5 };
+      runtime.reticle = { x: l.x, z: l.z, check: 'far' };
       return runtime.reticle;
     }
     const check = checkSpot(id, hit.x, hit.z);
@@ -123,6 +126,7 @@ export function Placement() {
     if (usePlace.getState().check !== check) usePlace.setState({ check });
     return runtime.reticle;
   };
+  update.current = updateReticle;
 
   useEffect(() => {
     if (!placing) {
@@ -140,7 +144,7 @@ export function Placement() {
     if (!r) return;
     const R = CLEARANCE[PACKAGE_BY_ID[id].crackerType];
     const ok = r.check === 'ok';
-    g.position.set(r.x, currentLevel().floor + 0.04, r.z);
+    g.position.set(r.x, placeFloor(id) + 0.04, r.z);
     const t = st.clock.elapsedTime;
     ring.current.scale.setScalar(R * (1 + Math.sin(t * 5) * 0.03));
     const c = ok ? mats.ok : mats.bad;
@@ -148,7 +152,7 @@ export function Placement() {
     (disc.current.material as THREE.MeshBasicMaterial).color.copy(c);
     (disc.current.material as THREE.MeshBasicMaterial).opacity = ok ? 0.22 : 0.16;
     disc.current.scale.setScalar(R);
-    cross.current.visible = !ok;
+    cross.current.visible = false;
     cross.current.rotation.y = t * 0.5;
     arrow.current.visible = ok;
     arrow.current.position.y = 0.55 + Math.sin(t * 4) * 0.08;

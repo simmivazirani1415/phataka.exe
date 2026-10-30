@@ -1,5 +1,6 @@
-// Procedural Web Audio sound design. Nothing is created until the user enables sound,
-// so the experience always begins silent.
+// Procedural Web Audio sound design. Cracker bursts (and the little UI sounds) are always on,
+// from the first tap; the sound toggle only switches the background ambience of the mohalla,
+// which starts muted.
 
 type Category = 'ambience' | 'world' | 'fireworks' | 'ui' | 'samples';
 
@@ -36,11 +37,11 @@ class Engine {
     comp.attack.value = 0.004;
     comp.release.value = 0.2;
     const master = ctx.createGain();
-    master.gain.value = 0;
+    master.gain.value = 0.85;
     master.connect(comp).connect(ctx.destination);
     (Object.keys(CATEGORY_GAIN) as Category[]).forEach((c) => {
       const g = ctx.createGain();
-      g.gain.value = CATEGORY_GAIN[c];
+      g.gain.value = c === 'ambience' && !this.enabled ? 0 : CATEGORY_GAIN[c];
       g.connect(master);
       this.cats[c] = g;
     });
@@ -100,20 +101,25 @@ class Engine {
     return true;
   }
 
+  /** Background ambience on or off; bursts play either way. */
   setEnabled(on: boolean) {
     this.enabled = on;
-    if (on) {
-      const ctx = this.ensure();
-      if (!ctx || !this.master) return;
-      ctx.resume();
-      this.master.gain.cancelScheduledValues(ctx.currentTime);
-      this.master.gain.setTargetAtTime(0.85, ctx.currentTime, 0.25);
-      this.startAmbience();
-    } else if (this.ctx && this.master) {
-      this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.08);
-      this.stopAmbience();
+    const ctx = this.ensure();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    const amb = this.cats.ambience;
+    if (amb) {
+      amb.gain.cancelScheduledValues(ctx.currentTime);
+      amb.gain.setTargetAtTime(on ? CATEGORY_GAIN.ambience : 0, ctx.currentTime, on ? 0.25 : 0.08);
     }
+    if (on) this.startAmbience();
+    else this.stopAmbience();
+  }
+
+  /** Browsers keep audio locked until the first tap or key; wake it then. */
+  wake() {
+    const ctx = this.ensure();
+    if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => {});
   }
 
   setCelebration(level: number) {
@@ -126,7 +132,8 @@ class Engine {
   }
 
   private live() {
-    return this.enabled && this.ctx && this.ctx.state !== 'closed' ? this.ctx : null;
+    const ctx = this.ensure();
+    return ctx && ctx.state !== 'closed' ? ctx : null;
   }
 
   private noiseSrc(ctx: AudioContext) {

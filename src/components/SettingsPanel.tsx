@@ -63,9 +63,9 @@ export function SettingsPanel() {
           <IconClose size={18} />
         </button>
       </header>
-      <Row icon={<IconSoundOn size={18} />} label="Sound">
+      <Row icon={<IconSoundOn size={18} />} label="Background sound">
         <Switch
-          label="Sound"
+          label="Background sound"
           value={settings.sound}
           onChange={(sound) => {
             update({ sound });

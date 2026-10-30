@@ -12,11 +12,11 @@ import { dropHere, pointer, usePlace } from '../Placement';
 // tapped, then the ground tapped).
 
 const REASON: Record<string, string> = {
-  ground: 'Not enough room here, try a clearer spot',
-  person: 'Someone is standing too close',
-  vehicle: 'A vehicle is too close',
-  far: 'Too far, walk a little closer',
-  near: 'Too close to you, aim a step ahead',
+  ground: 'Tight spot. Tap anyway and it goes down nearby',
+  person: 'Someone is close. Tap anyway and it goes down nearby',
+  vehicle: 'A vehicle is close. Tap anyway and it goes down nearby',
+  far: 'A bit far. Tap anyway and it goes down nearby',
+  near: 'Right at your feet. Tap anyway and it goes down nearby',
 };
 
 export function InventoryTray() {

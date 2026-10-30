@@ -106,6 +106,8 @@ function skyAim(o: V3): V3 {
 }
 
 /** A short line from whoever stands nearest, or from the street itself. */
+const POP_LINES = ['Arre! Pairon mein pataka!', 'Kaun phenk raha hai upar se?', 'Haha, chhote patake!', 'Oye, balcony waale!'];
+
 function shout(text: string, p: V3) {
   let best: { x: number; y: number; z: number; kind: string } | null = null;
   let bd = 9;
@@ -688,6 +690,7 @@ const EFFECTS: Record<CrackerType, EffectSpec> = {
         c.light(p, cols[0], 0.6);
         c.vars.count++;
         c.vars.next = t + pick([0.08, 0.12, 0.2, 0.35, 0.15]);
+        if (c.vars.count === 1 && crowd.agents.some((a) => !a.hidden && a.owner !== 'rider' && Math.hypot(a.x - c.o[0], a.z - c.o[2]) < 2.6)) shout(pick(POP_LINES), c.o);
         if (c.vars.count === 1 || c.vars.count === 6) runtime.emit({ kind: 'firework', pos: p, strength: 0.4, text: c.vars.count === 6 ? 'Chhota packet, bada surprise!' : undefined });
         if (c.vars.count === 4) c.model.visible = false;
       } else c.light(c.o, '#FFD93B', 0);

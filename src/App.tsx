@@ -193,8 +193,15 @@ export default function App() {
     }
     fontsReady().then(() => setReady(true));
     hydrateMemories();
-    // sound preference is never restored: audio always starts muted
+    // the background ambience always starts muted; bursts are audible from the first tap
     audio.setEnabled(false);
+    const unlock = () => audio.wake();
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('reduced-motion', reducedMotion);

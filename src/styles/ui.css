@@ -805,6 +805,21 @@ body {
   width: 100%;
   margin-top: 4px;
 }
+.spot-panel .btn-line {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 8px;
+  font-size: 14px;
+  gap: 8px;
+}
+.spot-panel .btn-primary + .btn-line {
+  margin-top: 8px;
+}
+.spot-note {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--gray);
+}
 .spot-hand {
   display: flex;
   flex-direction: column;

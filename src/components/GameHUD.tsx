@@ -95,7 +95,7 @@ export function GameHUD() {
           <IconAlbum size={20} />
           {memories > 0 && <span className="badge">{memories}</span>}
         </button>
-        <button className="hud-btn" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? 'Mute sound' : 'Turn sound on'} title={sound ? 'Sound on' : 'Sound off'}>
+        <button className="hud-btn" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? 'Mute background sound' : 'Turn on background sound'} title={sound ? 'Background sound on' : 'Background sound off (bursts stay on)'}>
           {sound ? <IconSoundOn size={20} /> : <IconSoundOff size={20} />}
         </button>
         <button className={`hud-btn ${ui.settings ? 'on' : ''}`} onClick={() => open({ settings: !ui.settings })} aria-label="Settings" title="Settings">
