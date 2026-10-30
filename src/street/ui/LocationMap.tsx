@@ -78,8 +78,7 @@ export function LocationMap() {
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [open, setUi]);
-  const card = useGame((s) => s.ui.card);
-  if (phase !== 'playing' || album || !open || active || card) return null;
+  if (phase !== 'playing' || album || !open || active) return null;
   return (
     <aside className="panel locpanel" role="dialog" aria-label="Kahan se chalaoge?">
       <header className="panel-head">

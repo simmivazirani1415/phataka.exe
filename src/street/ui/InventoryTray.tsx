@@ -12,10 +12,11 @@ import { dropHere, pointer, usePlace } from '../Placement';
 // tapped, then the ground tapped).
 
 const REASON: Record<string, string> = {
-  ground: 'Find open ground',
-  person: 'Too close to people',
-  vehicle: 'Too close to a vehicle',
-  far: 'A little closer',
+  ground: 'Not enough room here, try a clearer spot',
+  person: 'Someone is standing too close',
+  vehicle: 'A vehicle is too close',
+  far: 'Too far, walk a little closer',
+  near: 'Too close to you, aim a step ahead',
 };
 
 export function InventoryTray() {
@@ -157,7 +158,7 @@ export function InventoryTray() {
               );
             })}
           </ul>
-          <p className="inv-foot">{owned < 8 ? 'Tap a locked pataka to find its box. Drag a collected one onto the ground.' : 'Drag a pataka onto the ground to light it.'}</p>
+          <p className="inv-foot">{owned < 8 ? 'Tap a locked pataka to find its box. Tap a collected one, then tap open ground where the ring turns gold.' : 'Tap a pataka, then tap open ground where the ring turns gold.'}</p>
         </aside>
       )}
       {ghost && (

@@ -1,6 +1,7 @@
 import type { PackageAsset } from '../assets/AssetRegistry';
 import { getStampSource } from '../assets/PackageTextures';
 import { addGrain, FONTS, makeCanvas } from './TextureGenerator';
+import { SITE } from '../config/site';
 
 // Composites a captured frame into a keepsake Polaroid: warm paper, vintage grade,
 // handwritten caption, printed date and the pataka's own artwork as a postage stamp.
@@ -139,7 +140,7 @@ export async function composePolaroid(photoUrl: string, pkg: PackageAsset, capti
   ctx.fillText(`“${caption}”`, margin + 12, by + 132);
   ctx.fillStyle = 'rgba(70,55,40,0.7)';
   ctx.font = `500 21px ${FONTS.ui}`;
-  ctx.fillText(`Diwali Night — Pataka.exe  ·  ${formatDate(ts)}`, margin + 14, by + 182);
+  ctx.fillText(`Diwali Night — ${SITE.name}  ·  ${formatDate(ts)}`, margin + 14, by + 182);
   // stamp, overlapping the photo corner
   const art = await getStampSource(pkg.id);
   drawStamp(ctx, art, w - margin - 150, by - 115, 140, 176, -0.09, pkg.palette[0]);

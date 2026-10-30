@@ -833,13 +833,10 @@ export function isOpen(x: number, z: number, m = STREET.radius) {
   return inside;
 }
 
-/** Road and chowk only: where crackers may be put down. */
+/** Any open ground (road, chowk, pavement, side gali) with room around it: walls, stalls
+ * and props must stay a little clear of the cracker. */
 export function isBurstGround(x: number, z: number, clearance: number) {
-  if (!isOpen(x, z, Math.max(0.6, clearance * 0.5))) return false;
-  const k = chunkOf(x);
-  const v = getVariants()[variantAt(k)];
-  const lx = x - k * C;
-  return v.burst.some((r) => inRect(r, lx, z, 0));
+  return isOpen(x, z, Math.max(0.55, Math.min(0.9, clearance * 0.5)));
 }
 
 /** Off the main gali and the chowk, in one of the side galis (which run along z). */

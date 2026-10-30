@@ -215,22 +215,24 @@ export function cancelPlacing() {
 
 let hazardId = 0;
 
-export type PlaceCheck = 'ok' | 'ground' | 'person' | 'vehicle' | 'far';
+export type PlaceCheck = 'ok' | 'ground' | 'person' | 'vehicle' | 'far' | 'near';
 
-/** Is this a good spot for the cracker? Open road or chowk only, clear of everyone. */
+/** Is this a good spot for the cracker? Any open ground with room, clear of people and vehicles. */
 export function checkSpot(id: PackageId, x: number, z: number): PlaceCheck {
   const type = PACKAGE_BY_ID[id].crackerType;
   const R = CLEARANCE[type];
   const d = Math.hypot(x - runtime.player.x, z - runtime.player.z);
-  if (d > 14 || d < 1.1) return 'far';
+  if (d > 16) return 'far';
+  if (d < 1.1) return 'near';
   if (!burstOnLevel(x, z, R)) return 'ground';
   // a ladi lies along the road: both of its ends must be on open ground too
   if (type === 'ladi') {
     const [ax, az] = ladiAxis(x, z);
-    if (!burstOnLevel(x + ax * 1.9, z + az * 1.9, 0.8) || !burstOnLevel(x - ax * 1.7, z - az * 1.7, 0.8)) return 'ground';
+    if (!burstOnLevel(x + ax * 1.9, z + az * 1.9, 0.6) || !burstOnLevel(x - ax * 1.7, z - az * 1.7, 0.6)) return 'ground';
   }
   const y = currentLevel().floor;
-  for (const [kind, s] of runtime.solids) if (s(x, z, R, y)) return kind;
+  // people and vehicles nearby: only the cracker's own blast radius needs to be clear
+  for (const [kind, s] of runtime.solids) if (s(x, z, Math.min(R, 1.4), y)) return kind;
   return 'ok';
 }
 

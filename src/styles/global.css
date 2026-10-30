@@ -395,17 +395,6 @@ button {
   height: auto;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 14px 30px rgba(0, 0, 0, 0.35);
 }
-.new-memory {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 16px;
-  background: rgba(7, 12, 28, 0.62);
-}
 .new-memory-slot {
   width: min(330px, 74vw, 46vh);
   overflow: visible;
@@ -429,16 +418,6 @@ button {
   to {
     filter: none;
   }
-}
-.new-memory-line {
-  margin: 0;
-  font-family: var(--hand);
-  font-size: 18px;
-  text-align: center;
-}
-.new-memory-actions {
-  display: flex;
-  gap: 12px;
 }
 
 /* ---------- fallback ---------- */

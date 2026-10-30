@@ -83,7 +83,7 @@ export const runtime = {
   /** crackers on the ground right now; people and vehicles keep away */
   hazards: [] as Hazard[],
   /** where the carried cracker would go, and whether it may */
-  reticle: null as { x: number; z: number; check: 'ok' | 'ground' | 'person' | 'vehicle' | 'far' } | null,
+  reticle: null as { x: number; z: number; check: 'ok' | 'ground' | 'person' | 'vehicle' | 'far' | 'near' } | null,
   /** longest step the firework timeline takes per frame (headless tests raise it) */
   maxDt: 0.05,
   /** moving things the player cannot walk through (vehicles, people) register a test here */

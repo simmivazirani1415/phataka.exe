@@ -478,7 +478,8 @@ const EFFECTS: Record<CrackerType, EffectSpec> = {
 
   bomb: {
     duration: 5.0,
-    captureAt: 2.85,
+    // a beat after the flash, so the photo shows the sparks rather than a white-out
+    captureAt: 3.2,
     setup: (c) => {
       c.model.position.set(...c.o);
       c.model.scale.setScalar(1.7);

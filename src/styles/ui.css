@@ -699,31 +699,51 @@ body {
 
 /* ---------- focus panels: a cracker's card, its lighting, a box held up ---------- */
 .focus {
-  left: max(20px, env(safe-area-inset-left));
-  top: 50%;
-  width: 300px;
-  padding: 18px 18px 16px;
-  transform: translateY(-50%);
+  /* centred at the bottom, art beside the words, so the street and the cracker stay in view */
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: min(580px, calc(100% - 32px));
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  column-gap: 20px;
+  align-items: center;
+  padding: 18px 20px 18px 18px;
+  transform: translateX(-50%);
   text-align: left;
-  animation: focusIn 260ms var(--ease) both;
+  animation: focusUp 260ms var(--ease) both;
 }
-@keyframes focusIn {
+@keyframes focusUp {
   from {
     opacity: 0;
-    transform: translate(-8px, -50%);
+    transform: translate(-50%, 14px);
   }
+}
+.focus > :not(.focus-art):not(.spot-hand):not(.focus-close) {
+  grid-column: 2;
+}
+.focus.reveal {
+  grid-template-columns: 1fr;
+  width: min(420px, calc(100% - 32px));
+}
+.focus.reveal > :not(.focus-art):not(.spot-hand):not(.focus-close) {
+  grid-column: 1;
 }
 .focus-close {
   position: absolute;
   top: 10px;
   right: 10px;
 }
+.focus-art,
+.spot-hand {
+  grid-column: 1;
+  grid-row: 1 / span 6;
+}
 .focus-art {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 210px;
-  margin: 2px 0 12px;
+  height: 190px;
+  margin: 0;
 }
 .focus-art img {
   display: block;
@@ -735,7 +755,7 @@ body {
   transform: rotate(-2deg);
 }
 .focus-art.small {
-  height: 130px;
+  height: 150px;
 }
 .focus-art.small img {
   transform: none;
@@ -837,13 +857,16 @@ body {
     top: auto;
     bottom: max(10px, env(safe-area-inset-bottom));
     width: auto;
-    display: grid;
     grid-template-columns: 96px 1fr;
     column-gap: 14px;
     align-items: start;
     padding: 14px;
     transform: none;
     animation-name: sheetIn;
+  }
+  .focus.reveal {
+    width: auto;
+    grid-template-columns: 1fr;
   }
   .focus > :not(.focus-art):not(.spot-hand):not(.focus-close) {
     grid-column: 2;
@@ -1007,15 +1030,16 @@ body {
 /* ---------- a new Polaroid, the final banner ---------- */
 .new-memory {
   position: absolute;
+  inset: auto;
   left: 50%;
   top: 50%;
   z-index: 9;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  width: min(340px, calc(100% - 32px));
-  padding: 20px 18px 16px;
+  align-items: stretch;
+  gap: 14px;
+  width: min(360px, calc(100% - 32px));
+  padding: 14px 18px 18px;
   color: var(--char);
   background: var(--ivory) var(--buti);
   border-radius: 18px;
@@ -1028,34 +1052,67 @@ body {
     opacity: 0;
   }
 }
+.nm-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nm-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 14px/1 var(--ui);
+  color: var(--plum);
+}
+.nm-kicker svg {
+  color: var(--marigold);
+}
+.nm-count {
+  margin-left: auto;
+  padding: 4px 9px;
+  font: 600 12px/1 var(--ui);
+  color: var(--char);
+  background: color-mix(in srgb, var(--marigold) 35%, transparent);
+  border-radius: 999px;
+}
+.nm-head .icon-btn {
+  margin-right: -6px;
+}
 .new-memory-slot {
-  width: 100%;
   display: grid;
   place-items: center;
+  width: 100%;
+  max-height: 52vh;
+  padding: 4px 0;
 }
 .new-memory .polaroid-img {
-  width: 78%;
-  box-shadow: 0 6px 18px rgba(39, 35, 33, 0.3);
-  animation: settle 700ms var(--ease) both;
+  width: 84%;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(39, 35, 33, 0.16), 0 12px 26px rgba(39, 35, 33, 0.24);
+  animation: settle 700ms var(--ease) both, develop 2.6s ease 0.2s both;
 }
 @keyframes settle {
   from {
     opacity: 0;
-    transform: translateY(-14px) rotate(-6deg);
+    transform: translateY(-14px) rotate(-5deg);
   }
   to {
-    transform: rotate(-1.5deg);
+    transform: rotate(-1.2deg);
   }
 }
 .new-memory-line {
   margin: 0;
-  font-size: 14px;
+  font: 400 14px/1.4 var(--ui);
   text-align: center;
   color: var(--gray);
 }
 .new-memory-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
   gap: 8px;
+}
+.new-memory-actions button {
+  justify-content: center;
 }
 .final-banner {
   position: absolute;
