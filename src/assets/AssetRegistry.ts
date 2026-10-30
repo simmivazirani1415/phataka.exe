@@ -22,7 +22,7 @@ export type CrackerType =
   | 'sparkler'
   | 'anaar'
   | 'ladi'
-  | 'snake'
+  | 'skyshot'
   | 'popPop';
 
 export type PackageId =
@@ -32,7 +32,7 @@ export type PackageId =
   | 'phuljhadi_mami'
   | 'anaar_maasi'
   | 'ladi_tauji'
-  | 'snake_wale_nana'
+  | 'saat_shot_nana'
   | 'pop_pop_chotu';
 
 /** Front UV quad in BL, BR, TR, TL order (0..1). Rectangular unless the artwork is tapered. */
@@ -232,18 +232,18 @@ export const PACKAGES: PackageAsset[] = [
     interaction: { hitPadding: 0.35, focusZoom: 3.2 },
   },
   {
-    id: 'snake_wale_nana',
+    id: 'saat_shot_nana',
     type: 'package',
-    name: 'Snake Wale Nana',
-    crackerType: 'snake',
-    crackerLabel: 'Magic Snake',
-    personality: 'Quiet until he suddenly surprises everyone.',
+    name: 'Saat Shot Nana',
+    crackerType: 'skyshot',
+    crackerLabel: '7 Shot Rocket',
+    personality: 'Quiet until he surprises everyone, seven times over.',
     copy: 'Picture abhi baaki hai.',
-    polaroidCaption: 'Dheere dheere, surprise.',
+    polaroidCaption: 'Ek ke baad ek, surprise.',
     locationHint: 'Tucked near the chai stall.',
     palette: ['#1E6B47', '#FFF0D2', '#E3A12F', '#0F2A1D'],
-    image: { front: base + 'snake_wale_nana_front.jpg', reference: base + 'snake_wale_nana.png', frontUV: RECT },
-    proceduralFallback: 'snakeBox',
+    image: { front: base + 'saat_shot_nana_front.jpg', reference: base + 'saat_shot_nana.png', frontUV: RECT },
+    proceduralFallback: 'skyshotBox',
     box: { w: 0.6, h: 0.7, d: 0.52, taper: 1, lid: 0.2 },
     scale: 1.2,
     anchor: 'chai.tucked',
@@ -311,4 +311,47 @@ export const DIALOGUE = {
   turn: ['Ab meri baari!', 'Ek aur!', 'Mujhe bhi!'],
   bomb: ['Arre baap re!', 'Kaan bajj gaye!', 'Chacha, dheere!'],
   chai: ['Chai ready hai!', 'Ek cutting?', 'Garam garam!'],
+};
+
+// ------------------------------------------------------------------------------------------
+// The street cast: Simran's illustrated people and vehicles, cut out on transparent
+// backgrounds (cleaned by tools/prepare_cast.py). They are drawn as upright cut-outs.
+// `height` is the real height in metres; `faces` is which way the artwork looks
+// (1 = to the right of the image, -1 = to the left), so the cut-out can be mirrored to
+// face where it is going.
+
+export interface CastSprite {
+  id: string;
+  url: string;
+  height: number;
+  /** width / height of the image */
+  aspect: number;
+  faces: 1 | -1;
+}
+
+const cast = `${import.meta.env.BASE_URL}assets/`;
+
+export const CAST_PEOPLE: Record<'aunty' | 'boy' | 'girl' | 'uncle' | 'grandpa', CastSprite> = {
+  aunty: { id: 'aunty', url: cast + 'people/aunty_diya.webp', height: 1.6, aspect: 0.523, faces: -1 },
+  boy: { id: 'boy', url: cast + 'people/boy_gift.webp', height: 1.25, aspect: 0.655, faces: 1 },
+  girl: { id: 'girl', url: cast + 'people/girl_marigold.webp', height: 1.35, aspect: 0.759, faces: 1 },
+  uncle: { id: 'uncle', url: cast + 'people/uncle_mithai.webp', height: 1.72, aspect: 0.727, faces: 1 },
+  grandpa: { id: 'grandpa', url: cast + 'people/grandpa_lantern.webp', height: 1.68, aspect: 0.575, faces: -1 },
+};
+
+/** The same people standing still, drawn from the front: used while someone stands about. */
+export const CAST_PEOPLE_STAND: Record<keyof typeof CAST_PEOPLE, CastSprite> = {
+  aunty: { id: 'aunty_stand', url: cast + 'people/aunty_stand.webp', height: 1.6, aspect: 0.341, faces: 1 },
+  boy: { id: 'boy_stand', url: cast + 'people/boy_stand.webp', height: 1.22, aspect: 0.333, faces: 1 },
+  girl: { id: 'girl_stand', url: cast + 'people/girl_stand.webp', height: 1.35, aspect: 0.53, faces: 1 },
+  uncle: { id: 'uncle_stand', url: cast + 'people/uncle_stand.webp', height: 1.72, aspect: 0.683, faces: 1 },
+  grandpa: { id: 'grandpa_stand', url: cast + 'people/grandpa_stand.webp', height: 1.68, aspect: 0.511, faces: 1 },
+};
+
+export const CAST_VEHICLES: Record<'scooter' | 'bicycle' | 'auto' | 'rickshaw' | 'parkedScooter', CastSprite> = {
+  scooter: { id: 'scooter', url: cast + 'vehicles/scooter_rider.webp', height: 1.75, aspect: 0.994, faces: 1 },
+  bicycle: { id: 'bicycle', url: cast + 'vehicles/bicycle_girl.webp', height: 1.75, aspect: 0.975, faces: 1 },
+  auto: { id: 'auto', url: cast + 'vehicles/auto.webp', height: 2.05, aspect: 1.025, faces: -1 },
+  rickshaw: { id: 'rickshaw', url: cast + 'vehicles/rickshaw.webp', height: 2.2, aspect: 0.995, faces: 1 },
+  parkedScooter: { id: 'parkedScooter', url: cast + 'vehicles/scooter_gifts.webp', height: 1.72, aspect: 1.012, faces: 1 },
 };

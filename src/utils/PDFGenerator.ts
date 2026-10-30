@@ -4,6 +4,7 @@ import type { PackageId } from '../assets/AssetRegistry';
 import { getStampSource } from '../assets/PackageTextures';
 import { addGrain, FONTS, makeCanvas, mulberry32 } from './TextureGenerator';
 import { drawStamp, formatDate, loadImg } from './PolaroidRenderer';
+import { SITE } from '../config/site';
 
 // A5 landscape scrapbook (210 x 148 mm). Each page is painted on a canvas at ~200 dpi,
 // compressed as JPEG and placed full-bleed, so typography and artwork never clip.
@@ -134,7 +135,7 @@ export async function generateMemoryBook({ memories, packages, worldPhoto, onPro
     center(ctx, 'MY MOHALLA', PH * 0.47, `${17 * MM}px ${FONTS.display}`, '#101A32');
     center(ctx, 'A little collection of big memories.', PH * 0.6, `${7 * MM}px ${FONTS.hand}`, '#5A3A22');
     for (let i = 0; i < 7; i++) diya(ctx, PW * (0.3 + i * 0.067), PH * 0.73, MM * 0.9);
-    center(ctx, `Pataka.exe  ·  Diwali ${year}`, PH * 0.84, `600 ${4 * MM}px ${FONTS.ui}`, '#8A6A4A');
+    center(ctx, `${SITE.name}  ·  Diwali ${year}`, PH * 0.84, `600 ${4 * MM}px ${FONTS.ui}`, '#8A6A4A');
     const r = mulberry32(3);
     const shown = discovered.slice(0, 4);
     for (let i = 0; i < shown.length; i++) {
@@ -251,7 +252,7 @@ export async function generateMemoryBook({ memories, packages, worldPhoto, onPro
     center(ctx, 'Patake toh khatam ho gaye.', PH * 0.42, `${10 * MM}px ${FONTS.display}`, '#FFF0D2');
     center(ctx, 'Yaadein nahi.', PH * 0.56, `${10 * MM}px ${FONTS.display}`, '#F5A623');
     for (let i = 0; i < 9; i++) diya(ctx, PW * (0.26 + i * 0.06), PH * 0.75, MM * 0.9);
-    center(ctx, `Shubh Deepavali  ·  Pataka.exe ${year}`, PH * 0.88, `600 ${3.8 * MM}px ${FONTS.ui}`, 'rgba(255,240,210,0.7)');
+    center(ctx, `Shubh Deepavali  ·  ${SITE.name} ${year}`, PH * 0.88, `600 ${3.8 * MM}px ${FONTS.ui}`, 'rgba(255,240,210,0.7)');
   });
 
   for (let i = 0; i < pages.length; i++) {
@@ -263,7 +264,7 @@ export async function generateMemoryBook({ memories, packages, worldPhoto, onPro
     onProgress?.((i + 1) / pages.length);
     await new Promise((r) => setTimeout(r, 0));
   }
-  doc.setProperties({ title: 'My Diwali, My Mohalla — Pataka.exe', subject: 'A little collection of big memories.', creator: 'Pataka.exe' });
+  doc.setProperties({ title: `My Diwali, My Mohalla — ${SITE.name}`, subject: 'A little collection of big memories.', creator: SITE.name });
   return doc.output('blob');
 }
 

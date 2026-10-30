@@ -12,7 +12,7 @@ export function SoundToggle({ labelled = false, className = '' }: { labelled?: b
     if (next) audio.tap();
   };
   return (
-    <button className={`btn ${labelled ? 'ghost small' : 'fab'} ${className}`} onClick={toggle} aria-pressed={on} aria-label={on ? 'Mute sound' : 'Turn sound on'} title={on ? 'Sound on' : 'Sound off'}>
+    <button className={`btn ${labelled ? 'ghost small' : 'fab'} ${className}`} onClick={toggle} aria-pressed={on} aria-label={on ? 'Mute background sound' : 'Turn on background sound'} title={on ? 'Background sound on' : 'Background sound off'}>
       {on ? <IconSoundOn /> : <IconSoundOff />}
       {labelled && <span>{on ? 'Sound on' : 'Sound off'}</span>}
     </button>

@@ -34,8 +34,15 @@ export interface Settings {
   quickReveal: boolean;
 }
 
-/** The reveal flow for the package in focus. */
-export type RevealStep = 'focusing' | 'presented' | 'opening' | 'opened' | 'lighting' | 'playing' | 'developing';
+/**
+ * The flow for the cracker in focus. A box is picked up and opened ('focusing' to 'opened'),
+ * its cracker goes to the tray; later a cracker put down on the road is framed in a
+ * 'spotlight', lit, and bursts ('playing'), and its first burst develops into a Polaroid.
+ */
+export type RevealStep = 'focusing' | 'presented' | 'opening' | 'opened' | 'lighting' | 'spotlight' | 'playing' | 'developing';
+
+/** Every cracker can be lit this many times per box. */
+export const MAX_USES = 5;
 
 export interface Caption {
   id: number;
@@ -51,7 +58,11 @@ interface GameStore {
   packages: Record<PackageId, PackageState>;
   memories: Memory[];
   settings: Settings;
-  active: { id: PackageId; step: RevealStep; replay: boolean; capture: boolean } | null;
+  active: { id: PackageId; step: RevealStep; replay: boolean; capture: boolean; pos?: Vec3 } | null;
+  /** lights left for each cracker in the tray */
+  uses: Record<PackageId, number>;
+  /** the cracker being carried from the tray to the ground */
+  placing: PackageId | null;
   ui: {
     tray: boolean;
     album: boolean;
@@ -63,6 +74,14 @@ interface GameStore {
     perfSuggest: boolean;
     finalSeen: boolean;
     toast: string | null;
+    /** a cracker that just went into the tray (it pulses once) */
+    trayPulse: PackageId | null;
+    /** the collectible card shown when a cracker is picked from the panel */
+    card: PackageId | null;
+    /** the location panel is open */
+    map: boolean;
+    /** a collected card whose box the player is being guided to */
+    guide: PackageId | null;
   };
   captions: Caption[];
   worldPhoto: string | null;
@@ -77,6 +96,8 @@ interface GameStore {
   setUi: (u: Partial<GameStore['ui']>) => void;
   say: (text: string, pos: Vec3, ms?: number) => void;
   setWorldPhoto: (url: string) => void;
+  setUses: (id: PackageId, n: number) => void;
+  setPlacing: (id: PackageId | null) => void;
   reset: () => void;
 }
 
@@ -89,6 +110,7 @@ function prefersReducedMotion() {
 }
 
 const freshPackages = () => Object.fromEntries(PACKAGE_IDS.map((id) => [id, 'HIDDEN'])) as Record<PackageId, PackageState>;
+const freshUses = () => Object.fromEntries(PACKAGE_IDS.map((id) => [id, 0])) as Record<PackageId, number>;
 
 const defaultSettings = (): Settings => ({
   sound: false, // audio always begins muted
@@ -105,6 +127,7 @@ interface SavedMeta {
   settings: Omit<Settings, 'sound'>;
   memories: { id: string; packageId: PackageId; caption: string; createdAt: number }[];
   finalSeen: boolean;
+  uses?: Record<PackageId, number>;
 }
 
 const saved = loadMeta<SavedMeta>();
@@ -121,6 +144,17 @@ function restorePackages(): Record<PackageId, PackageState> {
   return p;
 }
 
+function restoreUses(): Record<PackageId, number> {
+  const u = freshUses();
+  for (const id of PACKAGE_IDS) {
+    const n = saved?.uses?.[id];
+    if (typeof n === 'number') u[id] = Math.max(0, Math.min(MAX_USES, Math.round(n)));
+    // an opened box from an older save starts with a full set
+    else if (saved?.packages?.[id] && saved.packages[id] !== 'HIDDEN' && saved.packages[id] !== 'DISCOVERED') u[id] = MAX_USES;
+  }
+  return u;
+}
+
 let captionId = 0;
 
 export const useGame = create<GameStore>((set, get) => ({
@@ -130,7 +164,9 @@ export const useGame = create<GameStore>((set, get) => ({
   memories: [],
   settings: { ...defaultSettings(), ...(saved?.settings ?? {}), sound: false },
   active: null,
-  ui: { tray: false, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null },
+  uses: restoreUses(),
+  placing: null,
+  ui: { tray: wide(), album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: wide(), guide: null },
   captions: [],
   worldPhoto: null,
 
@@ -161,22 +197,26 @@ export const useGame = create<GameStore>((set, get) => ({
     window.setTimeout(() => set({ captions: get().captions.filter((c) => c.id !== id) }), ms + 50);
   },
   setWorldPhoto: (url) => set({ worldPhoto: url }),
+  setUses: (id, n) => set({ uses: { ...get().uses, [id]: Math.max(0, Math.min(MAX_USES, n)) } }),
+  setPlacing: (placing) => set({ placing }),
   reset: () => {
     clearMeta();
     clearImages();
     set({
       packages: freshPackages(),
+      uses: freshUses(),
+      placing: null,
       memories: [],
       active: null,
       worldPhoto: null,
-      ui: { ...get().ui, tray: false, album: false, settings: false, newMemory: null, showMe: null, finalSeen: false, toast: 'Mohalla reset. Naye sire se Diwali!' },
+      ui: { ...get().ui, tray: false, album: false, settings: false, newMemory: null, showMe: null, guide: null, card: null, finalSeen: false, toast: 'Mohalla reset. Naye sire se Diwali!' },
     });
   },
 }));
 
 // Persist compact metadata whenever relevant state changes.
 useGame.subscribe((s, prev) => {
-  if (s.packages === prev.packages && s.memories === prev.memories && s.settings === prev.settings && s.introPlayed === prev.introPlayed && s.ui.finalSeen === prev.ui.finalSeen) return;
+  if (s.packages === prev.packages && s.uses === prev.uses && s.memories === prev.memories && s.settings === prev.settings && s.introPlayed === prev.introPlayed && s.ui.finalSeen === prev.ui.finalSeen) return;
   const { sound: _sound, ...settings } = s.settings;
   void _sound;
   saveMeta({
@@ -186,6 +226,7 @@ useGame.subscribe((s, prev) => {
     settings,
     memories: s.memories.map(({ id, packageId, caption, createdAt }) => ({ id, packageId, caption, createdAt })),
     finalSeen: s.ui.finalSeen,
+    uses: s.uses,
   } satisfies SavedMeta);
 });
 
@@ -203,5 +244,16 @@ export async function hydrateMemories() {
   }
   useGame.setState({ memories: restored, packages: pk });
 }
+
+/**
+ * On wide screens the places (left) and the patakas (right) stay open as side panels until you
+ * close them; on phones they are bottom sheets that get out of the way after each pick.
+ */
+export function wide() {
+  return typeof window !== 'undefined' && window.innerWidth > 640;
+}
+/** Keep the drawer as it is on wide screens, close it on phones. */
+export const keepTray = () => wide() && useGame.getState().ui.tray;
+export const keepMap = () => wide() && useGame.getState().ui.map;
 
 export const flashScale = (f: Flash) => (f === 'off' ? 0.2 : f === 'low' ? 0.55 : 1);

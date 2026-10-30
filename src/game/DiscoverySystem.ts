@@ -1,12 +1,18 @@
-import { PACKAGE_BY_ID, type PackageId } from '../assets/AssetRegistry';
-import { useGame } from './GameState';
+import { PACKAGE_BY_ID, type PackageId, type Vec3 } from '../assets/AssetRegistry';
+import { keepTray, MAX_USES, useGame } from './GameState';
 import { runtime } from './Runtime';
 import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
+import { BOX_SPOTS, burstOnLevel, currentLevel, inSideGali, isBurstGround } from '../street/StreetLayout';
+import { goToLevel } from '../street/Locations';
 
 // Orchestrates the package lifecycle:
 // HIDDEN -> DISCOVERED -> OPENING -> UNLOCKED -> PLAYED -> MEMORY_CAPTURED
 // Each transition is explicit and goes through useGame.transition().
+//
+// In the street: pick a glowing box up, open it, and its cracker goes to the tray with
+// MAX_USES lights. Put a cracker down on open road, the camera frames it in a spotlight,
+// light it (hand gesture or tap) and it bursts there. Its first burst becomes a Polaroid.
 
 export interface PackageControl {
   present: () => Promise<void>;
@@ -19,28 +25,65 @@ export interface PackageControl {
 
 export const packageControls = new Map<PackageId, PackageControl>();
 
+/** How far from a cracker people, vehicles and walls must be, by cracker. */
+export const CLEARANCE: Record<string, number> = { bomb: 1.7, rocket: 1.4, chakri: 1.6, sparkler: 1.2, anaar: 1.6, ladi: 2.1, skyshot: 1.6, popPop: 1.9 };
+
+/** Spotlight framing per cracker: distance, camera height and where to look. */
+const FRAMING: Record<string, { dist: number; height: number; lookY: number }> = {
+  // the camera looks a little below the cracker so it sits above the spotlight card
+  bomb: { dist: 2.8, height: 1.05, lookY: -0.35 },
+  rocket: { dist: 3.6, height: 1.15, lookY: -0.1 },
+  chakri: { dist: 2.7, height: 1.15, lookY: -0.45 },
+  sparkler: { dist: 2.5, height: 0.95, lookY: -0.1 },
+  anaar: { dist: 3.2, height: 1.1, lookY: 0.1 },
+  ladi: { dist: 3.6, height: 1.3, lookY: -0.45 },
+  skyshot: { dist: 3.0, height: 1.1, lookY: -0.3 },
+  popPop: { dist: 3.2, height: 1.3, lookY: -0.5 },
+};
+
 const isOpened = (id: PackageId) => {
   const s = useGame.getState().packages[id];
   return s === 'UNLOCKED' || s === 'PLAYED' || s === 'MEMORY_CAPTURED';
 };
 
+const busy = () => {
+  const g = useGame.getState();
+  return g.phase !== 'playing' || !!g.active || !!runtime.fireworks?.busy() || g.ui.album;
+};
+
+/** Can the player pick this box up right now? Opened boxes only refill an empty cracker. */
+export function canPickUp(id: PackageId) {
+  const g = useGame.getState();
+  if (!isOpened(id)) return true;
+  return g.uses[id] <= 0;
+}
+
+export const PICKUP_RANGE = 3.2;
+
+export function distanceToBox(id: PackageId) {
+  const p = BOX_SPOTS[id].pos;
+  return Math.hypot(p[0] - runtime.player.x, p[2] - runtime.player.z);
+}
+
 export async function beginReveal(id: PackageId) {
   const g = useGame.getState();
-  if (g.phase !== 'playing' || g.active || runtime.fireworks?.busy() || g.ui.album) return;
+  if (busy() || !canPickUp(id)) return;
   const ctl = packageControls.get(id);
   const cam = runtime.camera;
   if (!ctl || !cam) return;
-  const pkg = PACKAGE_BY_ID[id];
+  if (distanceToBox(id) > 9) {
+    g.setUi({ toast: 'Thoda paas jaao, phir uthao.' });
+    return;
+  }
   const before = g.packages[id];
   if (before === 'HIDDEN') g.transition(id, 'DISCOVERED');
   const replay = isOpened(id);
-  g.setActive({ id, step: 'focusing', replay, capture: before !== 'MEMORY_CAPTURED' });
-  g.setUi({ tray: false, showMe: null, newMemory: null });
+  g.setPlacing(null);
+  g.setActive({ id, step: 'focusing', replay, capture: false });
+  g.setUi({ tray: keepTray(), showMe: null, newMemory: null });
   audio.tap();
-  cam.save();
   cam.setUserInput(false);
-  const pos = ctl.worldPos();
-  await cam.goTo({ target: [pos[0], pos[1] + 0.5 * pkg.scale, pos[2]], zoom: pkg.interaction.focusZoom }, 0.8, true);
+  await cam.face(ctl.worldPos(), 0.45);
   if (replay) ctl.setLidOpen(true);
   await ctl.present();
   if (useGame.getState().active?.id !== id) return;
@@ -61,22 +104,256 @@ export async function openActive() {
   useGame.getState().setStep('opened');
 }
 
-/** Light the cracker in focus. `captureNew` takes another photo on a replay. */
-export async function lightActive(captureNew = false) {
+/** Put the opened box's cracker in the tray with a full set of lights. */
+export async function collectActive() {
   const g = useGame.getState();
   const a = g.active;
-  if (!a || a.step !== 'opened' || !runtime.fireworks) return;
+  if (!a || a.step !== 'opened') return;
   const ctl = packageControls.get(a.id);
-  if (!ctl) return;
-  const id = a.id;
-  const shouldCapture = g.packages[id] !== 'MEMORY_CAPTURED' || captureNew;
+  g.setUses(a.id, MAX_USES);
   g.setStep('lighting');
-  await ctl.stow();
-  useGame.getState().setStep('playing');
+  audio.unlock();
+  await ctl?.stow();
+  ctl?.setLidOpen(true);
+  useGame.getState().setActive(null);
+  useGame.getState().setUi({ toast: null, trayPulse: a.id });
+  runtime.camera?.setUserInput(true);
+  // found by following the arrows: straight into the hand, ready to put down and light
+  if (useGame.getState().ui.guide === a.id) {
+    useGame.getState().setUi({ guide: null });
+    startPlacing(a.id);
+  }
+}
+
+/** Close the presented package without taking the cracker (Escape / close). */
+export async function closeActive() {
+  const g = useGame.getState();
+  const a = g.active;
+  if (!a) return;
+  if (a.step === 'spotlight') return cancelPlaced();
+  if (a.step !== 'presented' && a.step !== 'opened') return;
+  const ctl = packageControls.get(a.id);
+  g.setStep('lighting');
+  await ctl?.stow();
+  ctl?.setLidOpen(isOpened(a.id));
+  useGame.getState().setActive(null);
+  runtime.camera?.setUserInput(true);
+}
+
+export function skipAnimation() {
+  const a = useGame.getState().active;
+  if (a) packageControls.get(a.id)?.skip();
+}
+
+// ------------------------------------------------------------------------------------------
+// The panel: every cracker is on the right from the start. Picking one shows its card;
+// collecting the card lays a trail of arrows to its box in the mohalla. Walking up to the
+// box opens it, and collecting it puts the cracker in hand with MAX_USES lights.
+
+/** Tap a cracker in the panel: show its card, refill it, or pick it up. */
+export function pickFromPanel(id: PackageId) {
+  const g = useGame.getState();
+  if (busy()) return;
+  if (!isOpened(id)) {
+    g.setPlacing(null);
+    g.setUi({ card: id, tray: keepTray(), showMe: null });
+    audio.tap();
+    return;
+  }
+  if (g.placing === id) return cancelPlacing();
+  if (g.uses[id] <= 0) {
+    g.setUses(id, MAX_USES);
+    g.setUi({ trayPulse: id, toast: `Refill · x${MAX_USES}` });
+    audio.unlock();
+  }
+  startPlacing(id);
+}
+
+/** Collect the card: show the way to its box. */
+export function keepCard() {
+  const g = useGame.getState();
+  const id = g.ui.card;
+  if (!id) return;
+  g.setPlacing(null);
+  g.setUi({ card: null, guide: id, showMe: null, toast: null });
+  audio.unlock();
+  audio.tap();
+}
+
+export function stopGuide() {
+  useGame.getState().setUi({ guide: null });
+}
+
+/** Arrived at the guided box: open it straight away. */
+export async function arriveAtGuide() {
+  const g = useGame.getState();
+  const id = g.ui.guide;
+  if (!id || busy() || g.placing || distanceToBox(id) > PICKUP_RANGE - 0.6) return;
+  await beginReveal(id);
+  if (useGame.getState().active?.id === id && useGame.getState().active?.step === 'presented') await openActive();
+}
+
+export function closeCard() {
+  useGame.getState().setUi({ card: null });
+}
+
+// ------------------------------------------------------------------------------------------
+// Placing and lighting
+
+/** Pick a cracker up from the tray; the reticle follows the pointer until it is put down. */
+export function startPlacing(id: PackageId) {
+  const g = useGame.getState();
+  if (busy() || g.uses[id] <= 0) return false;
+  g.setPlacing(id);
+  g.setUi({ tray: keepTray() });
+  audio.tap();
+  return true;
+}
+
+export function cancelPlacing() {
+  useGame.getState().setPlacing(null);
+}
+
+let hazardId = 0;
+
+export type PlaceCheck = 'ok' | 'ground' | 'person' | 'vehicle' | 'far' | 'near';
+
+/** Pop-pops are thrown: from a terrace or balcony they land on the street below. */
+export function throwsDown(id: PackageId) {
+  return PACKAGE_BY_ID[id].crackerType === 'popPop' && currentLevel().floor > 0.5;
+}
+
+/** The floor this cracker goes down on. */
+export function placeFloor(id: PackageId) {
+  return throwsDown(id) ? 0 : currentLevel().floor;
+}
+
+/** Is this a good spot for the cracker? Any open ground with room, clear of people and vehicles. */
+export function checkSpot(id: PackageId, x: number, z: number): PlaceCheck {
+  const type = PACKAGE_BY_ID[id].crackerType;
+  const R = CLEARANCE[type];
+  const thrown = throwsDown(id);
+  const d = Math.hypot(x - runtime.player.x, z - runtime.player.z);
+  if (d > (thrown ? 22 : 16)) return 'far';
+  if (d < 1.1 && !thrown) return 'near';
+  if (thrown ? !isBurstGround(x, z, 0.8) : !burstOnLevel(x, z, R)) return 'ground';
+  // a ladi lies along the road: both of its ends must be on open ground too
+  if (type === 'ladi') {
+    const [ax, az] = ladiAxis(x, z);
+    if (!burstOnLevel(x + ax * 1.9, z + az * 1.9, 0.6) || !burstOnLevel(x - ax * 1.7, z - az * 1.7, 0.6)) return 'ground';
+  }
+  const y = placeFloor(id);
+  // people and vehicles nearby: only the cracker's own blast radius needs to be clear.
+  // Pop-pops are harmless snappers, so they may land right at people's feet.
+  for (const [kind, s] of runtime.solids) {
+    if (type === 'popPop' && kind === 'person') continue;
+    if (s(x, z, Math.min(R, 1.4), y)) return kind;
+  }
+  return 'ok';
+}
+
+/** The nearest good spot to (x, z), searching outward; null when there is none close by. */
+export function findSpot(id: PackageId, x: number, z: number, maxR = 8): [number, number] | null {
+  if (checkSpot(id, x, z) === 'ok') return [x, z];
+  for (let r = 0.5; r <= maxR; r += 0.5) {
+    const n = Math.max(8, Math.round(r * 6));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const px = x + Math.cos(a) * r;
+      const pz = z + Math.sin(a) * r;
+      if (checkSpot(id, px, pz) === 'ok') return [px, pz];
+    }
+  }
+  return null;
+}
+
+/**
+ * Put the carried cracker down as close to (x, z) as it can go. A bad spot never blocks the
+ * player: the nearest good one is used, then one near the player, and failing that the player
+ * is taken to the chowk and it goes down there.
+ */
+export async function placeNear(id: PackageId, x: number, z: number) {
+  const pl = runtime.player;
+  const fx = -Math.sin(pl.yaw);
+  const fz = -Math.cos(pl.yaw);
+  let spot = findSpot(id, x, z) ?? findSpot(id, pl.x + fx * 3.5, pl.z + fz * 3.5, 10);
+  if (!spot) {
+    await goToLevel('chowk');
+    await new Promise((r) => setTimeout(r, 120));
+    const p = runtime.player;
+    spot = findSpot(id, p.x - Math.sin(p.yaw) * 4, p.z - Math.cos(p.yaw) * 4, 12);
+  }
+  if (!spot) return false;
+  return placeCracker(id, spot[0], spot[1]);
+}
+
+/** Along the road at this spot: the gali and chowk run along x, side galis along z. */
+export function ladiAxis(x: number, z: number): [number, number] {
+  if (currentLevel().walk) return [1, 0];
+  return inSideGali(x, z) ? [0, 1] : [1, 0];
+}
+
+/** Put the carried cracker down at (x, z) and frame it in the spotlight. */
+export async function placeCracker(id: PackageId, x: number, z: number) {
+  const g = useGame.getState();
+  if (busy() || g.uses[id] <= 0) return false;
+  if (checkSpot(id, x, z) !== 'ok') return false;
+  const pkg = PACKAGE_BY_ID[id];
+  const thrown = throwsDown(id);
+  const pos: Vec3 = [x, placeFloor(id), z];
+  g.setPlacing(null);
+  g.setActive({ id, step: 'spotlight', replay: false, capture: g.packages[id] !== 'MEMORY_CAPTURED', pos });
+  // people and traffic on the road keep clear of a cracker down there (a terrace is out of their way)
+  if (pos[1] < 0.5) runtime.hazards.push({ id: ++hazardId, pos, radius: CLEARANCE[pkg.crackerType] });
+  runtime.fireworks?.stage(id, pos, ladiAxis(x, z));
+  audio.tap();
+  const cam = runtime.camera;
+  cam?.setUserInput(false);
+  runtime.reveal.pos = [x, pos[1] + 1.3, z];
+  runtime.reveal.intensity = 0.6;
+  // thrown from above: step to the edge nearest it and look down over the parapet
+  const L = currentLevel();
+  if (thrown && L.walk && cam) {
+    const w = L.walk;
+    const ex = Math.min(w.x1 - 0.35, Math.max(w.x0 + 0.35, x));
+    const ez = Math.min(w.z1 - 0.35, Math.max(w.z0 + 0.35, z));
+    const dist = Math.max(0.5, Math.hypot(x - ex, z - ez));
+    const yaw = Math.atan2(-(x - ex), -(z - ez));
+    const pitch = Math.max(-0.95, -Math.atan2(L.floor + 1.6, dist) + 0.12);
+    await cam.travel({ x: ex, z: ez, yaw, pitch, floor: L.floor }, 0.9);
+  } else await cam?.frame(pos, FRAMING[pkg.crackerType]);
+  return true;
+}
+
+/** Pick the cracker back up without lighting it. */
+export async function cancelPlaced() {
+  const g = useGame.getState();
+  const a = g.active;
+  if (!a || a.step !== 'spotlight') return;
+  runtime.fireworks?.unstage();
+  runtime.hazards = [];
+  runtime.reveal.intensity = 0;
+  g.setStep('lighting');
+  await runtime.camera?.restore(0.8);
+  useGame.getState().setActive(null);
+  runtime.camera?.setUserInput(true);
+}
+
+/** Light the cracker in the spotlight: it bursts where it stands. */
+export async function lightPlaced() {
+  const g = useGame.getState();
+  const a = g.active;
+  if (!a || a.step !== 'spotlight' || !a.pos || !runtime.fireworks || runtime.fireworks.busy()) return;
+  const id = a.id;
+  const shouldCapture = g.packages[id] !== 'MEMORY_CAPTURED';
+  g.setUses(id, g.uses[id] - 1);
+  g.setStep('playing');
+  runtime.reveal.intensity = 0;
   let photo: string | null = null;
-  await runtime.fireworks.play(id, (url) => {
+  await runtime.fireworks.play(id, a.pos, (url) => {
     photo = url;
   });
+  runtime.hazards = [];
   if (useGame.getState().packages[id] === 'UNLOCKED') useGame.getState().transition(id, 'PLAYED');
   if (shouldCapture && photo) {
     useGame.getState().setStep('developing');
@@ -95,34 +372,14 @@ export async function lightActive(captureNew = false) {
   runtime.camera?.setUserInput(true);
 }
 
-/** Close the presented package without lighting it (Escape / tap outside). */
-export async function closeActive() {
-  const g = useGame.getState();
-  const a = g.active;
-  if (!a || (a.step !== 'presented' && a.step !== 'opened')) return;
-  const ctl = packageControls.get(a.id);
-  g.setStep('lighting');
-  await ctl?.stow();
-  ctl?.setLidOpen(isOpened(a.id));
-  await runtime.camera?.restore(0.8);
-  useGame.getState().setActive(null);
-  runtime.camera?.setUserInput(true);
-}
-
-export function skipAnimation() {
-  const a = useGame.getState().active;
-  if (a) packageControls.get(a.id)?.skip();
-}
-
-/** Accessible alternative to hunting: fly to a package and highlight it. */
+/** Accessible alternative to hunting: turn to face a box and light a beacon over it. */
 export function showMe(id: PackageId) {
-  const ctl = packageControls.get(id);
   const g = useGame.getState();
-  if (!ctl || g.active) return;
-  const p = ctl.worldPos();
-  g.setUi({ showMe: id, tray: false });
-  runtime.camera?.goTo({ target: [p[0], p[1] + 0.5, p[2]], zoom: 2.4 }, 1.1);
+  if (g.active) return;
+  const p = BOX_SPOTS[id].pos;
+  g.setUi({ showMe: id, tray: keepTray() });
+  void runtime.camera?.face([p[0], p[1] + 2, p[2]], 1.0);
   window.setTimeout(() => {
     if (useGame.getState().ui.showMe === id) useGame.getState().setUi({ showMe: null });
-  }, 9000);
+  }, 12000);
 }

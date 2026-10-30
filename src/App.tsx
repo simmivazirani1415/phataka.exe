@@ -2,19 +2,27 @@ import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from '
 import { useGame, hydrateMemories } from './game/GameState';
 import { runtime } from './game/Runtime';
 import { GameHUD } from './components/GameHUD';
-import { IdentOverlay } from './intro/IdentOverlay';
-import { useIdent } from './intro/identState';
+import { IntroOverlay } from './intro/IntroOverlay';
+import { useIntro } from './intro/introState';
 import { SITE } from './config/site';
 import { PackageReveal } from './components/PackageReveal';
 import { NewMemory } from './components/PolaroidCard';
-import { CollectionTray } from './components/CollectionTray';
 import { MemoryAlbum } from './components/MemoryAlbum';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GestureLayer } from './components/GestureLayer';
-import { PACKAGES, PACKAGE_BY_ID } from './assets/AssetRegistry';
+import { PACKAGES } from './assets/AssetRegistry';
 import { getThumbUrl } from './assets/PackageTextures';
-import { beginReveal, closeActive } from './game/DiscoverySystem';
+import { cancelPlacing, closeActive, distanceToBox } from './game/DiscoverySystem';
+import { BOX_SPOTS } from './street/StreetLayout';
+import { InventoryTray } from './street/ui/InventoryTray';
+import { CollectCard } from './street/ui/CollectCard';
+import { LocationMap } from './street/ui/LocationMap';
+import { GuideHUD } from './street/ui/GuideHUD';
+import { SpotlightCard } from './street/ui/SpotlightCard';
+import { Joystick } from './street/ui/Joystick';
+import { NearPrompt } from './street/ui/NearPrompt';
 import { audio } from './audio/AudioEngine';
+import { IconClose } from './components/Icons';
 
 const WorldScene = lazy(() => import('./world/WorldScene'));
 
@@ -69,10 +77,10 @@ function FinalBanner() {
     <div className="final-banner" role="dialog" aria-label="Your Diwali is complete">
       <h2>Your Diwali, Your Memories.</h2>
       <p className="hand">Poora mohalla jagmaga raha hai.</p>
-      <button className="btn cta" autoFocus onClick={() => setUi({ album: true, finalSeen: true })}>
+      <button className="btn-primary" autoFocus onClick={() => setUi({ album: true, finalSeen: true })}>
         Open My Memory Book
       </button>
-      <button className="btn ghost small" onClick={() => setUi({ finalSeen: true })}>
+      <button className="btn-quiet" onClick={() => setUi({ finalSeen: true })}>
         Keep exploring
       </button>
     </div>
@@ -82,12 +90,21 @@ function FinalBanner() {
 function ShowMePrompt() {
   const id = useGame((s) => s.ui.showMe);
   const active = useGame((s) => s.active);
+  const setUi = useGame((s) => s.setUi);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!id) return;
+    const t = window.setInterval(() => tick((n) => n + 1), 500);
+    return () => window.clearInterval(t);
+  }, [id]);
   if (!id || active) return null;
   return (
-    <div className="showme">
-      <span>{PACKAGE_BY_ID[id].locationHint}</span>
-      <button className="btn cta small" autoFocus onClick={() => beginReveal(id)}>
-        Pick it up
+    <div className="showme" role="status">
+      <span>
+        {BOX_SPOTS[id].hint} <b>~{Math.round(distanceToBox(id))} m</b>
+      </span>
+      <button className="icon-btn" onClick={() => setUi({ showMe: null })} aria-label="Hide the hint">
+        <IconClose size={16} />
       </button>
     </div>
   );
@@ -113,7 +130,7 @@ function Toasts() {
         <div className="toast action" role="status">
           <span>The mohalla is running a little slowly. Switch to Low Graphics?</span>
           <button
-            className="btn cta tiny"
+            className="btn-primary small"
             onClick={() => {
               update({ graphics: 'low' });
               setUi({ perfSuggest: false });
@@ -121,7 +138,7 @@ function Toasts() {
           >
             Switch
           </button>
-          <button className="btn ghost tiny" onClick={() => setUi({ perfSuggest: false })}>
+          <button className="btn-quiet small" onClick={() => setUi({ perfSuggest: false })}>
             Keep High
           </button>
         </div>
@@ -137,7 +154,8 @@ function useKeyboard() {
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
       const s = useGame.getState();
       if (e.key === 'Escape') {
-        if (s.active) closeActive();
+        if (s.placing) cancelPlacing();
+        else if (s.active) closeActive();
         else if (s.ui.album) s.setUi({ album: false });
         else if (s.ui.settings) s.setUi({ settings: false });
         else if (s.ui.tray) s.setUi({ tray: false });
@@ -162,16 +180,28 @@ async function fontsReady() {
 
 export default function App() {
   const phase = useGame((s) => s.phase);
-  const identStage = useIdent((s) => s.stage);
+  const introStage = useIntro((s) => s.stage);
   const reducedMotion = useGame((s) => s.settings.reducedMotion);
   const [ready, setReady] = useState(false);
   const [webgl] = useState(hasWebGL);
   useKeyboard();
   useEffect(() => {
+    // ?skipintro goes straight into the street (used by automated checks)
+    if (new URLSearchParams(location.search).has('skipintro')) {
+      useIntro.setState({ stage: 'GAMEPLAY_ACTIVE' });
+      useGame.getState().setPhase('playing');
+    }
     fontsReady().then(() => setReady(true));
     hydrateMemories();
-    // sound preference is never restored: audio always starts muted
+    // the background ambience always starts muted; bursts are audible from the first tap
     audio.setEnabled(false);
+    const unlock = () => audio.wake();
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('reduced-motion', reducedMotion);
@@ -187,14 +217,20 @@ export default function App() {
             <WorldScene />
           </Suspense>
         )}
-        {ready && identStage !== 'off' && <IdentOverlay />}
       </WorldBoundary>
       {!ready && <div className="loading">Mohalla jag raha hai…</div>}
+      {introStage !== 'GAMEPLAY_ACTIVE' && <IntroOverlay />}
       {phase === 'playing' && <GameHUD />}
       <PackageReveal />
       <GestureLayer />
       <NewMemory />
-      <CollectionTray />
+      <InventoryTray />
+      <CollectCard />
+      <LocationMap />
+      <GuideHUD />
+      <SpotlightCard />
+      <NearPrompt />
+      <Joystick />
       <SettingsPanel />
       <MemoryAlbum />
       <ShowMePrompt />

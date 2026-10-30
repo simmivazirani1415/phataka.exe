@@ -8,6 +8,7 @@ import { ExportPanel } from './ExportDialog';
 import { IconClose, IconLeft, IconRight } from './Icons';
 import { audio } from '../audio/AudioEngine';
 import { formatDate } from '../utils/PolaroidRenderer';
+import { SITE } from '../config/site';
 
 type Page = { kind: 'cover' } | { kind: 'world' } | { kind: 'collection' } | { kind: 'photos'; items: Memory[] } | { kind: 'end' } | { kind: 'empty' };
 
@@ -41,19 +42,17 @@ function PageView({ page, index }: { page: Page; index: number }) {
     case 'cover':
       return (
         <div className="page cover">
-          <div className="cover-border">
-            <p className="cover-kicker">Pataka.exe presents</p>
-            <h2>
-              MY DIWALI,
-              <br />
-              <span>MY MOHALLA</span>
-            </h2>
-            <p className="hand">A little collection of big memories.</p>
-            <div className="cover-stamps">
-              {found.slice(0, 4).map((p, i) => (
-                <Stamp key={p.id} id={p.id} tilt={[-8, 6, -4, 9][i]} />
-              ))}
-            </div>
+          <p className="cover-kicker">{SITE.name} · Diwali {new Date().getFullYear()}</p>
+          <h2>
+            My Diwali,
+            <br />
+            my mohalla
+          </h2>
+          <p className="cover-sub">A little collection of big memories.</p>
+          <div className="cover-stamps">
+            {found.slice(0, 4).map((p, i) => (
+              <Stamp key={p.id} id={p.id} tilt={[-5, 4, -3, 6][i]} />
+            ))}
           </div>
         </div>
       );
@@ -117,7 +116,7 @@ function PageView({ page, index }: { page: Page; index: number }) {
             <br />
             <span>Yaadein nahi.</span>
           </h3>
-          <ExportPanel />
+          <p className="cover-sub">Keep this Diwali as a little book, or send one Polaroid to someone.</p>
         </div>
       );
   }
@@ -166,24 +165,25 @@ export function MemoryAlbum() {
   return (
     <div className="album-backdrop" role="dialog" aria-label="Memory album" onClick={(e) => e.target === e.currentTarget && setUi({ album: false })}>
       <div className={`album ${wide ? 'spread' : 'single'}`}>
-        <button className="btn icon album-close" onClick={() => setUi({ album: false })} aria-label="Return to mohalla">
-          <IconClose />
+        <button className="icon-btn album-close" onClick={() => setUi({ album: false })} aria-label="Return to mohalla">
+          <IconClose size={18} />
         </button>
         <div className="album-pages" key={i}>
           {shown.map((p, k) => (
             <PageView key={k} page={p} index={i + k} />
           ))}
         </div>
+        <ExportPanel />
         <nav className="album-nav">
-          <button className="btn icon" onClick={() => go(-1)} disabled={i === 0} aria-label="Previous page">
-            <IconLeft />
+          <button className="icon-btn" onClick={() => go(-1)} disabled={i === 0} aria-label="Previous page">
+            <IconLeft size={18} />
           </button>
           <span>
             {i + 1}
             {wide && shown.length > 1 ? `–${i + 2}` : ''} / {pages.length}
           </span>
-          <button className="btn icon" onClick={() => go(1)} disabled={i >= last} aria-label="Next page">
-            <IconRight />
+          <button className="icon-btn" onClick={() => go(1)} disabled={i >= last} aria-label="Next page">
+            <IconRight size={18} />
           </button>
         </nav>
       </div>

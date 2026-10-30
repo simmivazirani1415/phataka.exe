@@ -23,7 +23,7 @@ export const GESTURE_INFO: Record<PackageId, GestureInfo> = {
   phuljhadi_mami: { icon: '✨', title: 'Wave the phuljhadi', how: 'Pinch as if holding the sparkler stick and wave it left and right.' },
   anaar_maasi: { icon: '🔺', title: 'Make the anaar cone', how: 'Touch both thumbs and both index fingers to make a triangle, and hold.' },
   ladi_tauji: { icon: '👋', title: 'Run the fuse down the ladi', how: 'Open palm, swipe across the screen along the string.' },
-  snake_wale_nana: { icon: '🐍', title: 'Grow the snake', how: 'Open palm, raise it slowly upward like the snake rising.' },
+  saat_shot_nana: { icon: '🖐️', title: 'Send them up', how: 'Open palm, raise it slowly upward and the seven shots follow.' },
   pop_pop_chotu: { icon: '👇', title: 'Throw the pop-pop', how: 'Flick your hand down fast, like throwing it on the floor.' },
 };
 
@@ -215,8 +215,8 @@ function ladi(): Detector {
   };
 }
 
-// Snake: an open palm rises steadily.
-function snake(): Detector {
+// 7 shot rocket: an open palm rises steadily.
+function skyshot(): Detector {
   const trail = new Trail<number>(2.5);
   return {
     reset: () => trail.clear(),
@@ -258,7 +258,7 @@ const FACTORIES: Record<PackageId, () => Detector> = {
   phuljhadi_mami: phuljhadi,
   anaar_maasi: anaar,
   ladi_tauji: ladi,
-  snake_wale_nana: snake,
+  saat_shot_nana: skyshot,
   pop_pop_chotu: poppop,
 };
 

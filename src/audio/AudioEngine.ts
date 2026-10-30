@@ -1,9 +1,15 @@
-// Procedural Web Audio sound design. Nothing is created until the user enables sound,
-// so the experience always begins silent.
+// Procedural Web Audio sound design. Cracker bursts (and the little UI sounds) are always on,
+// from the first tap; the sound toggle only switches the background ambience of the mohalla,
+// which starts muted.
 
-type Category = 'ambience' | 'world' | 'fireworks' | 'ui';
+type Category = 'ambience' | 'world' | 'fireworks' | 'ui' | 'samples';
 
-const CATEGORY_GAIN: Record<Category, number> = { ambience: 0.45, world: 0.75, fireworks: 0.62, ui: 0.42 };
+const CATEGORY_GAIN: Record<Category, number> = { ambience: 0.45, world: 0.75, fireworks: 0.62, ui: 0.42, samples: 0.7 };
+
+/** Simran's burst tracks, one per cracker type, in public/assets/sounds/<type>.mp3. */
+const SAMPLE_NAMES = ['rocket', 'chakri', 'anaar', 'sparkler', 'ladi', 'bomb', 'skyshot', 'popPop'];
+/** Where each of the seven reports sits in the 7 shot track (seconds), found from its envelope. */
+export const SKYSHOT_REPORTS = [0.5, 1.05, 1.58, 2.08, 2.6, 3.14, 3.74];
 
 class Engine {
   ctx: AudioContext | null = null;
@@ -15,6 +21,9 @@ class Engine {
   private ambienceTimer: number | null = null;
   private hum: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
   private lastSnap = 0;
+  private samples = new Map<string, AudioBuffer>();
+  private samplesLoading = false;
+  private duckUntil = 0;
 
   private ensure() {
     if (this.ctx) return this.ctx;
@@ -28,11 +37,11 @@ class Engine {
     comp.attack.value = 0.004;
     comp.release.value = 0.2;
     const master = ctx.createGain();
-    master.gain.value = 0;
+    master.gain.value = 0.85;
     master.connect(comp).connect(ctx.destination);
     (Object.keys(CATEGORY_GAIN) as Category[]).forEach((c) => {
       const g = ctx.createGain();
-      g.gain.value = CATEGORY_GAIN[c];
+      g.gain.value = c === 'ambience' && !this.enabled ? 0 : CATEGORY_GAIN[c];
       g.connect(master);
       this.cats[c] = g;
     });
@@ -43,23 +52,74 @@ class Engine {
     this.noise = buf;
     this.ctx = ctx;
     this.master = master;
+    this.loadSamples(ctx);
     return ctx;
   }
 
+  /** Fetch and decode the burst tracks once sound is on; a missing file just keeps the synth. */
+  private loadSamples(ctx: AudioContext) {
+    if (this.samplesLoading) return;
+    this.samplesLoading = true;
+    for (const name of SAMPLE_NAMES) {
+      fetch(`${import.meta.env.BASE_URL}assets/sounds/${name}.mp3`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+        .then((b) => ctx.decodeAudioData(b))
+        .then((buf) => this.samples.set(name, buf))
+        .catch(() => {});
+    }
+  }
+
+  /**
+   * Play a burst track (or one slice of it). While it plays, the synthesised firework sounds
+   * are ducked well down so the two don't pile up. Returns false when the track isn't loaded.
+   */
+  sample(name: string, o: { offset?: number; duration?: number; gain?: number; delay?: number } = {}) {
+    const ctx = this.live();
+    const buf = this.samples.get(name);
+    if (!ctx || !buf) return false;
+    const t = ctx.currentTime + (o.delay ?? 0);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = o.gain ?? 1;
+    const dur = o.duration ?? buf.duration - (o.offset ?? 0);
+    if (o.duration) {
+      // a short fade at the end of a slice so it never clicks
+      g.gain.setValueAtTime(o.gain ?? 1, t + Math.max(0, dur - 0.06));
+      g.gain.linearRampToValueAtTime(0, t + dur);
+    }
+    src.connect(g).connect(this.out('samples'));
+    src.start(t, o.offset ?? 0, dur);
+    const fw = this.cats.fireworks;
+    if (fw) {
+      const until = t + dur + 0.2;
+      fw.gain.cancelScheduledValues(ctx.currentTime);
+      fw.gain.setTargetAtTime(CATEGORY_GAIN.fireworks * 0.25, ctx.currentTime, 0.03);
+      this.duckUntil = Math.max(this.duckUntil, until);
+      fw.gain.setTargetAtTime(CATEGORY_GAIN.fireworks, this.duckUntil, 0.25);
+    }
+    return true;
+  }
+
+  /** Background ambience on or off; bursts play either way. */
   setEnabled(on: boolean) {
     this.enabled = on;
-    if (on) {
-      const ctx = this.ensure();
-      if (!ctx || !this.master) return;
-      ctx.resume();
-      this.master.gain.cancelScheduledValues(ctx.currentTime);
-      this.master.gain.setTargetAtTime(0.85, ctx.currentTime, 0.25);
-      this.startAmbience();
-    } else if (this.ctx && this.master) {
-      this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.08);
-      this.stopAmbience();
+    const ctx = this.ensure();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    const amb = this.cats.ambience;
+    if (amb) {
+      amb.gain.cancelScheduledValues(ctx.currentTime);
+      amb.gain.setTargetAtTime(on ? CATEGORY_GAIN.ambience : 0, ctx.currentTime, on ? 0.25 : 0.08);
     }
+    if (on) this.startAmbience();
+    else this.stopAmbience();
+  }
+
+  /** Browsers keep audio locked until the first tap or key; wake it then. */
+  wake() {
+    const ctx = this.ensure();
+    if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => {});
   }
 
   setCelebration(level: number) {
@@ -72,7 +132,8 @@ class Engine {
   }
 
   private live() {
-    return this.enabled && this.ctx && this.ctx.state !== 'closed' ? this.ctx : null;
+    const ctx = this.ensure();
+    return ctx && ctx.state !== 'closed' ? ctx : null;
   }
 
   private noiseSrc(ctx: AudioContext) {

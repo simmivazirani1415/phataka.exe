@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { runtime } from '../game/Runtime';
-import { baseZoomFor, CAMERA_DISTANCE, getPreset } from '../camera/CameraPresets';
+import { STREET } from '../street/StreetLayout';
 
 // Captures real rendered frames for Polaroids. We render the scene ourselves and read the
 // WebGL canvas in the same task, so no preserveDrawingBuffer is needed and no HTML UI is
@@ -42,20 +42,17 @@ export function ScreenshotCapture() {
     };
   }, [gl, scene, camera]);
 
-  // overview photos are rendered from a dedicated camera at the start of a frame;
-  // R3F's own render follows immediately, so the player never sees it.
+  // overview photos are rendered from a dedicated camera at the start of a frame, high above
+  // the chowk looking down the lit gali; R3F's own render follows, so the player never sees it.
   useFrame(() => {
     if (!pending.current.length) return;
     const jobs = pending.current.splice(0);
-    const cam = (camera as THREE.OrthographicCamera).clone();
-    const p = getPreset('overview');
-    const off = new THREE.Vector3().setFromSphericalCoords(CAMERA_DISTANCE, p.polar, p.azimuth);
-    cam.position.set(p.target[0] + off.x, p.target[1] + off.y, p.target[2] + off.z);
-    cam.zoom = baseZoomFor(size.width, size.height) * 1.05;
-    cam.clearViewOffset();
-    cam.updateProjectionMatrix();
-    cam.lookAt(...p.target);
+    const cam = new THREE.PerspectiveCamera(55, size.width / Math.max(1, size.height), 0.1, 400);
+    cam.position.set(-STREET.chowkHalf + 2, 17, STREET.chowkHalf - 3);
+    cam.lookAt(10, 2, -3);
+    cam.updateMatrixWorld();
     let url: string | null = null;
+    runtime.billboard?.(cam.position.x, cam.position.y, cam.position.z);
     try {
       const composer = runtime.composer;
       if (composer) {
@@ -67,6 +64,7 @@ export function ScreenshotCapture() {
     } catch {
       url = null;
     }
+    runtime.billboard?.(camera.position.x, camera.position.y, camera.position.z);
     jobs.forEach((j) => j.resolve(url));
   });
 

@@ -130,8 +130,18 @@ export function createCrackerModel(type: CrackerType, palette: string[]): THREE.
       g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, n * 0.045, 4), paint('#E3D7B0', 0.9), [0, 0.05 + (n * 0.045) / 2, 0]));
       break;
     }
-    case 'snake': {
-      for (let i = 0; i < 3; i++) g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 14), paint('#262019', 0.95), [(i - 1) * 0.14, 0.02, 0]));
+    case 'skyshot': {
+      // seven tubes bundled in red paper with a gold band: one in the middle, six around it
+      const R = 0.052;
+      for (let i = 0; i < 7; i++) {
+        const ang = (i / 6) * Math.PI * 2;
+        const x = i === 6 ? 0 : Math.cos(ang) * R * 2.02;
+        const z = i === 6 ? 0 : Math.sin(ang) * R * 2.02;
+        g.add(mesh(new THREE.CylinderGeometry(R, R, 0.34, 12), paint(i % 2 ? '#C9262B' : '#D8352A', 0.6), [x, 0.17, z]));
+        g.add(mesh(new THREE.CylinderGeometry(R * 0.55, R * 0.55, 0.012, 10), paint('#2A2018', 0.9), [x, 0.345, z]));
+      }
+      g.add(mesh(new THREE.CylinderGeometry(R * 3.08, R * 3.08, 0.07, 24), paint(c, 0.4, 0.3), [0, 0.17, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1, 6), paint('#E3D7B0', 0.9), [R * 3.1, 0.06, 0], [0, 0, -0.9]));
       break;
     }
     case 'popPop': {
