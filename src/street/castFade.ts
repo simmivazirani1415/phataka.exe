@@ -63,3 +63,49 @@ export function threeQuarterWeight(hx: number, hz: number, x: number, z: number,
   const k = 1 - THREE.MathUtils.smoothstep(Math.abs(front - D(48)), D(10), D(20));
   return k * (1 - THREE.MathUtils.smoothstep(elev, D(30), D(45)));
 }
+
+// A per-instance hue turn for the people's cut-outs, so five illustrations dress a whole
+// mohalla: the strongly coloured clothes turn round the colour wheel (YIQ, so brightness is
+// kept); skin, hair and the pale whites are not saturated enough to move.
+const HUE = /* glsl */ `
+  if (abs(vHue) > 0.001) {
+    vec3 c = diffuseColor.rgb;
+    float mx = max(c.r, max(c.g, c.b));
+    float mn = min(c.r, min(c.g, c.b));
+    // judge saturation on roughly gamma-encoded values (linear exaggerates it)
+    float gx = sqrt(mx);
+    float s = gx > 0.0 ? (gx - sqrt(mn)) / gx : 0.0;
+    float d = mx - mn + 1e-5;
+    float h = mx == c.r ? mod((c.g - c.b) / d, 6.0) : mx == c.g ? (c.b - c.r) / d + 2.0 : (c.r - c.g) / d + 4.0;
+    h /= 6.0;
+    // skin (and the golds and oranges near it) never turns
+    float skin = smoothstep(0.0, 0.025, h) * (1.0 - smoothstep(0.12, 0.15, h));
+    float k = smoothstep(0.4, 0.55, s) * step(0.12, mx) * (1.0 - skin);
+    vec3 yiq = mat3(0.299, 0.596, 0.211, 0.587, -0.274, -0.523, 0.114, -0.322, 0.312) * c;
+    float a = vHue * 6.2831853;
+    yiq.yz = mat2(cos(a), sin(a), -sin(a), cos(a)) * yiq.yz;
+    vec3 r = mat3(1.0, 1.0, 1.0, 0.956, -0.272, -1.106, 0.621, -0.647, 1.703) * yiq;
+    diffuseColor.rgb = mix(c, clamp(r, 0.0, 1.0), k);
+  }
+`;
+
+export function withFadeHue<M extends THREE.Material>(mat: M): M {
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', 'attribute float aFade;\nattribute float aHue;\nvarying float vFade;\nvarying float vHue;\n#include <common>')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFade = aFade;\nvHue = aHue;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', 'varying float vFade;\nvarying float vHue;\n#include <common>')
+      .replace('void main() {', 'void main() {\n' + DITHER)
+      .replace('#include <map_fragment>', '#include <map_fragment>\n' + HUE);
+  };
+  mat.customProgramCacheKey = () => 'cast-fade-hue';
+  return mat;
+}
+
+export function addHue(mesh: THREE.InstancedMesh, cap: number) {
+  const attr = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
+  attr.setUsage(THREE.DynamicDrawUsage);
+  mesh.geometry.setAttribute('aHue', attr);
+  return attr;
+}

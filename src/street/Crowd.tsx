@@ -53,6 +53,10 @@ export interface Agent {
   baseRy: number;
   lookUp: number;
   hidden: boolean;
+  /** how far round the colour wheel this person's clothes are turned (0 = as drawn) */
+  hue: number;
+  /** drawn as the posed 3D figure this frame (walking away or across), not the cut-out */
+  solid?: boolean;
   /** rider pose details */
   pillion?: boolean;
   /** what a walker is doing right now (for the street's own bookkeeping and for tests) */
@@ -75,26 +79,28 @@ interface Part {
 }
 
 const UNIT = new THREE.BoxGeometry(1, 1, 1);
-const SKIRT = new THREE.CylinderGeometry(0.4, 0.5, 1, 10);
+const SKIRT = new THREE.CylinderGeometry(0.4, 0.5, 1, 14);
+// rounded parts, each filling a unit box so the posing maths is the same as for blocks
+const LIMB = new THREE.CylinderGeometry(0.5, 0.4, 1, 10);
+const TORSO = new THREE.CylinderGeometry(0.46, 0.5, 1, 14);
+const HEAD = new THREE.SphereGeometry(0.5, 16, 12);
+// a cap over the crown and down the back of the head, open at the face
+const HAIR_TOP = new THREE.SphereGeometry(0.5, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.6).rotateX(-0.6);
+const BUN = new THREE.SphereGeometry(0.5, 12, 10);
 const PARTS: Part[] = [
-  { geo: UNIT, mat: 'solid' }, // 0 legL
-  { geo: UNIT, mat: 'solid' }, // 1 legR
+  { geo: LIMB, mat: 'solid' }, // 0 legL
+  { geo: LIMB, mat: 'solid' }, // 1 legR
   { geo: SKIRT, mat: 'solid' }, // 2 skirt / saree
-  { geo: UNIT, mat: 'solid' }, // 3 torso
-  { geo: UNIT, mat: 'solid' }, // 4 armL
-  { geo: UNIT, mat: 'solid' }, // 5 armR
-  { geo: UNIT, mat: 'solid' }, // 6 head
-  { geo: UNIT, mat: 'solid' }, // 7 hair (top)
-  { geo: UNIT, mat: 'solid' }, // 8 hair (back) / dog ears
-  { geo: UNIT, mat: 'solid' }, // 9 dupatta / shawl / tail
+  { geo: TORSO, mat: 'solid' }, // 3 torso
+  { geo: LIMB, mat: 'solid' }, // 4 armL
+  { geo: LIMB, mat: 'solid' }, // 5 armR
+  { geo: HEAD, mat: 'solid' }, // 6 head
+  { geo: HAIR_TOP, mat: 'solid' }, // 7 hair (top)
+  { geo: BUN, mat: 'solid' }, // 8 hair (back) / dog ears
+  { geo: UNIT, mat: 'solid' }, // 9 dupatta / shawl / vest / tail
   { geo: UNIT, mat: 'glow' }, // 10 phone screen
 ];
 
-const SKIN = ['#8d5a3b', '#a86b4a', '#c68a64', '#7a4b31', '#b97a56', '#9a6142'];
-const HAIR = ['#1e1a1a', '#2b2220', '#3a2a20', '#161212'];
-const GREY = ['#d9d2c5', '#bfb8ab', '#e6e0d6'];
-const TOPS = ['#ce382a', '#d64a91', '#148c88', '#3446a4', '#f5a623', '#ffd15a', '#2f6b4f', '#7a1f4f', '#fff0d2', '#e8702a', '#6b4a8a', '#1e5f8a', '#f2e3c4', '#8a3b2a'];
-const BOTTOMS = ['#f2e3c4', '#2b2f3d', '#3a4a6a', '#fff0d2', '#5a4632', '#23242a', '#e7dcc6'];
 const DOGS = ['#c9925a', '#8a5a3a', '#e8d2b0', '#3a2a20', '#d8b07a'];
 
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
@@ -112,6 +118,8 @@ class CrowdStore {
   cap = 0;
   colorsDirty = new Set<number>();
   colors: string[][] = [];
+  /** debug: draw everyone as the posed 3D figure */
+  force3d = false;
   reset(cap: number) {
     this.cap = cap;
     this.agents = [];
@@ -159,6 +167,7 @@ class CrowdStore {
       greetCd: 0,
       cur: 0,
       blockT: 0,
+      hue: HUES[(idx * 7 + Math.floor(Math.random() * HUES.length)) % HUES.length],
       ...extra,
     };
     this.agents.push(a);
@@ -178,30 +187,60 @@ class CrowdStore {
 
 export const crowd = new CrowdStore();
 
-/** Colours for each part of an agent. */
+/** Turns of the colour wheel for clothes; a few people keep the colours as drawn. */
+const HUES = [0, 0, 0, 0.1, -0.09, 0.2, 0.33, 0.45, 0.55, 0.66, -0.22, 0.8];
+
+/** Which of Simran's five illustrations an agent wears (shared with the cut-outs). */
+export type Look = 'aunty' | 'boy' | 'girl' | 'uncle' | 'grandpa';
+export function lookOf(a: Agent): Look {
+  const h = (a.idx * 2654435761) >>> 0;
+  const r = (h % 100) / 100;
+  switch (a.kind) {
+    case 'woman':
+      return r < 0.62 ? 'aunty' : 'girl';
+    case 'elder':
+      return a.female ? 'aunty' : 'grandpa';
+    case 'child':
+      return r < 0.5 ? 'boy' : 'girl';
+    default:
+      return r < 0.6 ? 'uncle' : r < 0.82 ? 'grandpa' : 'boy';
+  }
+}
+
+/** Each illustration's clothes: legs, skirt, top, drape (vest, pallu, shawl). */
+const LOOK_COLORS: Record<Look, { legs: string; skirt: string; top: string; drape: string; hair: string }> = {
+  uncle: { legs: '#efe4cc', skirt: '#efe4cc', top: '#f0b12c', drape: '#b8327a', hair: '#3a3330' },
+  aunty: { legs: '#c8246e', skirt: '#c8246e', top: '#c8246e', drape: '#e9a93a', hair: '#1e1a1a' },
+  grandpa: { legs: '#f2ead8', skirt: '#f2ead8', top: '#f2ead8', drape: '#8a4a2e', hair: '#d9d2c5' },
+  boy: { legs: '#fff3e0', skirt: '#fff3e0', top: '#f2b632', drape: '#f2b632', hair: '#2b2220' },
+  girl: { legs: '#f2b632', skirt: '#f2b632', top: '#e0508e', drape: '#f06aa0', hair: '#2b2220' },
+};
+const ILLUSTRATED_SKIN = ['#e3a982', '#d89a74', '#c98a62', '#e8b48e'];
+
+/** Colours for each part of an agent: the 3D figure matches the cut-out it stands in for. */
 function paletteFor(a: Agent): string[] {
-  const skin = pick(SKIN);
   if (a.kind === 'dog') {
     const c = pick(DOGS);
     const dark = '#2a1a10';
     return [c, c, c, c, c, c, c, dark, c, c, '#000'];
   }
-  const hair = a.kind === 'elder' ? pick(GREY) : pick(HAIR);
-  let top = pick(TOPS);
-  let bottom = pick(BOTTOMS);
-  let drape = pick(TOPS);
-  if (a.female) {
-    // saree or salwar: the lower and the pallu share a colour
-    bottom = Math.random() < 0.6 ? top : pick(TOPS);
-    drape = Math.random() < 0.5 ? pick(['#ffd15a', '#f5a623', '#fff0d2', '#d64a91']) : bottom;
-  }
-  if (a.kind === 'chaiwala') {
-    top = '#e7dcc6';
-    bottom = '#5a4632';
-  }
-  const cap = a.kind === 'chaiwala' ? '#fff0d2' : hair;
-  return [bottom, bottom, bottom, top, top, top, skin, cap, hair, drape, '#cfe6ff'];
+  const L = LOOK_COLORS[lookOf(a)];
+  const turn = (hex: string) => {
+    const c = new THREE.Color(hex);
+    const hsl = { h: 0, s: 0, l: 0 };
+    c.getHSL(hsl);
+    // only the strong colours turn, as in the cut-out's shader
+    return hsl.s > 0.5 && a.hue ? '#' + c.offsetHSL(a.hue, 0, 0).getHexString() : hex;
+  };
+  const skin = pick(ILLUSTRATED_SKIN);
+  const legs = turn(L.legs);
+  const skirt = turn(L.skirt);
+  const top = turn(L.top);
+  const drape = turn(L.drape);
+  const cap = a.kind === 'chaiwala' ? '#fff0d2' : L.hair;
+  return [legs, legs, skirt, top, top, top, skin, cap, L.hair, drape, '#cfe6ff'];
 }
+
 
 // ------------------------------------------------------------------------------------------
 // Posing
@@ -434,8 +473,10 @@ function writeAgent(a: Agent, pose: Pose, meshes: THREE.InstancedMesh[], shadow:
     // legs hang from the hip
     const legLen = sit ? 0.5 : 0.86;
     const legRot = sit ? -1.45 : 0;
-    const kurta = a.kind === 'man' || a.kind === 'elder' || a.kind === 'chaiwala';
-    if (a.female && !sit) {
+    const look = lookOf(a);
+    const kurta = look === 'uncle' || look === 'grandpa' || look === 'boy' || a.kind === 'chaiwala';
+    const skirted = look === 'aunty' || look === 'girl';
+    if (skirted && !sit) {
       partMatrix(_base, 0, pose.bob, 0, 0, 0, 0, 0, HIP / 2 + 0.02, 0, 0.52, HIP + 0.04, 0.42, _out);
       set(2, _out);
       meshes[0].setMatrixAt(i, ZERO);
@@ -465,19 +506,23 @@ function writeAgent(a: Agent, pose: Pose, meshes: THREE.InstancedMesh[], shadow:
     // head and hair
     const hx = pose.headX;
     const hy = pose.headY;
-    partMatrix(_body, 0, sh + 0.04, 0, hx, hy, 0, 0, 0.15, 0.01, 0.22, 0.25, 0.23, _out);
+    partMatrix(_body, 0, sh + 0.04, 0, hx, hy, 0, 0, 0.16, 0.01, 0.25, 0.28, 0.26, _out);
     set(6, _out);
-    partMatrix(_body, 0, sh + 0.04, 0, hx, hy, 0, 0, 0.29, -0.005, 0.24, 0.06, 0.25, _out);
+    partMatrix(_body, 0, sh + 0.04, 0, hx, hy, 0, 0, 0.17, -0.012, 0.27, 0.3, 0.28, _out);
     set(7, _out);
-    if (a.female) {
-      partMatrix(_body, 0, sh + 0.04, 0, hx, hy, 0, 0, 0.1, -0.12, 0.24, 0.32, 0.07, _out);
+    if (skirted) {
+      // a bun at the back of the head
+      partMatrix(_body, 0, sh + 0.04, 0, hx, hy, 0, 0, 0.17, -0.13, 0.15, 0.14, 0.12, _out);
       set(8, _out);
     } else set(8, ZERO);
-    // dupatta across the chest, or a shawl on an elder's shoulders
-    if (a.female) {
+    // pallu or dupatta across the chest, a vest on the uncles, a shawl on the grandpas
+    if (skirted) {
       partMatrix(_body, 0.06, sh - 0.3, 0.005, 0, pose.turn, 0.55, 0, 0, 0, 0.12, 0.72, 0.265, _out);
       set(9, _out);
-    } else if (a.kind === 'elder') {
+    } else if (look === 'uncle') {
+      partMatrix(_body, 0, sh - 0.22, 0, 0, pose.turn, 0, 0, 0, 0, 0.44, 0.46, 0.27, _out);
+      set(9, _out);
+    } else if (look === 'grandpa') {
       partMatrix(_body, 0, sh - 0.08, 0, 0, pose.turn, 0, 0, 0, 0, 0.45, 0.22, 0.27, _out);
       set(9, _out);
     } else set(9, ZERO);
@@ -639,6 +684,7 @@ export function Crowd() {
     const dt = Math.min(rawDt, simStep());
     const t = st.clock.elapsedTime;
     const p = runtime.player;
+    const cam = st.camera.position;
     const reduced = useGame.getState().settings.reducedMotion;
     const kp = chunkOf(p.x);
     const V = getVariants();
@@ -659,14 +705,15 @@ export function Crowd() {
       for (const s of V[variantAt(k)].spawns) {
         // always leave room for the walkers
         if (crowd.agents.length >= cap - (high ? 18 : 10)) break;
-        if (!high && (s.anim === 'wander' || s.anim === 'talk') && Math.random() < 0.4) continue;
+        // a calmer mohalla: only some of each chunk's passers-by and chatters turn up
+        if ((s.anim === 'wander' || s.anim === 'talk' || s.anim === 'play') && Math.random() < (high ? 0.4 : 0.55)) continue;
         const zone = s.zone ? { x0: s.zone.x0 + ox, x1: s.zone.x1 + ox, z0: s.zone.z0, z1: s.zone.z1 } : undefined;
         const a = crowd.spawn(s.kind, s.x + ox, s.y, s.z, s.ry, s.anim, k, { sit: !!s.sit, zone });
         if (a && s.sit) a.y = s.y - 0.45 + 0.04;
       }
     }
     // walkers stream along the sidewalks around the player
-    const wantWalkers = high ? 18 : 10;
+    const wantWalkers = high ? 8 : 5;
     let walkers = 0;
     for (const a of crowd.agents) if (a.owner === 'walker') walkers++;
     while (walkers < wantWalkers) {
@@ -717,8 +764,21 @@ export function Crowd() {
       // far agents are posed every third frame only
       if (d > 38 && (frame.current + a.idx) % 3 !== 0) continue;
       if (a.kind !== 'dog') {
-        writeShadowOnly(a, meshes, shadow);
-        continue;
+        // Simran's art only shows people from the front. Walking away from the camera, the posed
+        // 3D figure takes over (like the vehicles' low-poly models), seen from behind, with some
+        // hysteresis so nobody flickers. Across and towards the camera stay illustrations.
+        const mv = a.moving > 0.25 && !a.sit && a.owner !== 'rider';
+        if (mv) {
+          const vx = a.x - cam.x;
+          const vz = a.z - cam.z;
+          const vl = Math.hypot(vx, vz) || 1;
+          const along = (Math.sin(a.ry) * vx + Math.cos(a.ry) * vz) / vl;
+          a.solid = crowd.force3d || (a.solid ? along > 0.42 : along > 0.6);
+        } else a.solid = crowd.force3d;
+        if (!a.solid) {
+          writeShadowOnly(a, meshes, shadow);
+          continue;
+        }
       }
       poseFor(a, t, pose, reduced);
       writeAgent(a, pose, meshes, shadow);

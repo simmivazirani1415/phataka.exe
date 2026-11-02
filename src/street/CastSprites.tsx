@@ -4,11 +4,11 @@ import * as THREE from 'three';
 import { CAST_PEOPLE, CAST_PEOPLE_STAND, CAST_VEHICLES, type CastSprite } from '../assets/AssetRegistry';
 import { runtime } from '../game/Runtime';
 import { useGame } from '../game/GameState';
-import { crowd, shadowTexture, type Agent } from './Crowd';
+import { crowd, lookOf, shadowTexture, type Agent } from './Crowd';
 import { trafficState, type Vehicle } from './Traffic';
 import { chunkOf, getVariants, STREET, variantAt } from './StreetLayout';
 import { vehicleModel } from './VehicleModels';
-import { addFade, modelWeight, threeQuarterWeight, withFade } from './castFade';
+import { addFade, addHue, modelWeight, threeQuarterWeight, withFade, withFadeHue } from './castFade';
 
 // The mohalla's people and vehicles, drawn from Simran's illustrations as upright cut-outs.
 // One InstancedMesh per illustration, so the whole cast is a handful of draw calls.
@@ -39,21 +39,7 @@ const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 type PeopleKey = keyof typeof CAST_PEOPLE;
 type VehicleKey = keyof typeof CAST_VEHICLES;
 
-/** Which illustration an agent wears. */
-function personSprite(a: Agent): PeopleKey {
-  const h = (a.idx * 2654435761) >>> 0;
-  const r = (h % 100) / 100;
-  switch (a.kind) {
-    case 'woman':
-      return r < 0.62 ? 'aunty' : 'girl';
-    case 'elder':
-      return a.female ? 'aunty' : 'grandpa';
-    case 'child':
-      return r < 0.5 ? 'boy' : 'girl';
-    default:
-      return r < 0.6 ? 'uncle' : r < 0.82 ? 'grandpa' : 'boy';
-  }
-}
+const personSprite = (a: Agent): PeopleKey => lookOf(a);
 
 const VEHICLE_SPRITE: Record<Vehicle['type'], VehicleKey> = { scooter: 'scooter', bicycle: 'bicycle', auto: 'auto', rickshaw: 'rickshaw' };
 /** footprint of each vehicle's shadow: width, length */
@@ -63,10 +49,11 @@ interface Layer {
   sprite: CastSprite;
   mesh: THREE.InstancedMesh;
   fade: THREE.InstancedBufferAttribute | null;
+  hue: THREE.InstancedBufferAttribute | null;
   n: number;
 }
 
-function makeLayer(sprite: CastSprite, cap: number, loader: THREE.TextureLoader, maxAniso: number, fading: boolean): Layer {
+function makeLayer(sprite: CastSprite, cap: number, loader: THREE.TextureLoader, maxAniso: number, fading: boolean, hued = false): Layer {
   const tex = loader.load(sprite.url);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = Math.min(4, maxAniso);
@@ -74,24 +61,26 @@ function makeLayer(sprite: CastSprite, cap: number, loader: THREE.TextureLoader,
   const geo = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
   // a touch below white so the cut-outs sit in the night scene; fog still applies
   const base = new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.42, side: THREE.DoubleSide, color: new THREE.Color(0.9, 0.86, 0.82) });
-  const mat = fading ? withFade(base) : base;
+  const mat = hued ? withFadeHue(base) : fading ? withFade(base) : base;
   const mesh = new THREE.InstancedMesh(geo, mat, cap);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  const fade = fading ? addFade(mesh, cap) : null;
+  const fade = fading || hued ? addFade(mesh, cap) : null;
+  const hue = hued ? addHue(mesh, cap) : null;
   mesh.frustumCulled = false;
   mesh.raycast = () => {};
   mesh.count = 0;
-  return { sprite, mesh, fade, n: 0 };
+  return { sprite, mesh, fade, hue, n: 0 };
 }
 
 /** Put one cut-out in its layer: standing at (x, y, z), turned to `yaw` about the vertical. */
-function put(L: Layer, x: number, y: number, z: number, yaw: number, sx: number, sy = 1, fade = 1) {
+function put(L: Layer, x: number, y: number, z: number, yaw: number, sx: number, sy = 1, fade = 1, hue = 0) {
   if (L.n >= L.mesh.instanceMatrix.count) return;
   const h = L.sprite.height * sy;
   const w = L.sprite.height * L.sprite.aspect * sx;
   _q.setFromAxisAngle(Y, yaw);
   _m.compose(_p.set(x, y, z), _q, _s.set(w, h, 1));
   L.fade?.setX(L.n, fade);
+  L.hue?.setX(L.n, hue);
   L.mesh.setMatrixAt(L.n++, _m);
 }
 
@@ -132,8 +121,8 @@ export function CastSprites() {
     const people = {} as Record<PeopleKey, Layer>;
     const standing = {} as Record<PeopleKey, Layer>;
     for (const k of Object.keys(CAST_PEOPLE) as PeopleKey[]) {
-      people[k] = makeLayer(CAST_PEOPLE[k], high ? 140 : 80, loader, aniso, true);
-      standing[k] = makeLayer(CAST_PEOPLE_STAND[k], high ? 140 : 80, loader, aniso, true);
+      people[k] = makeLayer(CAST_PEOPLE[k], high ? 140 : 80, loader, aniso, true, true);
+      standing[k] = makeLayer(CAST_PEOPLE_STAND[k], high ? 140 : 80, loader, aniso, true, true);
     }
     const vehicles = {} as Record<VehicleKey, Layer>;
     for (const k of Object.keys(CAST_VEHICLES) as VehicleKey[]) vehicles[k] = makeLayer(CAST_VEHICLES[k], 24, loader, aniso, true);
@@ -196,7 +185,7 @@ export function CastSprites() {
 
       // ---- people
       for (const a of crowd.agents) {
-        if (a.kind === 'dog' || a.owner === 'rider' || a.hidden) continue;
+        if (a.kind === 'dog' || a.owner === 'rider' || a.hidden || a.solid) continue;
         // where the feet go: the floor under the agent (a sitter's seat is lifted off it).
         // A cut-out cannot sit, so sitters stand just in front of their seat.
         const floor = a.sit ? a.y - 0.04 : a.y;
@@ -229,7 +218,12 @@ export function CastSprites() {
         const f0 = facing.get(a) ?? want;
         const f = reduced || dt === 0 ? want : f0 + (want - f0) * Math.min(1, dt * 9);
         const sw0 = still.get(a) ?? (mv < 0.05 ? 1 : 0);
-        const swWant = mv < 0.05 ? 1 : 0;
+        // walking towards the camera: the front-facing illustration, stepping, reads as coming
+        // this way; the side-stepping walking art is kept for people crossing the view
+        const dl = Math.hypot(x - cx, z - cz) || 1;
+        const along = (fx * (x - cx) + fz * (z - cz)) / dl;
+        const toward = along < (sw0 > 0.5 ? -0.45 : -0.6);
+        const swWant = mv < 0.05 || toward ? 1 : 0;
         const sw = reduced || dt === 0 ? (dt === 0 ? sw0 : swWant) : sw0 + Math.sign(swWant - sw0) * Math.min(Math.abs(swWant - sw0), dt * 4);
         if (dt > 0) {
           facing.set(a, f);
@@ -254,8 +248,8 @@ export function CastSprites() {
         }
         // a paper turn: the width passes through zero; keep a sliver so it never vanishes
         const fs = (f < 0 ? -1 : 1) * Math.max(0.06, Math.abs(f));
-        if (sw < 0.998) put(L, x, y + GROUND_EPS, z, yaw, sx * fs, sy, 1 - sw);
-        if (sw > 0.002) put(S, x, y + GROUND_EPS, z, yaw, sx, sy, sw);
+        if (sw < 0.998) put(L, x, y + GROUND_EPS, z, yaw, sx * fs, sy, 1 - sw, a.hue);
+        if (sw > 0.002) put(S, x, y + GROUND_EPS, z, yaw, sx, sy, sw, a.hue);
         const w = L.sprite.height * L.sprite.aspect * a.scale;
         shade(x, floor, z, a.ry, Math.min(0.75, 0.28 + w * 0.45), 0.42 * a.scale * (1 - Math.min(0.3, (y - floor) * 1.5)));
       }
@@ -323,6 +317,7 @@ export function CastSprites() {
         L.mesh.count = L.n;
         L.mesh.instanceMatrix.needsUpdate = true;
         if (L.fade) L.fade.needsUpdate = true;
+        if (L.hue) L.hue.needsUpdate = true;
       }
       parked.count = np;
       parked.instanceMatrix.needsUpdate = true;

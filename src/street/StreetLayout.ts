@@ -605,13 +605,13 @@ function buildChowk(B: Builder) {
   B.person('man', -9.4, 0.5, 5.4, 0, 'talk', { sit: true });
   const kidsN: Rect = { x0: 2, x1: 12, z0: 5, z1: 12 };
   const kidsS: Rect = { x0: -12, x1: -3, z0: -12, z1: -6 };
-  for (let i = 0; i < 4; i++) B.person('child', B.rr(kidsN.x0, kidsN.x1), 0, B.rr(kidsN.z0, kidsN.z1), 0, 'play', { zone: kidsN });
-  for (let i = 0; i < 3; i++) B.person('child', B.rr(kidsS.x0, kidsS.x1), 0, B.rr(kidsS.z0, kidsS.z1), 0, 'play', { zone: kidsS });
+  for (let i = 0; i < 3; i++) B.person('child', B.rr(kidsN.x0, kidsN.x1), 0, B.rr(kidsN.z0, kidsN.z1), 0, 'play', { zone: kidsN });
+  for (let i = 0; i < 2; i++) B.person('child', B.rr(kidsS.x0, kidsS.x1), 0, B.rr(kidsS.z0, kidsS.z1), 0, 'play', { zone: kidsS });
   B.person('dog', 11.5, 0, -11.8, 0.4, 'sleep');
   B.person('dog', -6, 0, 11, 2, 'wander', { zone: { x0: -12, x1: -4, z0: 7, z1: 12 } });
   // wanderers crossing the square
   const sq: Rect = { x0: -12, x1: 12, z0: -12, z1: 12 };
-  for (let i = 0; i < 6; i++) B.person(B.pick<PersonKind>(['man', 'woman', 'woman', 'elder', 'man']), B.rr(-11, 11), 0, B.rr(-11, 11), 0, 'wander', { zone: sq });
+  for (let i = 0; i < 4; i++) B.person(B.pick<PersonKind>(['man', 'woman', 'woman', 'elder', 'man']), B.rr(-11, 11), 0, B.rr(-11, 11), 0, 'wander', { zone: sq });
 }
 
 function buildChai(B: Builder) {
