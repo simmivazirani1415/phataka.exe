@@ -5,7 +5,6 @@ import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
 import { burstOnLevel, currentLevel, inRect, inSideGali, isBurstGround, levelState } from '../street/StreetLayout';
 import { goToLevel } from '../street/Locations';
-import { arm, canThrowHere, useThrow } from '../street/throwing';
 
 // Orchestrates the package lifecycle:
 // HIDDEN -> DISCOVERED -> OPENING -> UNLOCKED -> PLAYED -> MEMORY_CAPTURED
@@ -82,18 +81,12 @@ export function pickFromPanel(id: PackageId) {
     g.setUi({ trayPulse: id, toast: `Refilled · x${MAX_USES}` });
     audio.unlock();
   }
+  audio.tap();
   if (!currentLevel().burst) {
-    // at the store: pick a place, and it is in your hand when you get there
-    audio.tap();
+    // at the store: pick a place, and it is readied there
     g.setUi({ queued: id, map: true });
     return;
   }
-  // where you throw: it goes into your hand (tap it again to put it back)
-  if (canThrowHere()) {
-    arm(useThrow.getState().armed === id ? null : id);
-    return;
-  }
-  audio.tap();
   void readyCracker(id);
 }
 

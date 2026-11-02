@@ -8,7 +8,7 @@ import { audio } from '../../audio/AudioEngine';
 // "Kahan phodoge?": the five places as cusped-arch cards with Simran's icons, each with just
 // its name and a Go pill. Opened from the bottom pill and from the store's "Go light them".
 
-export const PLACE_ORDER: LevelId[] = ['society', 'balcony'];
+export const PLACE_ORDER: LevelId[] = ['store', 'terrace', 'balcony', 'society', 'aangan'];
 
 /** Simran's cut-out icons, reused for the new set of places. */
 const ICON: Record<LevelId, string> = { store: 'terrace', terrace: 'chowk', balcony: 'balcony', society: 'street', aangan: 'friend' };

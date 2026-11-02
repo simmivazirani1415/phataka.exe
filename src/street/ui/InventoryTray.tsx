@@ -5,7 +5,6 @@ import { pickFromPanel } from '../../game/DiscoverySystem';
 import { goToLevel } from '../Locations';
 import { IconClose, IconCracker } from '../../components/Icons';
 import { crackerRender, renderCrackers } from './crackerRenders';
-import { useThrow } from '../throwing';
 
 // The stash: a column on the right (a slim strip on phones) of the crackers collected at the
 // store, big pictures with the lights left on a gold tag. Tapping one readies it where the
@@ -23,7 +22,6 @@ export function InventoryTray() {
   const pulse = useGame((s) => s.ui.trayPulse);
   const setUi = useGame((s) => s.setUi);
   const [, setReady] = useState(0);
-  const armed = useThrow((s) => s.armed);
 
   useEffect(() => {
     renderCrackers().then(() => setReady((n) => n + 1));
@@ -55,10 +53,9 @@ export function InventoryTray() {
           return (
             <li key={p.id}>
               <button
-                className={`inv-item ${n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''} ${armed === p.id ? 'armed' : ''}`}
-                aria-pressed={armed === p.id}
+                className={`inv-item ${n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''}`}
                 style={{ ['--pk' as string]: p.palette[0] }}
-                aria-label={`${p.name}, ${p.crackerLabel}: ${n} of ${MAX_USES} left. Tap to hold it.`}
+                aria-label={`${p.name}, ${p.crackerLabel}: ${n} of ${MAX_USES} left. Tap to light it.`}
                 title={p.name}
                 onClick={() => pickFromPanel(p.id)}
               >

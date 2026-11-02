@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { runtime, simStep, type WorldEvent } from '../game/Runtime';
 import { useGame } from '../game/GameState';
 import { audio } from '../audio/AudioEngine';
-import { chunkOf, getVariants, isOpen, levelState, STREET, variantAt, type PersonAnim, type PersonKind, type Rect } from './StreetLayout';
+import { chunkOf, getVariants, isOpen, STREET, variantAt, type PersonAnim, type PersonKind, type Rect } from './StreetLayout';
 import { makeCanvas, toTexture } from '../utils/TextureGenerator';
 
 // The people of the mohalla, drawn as instanced body parts: every leg in the street is one
@@ -779,21 +779,6 @@ export function Crowd() {
       walkers++;
     }
 
-    // in the society the player is seen over the shoulder: a figure of their own
-    let me = crowd.agents.find((x) => x.owner === 'player');
-    if (levelState.id === 'society') {
-      if (!me) me = crowd.spawn('woman', p.x, 0, p.z, 0, 'idle', 'player', { speed: 1.3 }) ?? undefined;
-      if (me) {
-        const step = Math.hypot(p.x - me.x, p.z - me.z);
-        me.x = p.x;
-        me.z = p.z;
-        me.y = 0;
-        if (me.react === 'none') me.ry = Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw));
-        me.moving += ((step > 0.002 ? 1 : 0) - me.moving) * Math.min(1, dt * 10);
-        me.phase += (step / Math.max(dt, 1e-3)) * dt * 2.4;
-        me.solid = true;
-      }
-    } else if (me) crowd.remove(me);
 
     const pm = Math.hypot(p.x - lastPlayer.x, p.z - lastPlayer.z);
     lastPlayer.x = p.x;
@@ -835,8 +820,7 @@ export function Crowd() {
         // 3D figure takes over (like the vehicles' low-poly models), seen from behind, with some
         // hysteresis so nobody flickers. Across and towards the camera stay illustrations.
         const mv = a.moving > 0.25 && !a.sit && a.owner !== 'rider';
-        if (a.owner === 'player') a.solid = true;
-        else if (mv) {
+        if (mv) {
           const vx = a.x - cam.x;
           const vz = a.z - cam.z;
           const vl = Math.hypot(vx, vz) || 1;

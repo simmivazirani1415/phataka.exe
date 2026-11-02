@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame, wide } from '../game/GameState';
 import { IconAlbum, IconCracker, IconGrid, IconPin } from './Icons';
-import { useThrow } from '../street/throwing';
 import { audio } from '../audio/AudioEngine';
 import { SITE } from '../config/site';
 import { LEVELS } from '../street/StreetLayout';
@@ -22,8 +21,6 @@ export function GameHUD() {
   const active = useGame((s) => s.active);
   const placing = useGame((s) => s.placing);
   const [hint, setHint] = useState(true);
-  const armed = useThrow((s) => s.armed);
-  const throwHint = useThrow((s) => s.hintSeen);
   const [bump, setBump] = useState(false);
   const [here, setHere] = useState(whereNow());
   const prev = useRef(found);
@@ -81,9 +78,9 @@ export function GameHUD() {
         </span>
       </button>
 
-      {(hint || !throwHint) && !busy && !placing && !ui.map && !armed && (here === 'society' || here === 'balcony') && (
+      {hint && !busy && !placing && !ui.map && here !== 'store' && (
         <p className="hud-hint" aria-live="polite">
-          {isTouch() ? 'Pick a cracker on the right to hold it · joystick to walk' : 'Pick a cracker on the right to hold it · WASD to walk'}
+          {isTouch() ? 'Tap a pataka on the right to light it · joystick to walk' : 'Tap a pataka on the right to light it · WASD to walk'}
         </p>
       )}
 

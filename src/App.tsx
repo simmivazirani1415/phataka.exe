@@ -5,7 +5,6 @@ import { GameHUD } from './components/GameHUD';
 import { IntroOverlay } from './intro/IntroOverlay';
 import { useIntro } from './intro/introState';
 import { SITE } from './config/site';
-import { InHand } from './street/ui/InHand';
 import { NewMemory } from './components/PolaroidCard';
 import { Scrapbook } from './scrapbook/Scrapbook';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -198,7 +197,6 @@ export default function App() {
       <NewMemory />
       <StoreShelf />
       <InventoryTray />
-      <InHand />
       <CameraExplainer />
       <LocationMap />
       <SpotlightCard />
