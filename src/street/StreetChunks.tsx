@@ -158,7 +158,7 @@ function buildTemplate(v: VariantData): Template {
       const i = r.seed % RANGOLI_N;
       const u0 = (i % 2) / 2;
       const v0 = 1 - (Math.floor(i / 2) + 1) / 2;
-      return { x: r.x, y: 0.025, z: r.z, w: r.size, h: r.size, ry: 0, flat: true, uv: [u0, v0, u0 + 0.5, v0 + 0.5] as [number, number, number, number] };
+      return { x: r.x, y: (r.y ?? 0) + 0.025, z: r.z, w: r.size, h: r.size, ry: 0, flat: true, uv: [u0, v0, u0 + 0.5, v0 + 0.5] as [number, number, number, number] };
     }),
   );
   // paving uses world-space uvs so the stones line up across chunks

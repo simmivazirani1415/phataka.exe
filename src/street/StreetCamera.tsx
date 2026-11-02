@@ -129,7 +129,7 @@ export function StreetCamera() {
           const x = target[0] + Math.sin(a) * dist;
           const z = target[2] + Math.cos(a) * dist;
           pos = _v.set(x, target[1] + height, z);
-          if (openOnLevel(x, z, 0.2)) break;
+          if (o.free || openOnLevel(x, z, 0.2)) break;
         }
         const look = _v2.set(target[0], target[1] + (o.lookY ?? 0.3), target[2]);
         lookQuat(pos, look, _q);

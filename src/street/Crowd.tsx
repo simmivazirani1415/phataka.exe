@@ -523,9 +523,10 @@ export const LINES = {
   film: ['Reel banegi!', 'Ruko, video le raha hoon!', 'Story pe daalunga!'],
   rocket: ['Upar dekho!', 'Seedha chaand tak!', 'Woh gaya!'],
   dog: ['Bhow bhow!'],
-  rider: ['Arre bhai!', 'Dhyaan se, bhaiya!'],
+  rider: ['Arre bhai!', 'Dhyaan se, bhaiya!', 'Meri gaadi pe nahi!', 'Oye, gaadi pe kyun?!'],
   bump: ['Arre, sambhal ke!', 'Arre bhai!', 'Dekh ke!'],
   sorry: ['Sorry, sorry!', 'Koi baat nahi!'],
+  scared: ['Aaaah! Bhaago!', 'Upar se kaun phenk raha hai?!', 'Bachaooo!', 'Arre baap re, bhaago!', 'Kaun hai upar?!', 'Mummyyy!'],
   greet: ['Happy Diwali!', 'Ram Ram ji!', 'Arre, kaise ho?', 'Namaste aunty ji!', 'Mithai khayi?'],
 };
 
@@ -986,7 +987,54 @@ function wanderer(a: Agent, dt: number) {
 // ------------------------------------------------------------------------------------------
 // Reactions
 
+/** A cracker dropped among people from the balcony or terrace: everyone close runs, yelling. */
+function scatter(e: WorldEvent, R: number) {
+  const ex = e.pos[0];
+  const ez = e.pos[2];
+  let loud: Agent | null = null;
+  let ld = Infinity;
+  let n = 0;
+  for (const a of crowd.agents) {
+    if (a.owner === 'rider' || a.hidden || a.y > 0.3) continue;
+    const dx = a.x - ex;
+    const dz = a.z - ez;
+    const d = Math.hypot(dx, dz);
+    if (d > R) continue;
+    const away = d > 0.01 ? [dx / d, dz / d] : [Math.random() - 0.5, Math.random() - 0.5];
+    const k = Math.hypot(away[0], away[1]) || 1;
+    a.react = 'flee';
+    a.reactT = 0;
+    a.reactDur = rnd(1.6, 2.6) + (R - d) * 0.12;
+    a.fx = away[0] / k;
+    a.fz = away[1] / k;
+    a.lookUp = 0.4;
+    n++;
+    if (a.kind !== 'dog' && d < ld) {
+      ld = d;
+      loud = a;
+    }
+    if (a.kind === 'dog' && Math.random() < 0.7) window.setTimeout(() => audio.woof(), 150);
+  }
+  if (n > 0) {
+    audio.yelp(Math.min(3, n));
+    if (loud) {
+      const who = loud;
+      sayLine(pick(LINES.scared), who.x, who.y + (who.kind === 'child' ? 1.25 : 1.95), who.z, true);
+    }
+  }
+}
+
 function react(e: WorldEvent) {
+  if (e.kind === 'thrown') {
+    scatter(e, 6.5);
+    return;
+  }
+  // the burst of a cracker thrown down among people sends them running again
+  const t = runtime.thrownAt;
+  if (t && e.kind !== 'interaction' && e.kind !== 'stage' && Math.hypot(e.pos[0] - t[0], e.pos[2] - t[2]) < 3) {
+    scatter(e, e.kind === 'bomb' ? 12 : 8);
+    return;
+  }
   const big = e.kind === 'bomb' || e.kind === 'bigBurst';
   const R = e.kind === 'bomb' ? 18 : big ? 15 : e.kind === 'launch' ? 9 : 10;
   const ex = e.pos[0];

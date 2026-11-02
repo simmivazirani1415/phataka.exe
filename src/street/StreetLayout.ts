@@ -96,7 +96,7 @@ export interface VariantData {
   glow: Inst[];
   points: GlowPoint[];
   signs: SignSpot[];
-  rangolis: { x: number; z: number; size: number; seed: number }[];
+  rangolis: { x: number; z: number; size: number; seed: number; y?: number }[];
   walk: Rect[];
   /** open road, chowk and side-gali lanes: the only places a cracker may be put down */
   burst: Rect[];
@@ -199,8 +199,8 @@ class Builder {
     this.box('detail', x, y + 0.55 * s, z, 0.5 * s, 0.45 * s, 0.5 * s, this.pick([0x3c8d4f, 0x2f7a43, 0x4f9a52]), 0, 2);
     if (this.r() > 0.5) this.box('detail', x + 0.1 * s, y + 0.75 * s, z, 0.12, 0.12, 0.12, 0xe83f7a, 0, 2);
   }
-  rangoli(x: number, z: number, size: number) {
-    this.d.rangolis.push({ x, z, size, seed: Math.floor(this.r() * 1000) });
+  rangoli(x: number, z: number, size: number, y = 0) {
+    this.d.rangolis.push({ x, z, size, y, seed: Math.floor(this.r() * 1000) });
   }
   sign(x: number, y: number, z: number, w: number, h: number, ry: number, slot: number) {
     this.d.signs.push({ x, y, z, w, h, ry, slot });
@@ -234,6 +234,9 @@ interface HouseOpts {
   kind?: 'house' | 'shop' | 'pataka' | 'mithai' | 'temple';
   /** a clear family terrace on the roof (no tank, antenna or watchers) */
   terrace?: boolean;
+  /** leave out the roof parapet on this end, where a terrace runs on over the next roof */
+  openA0?: boolean;
+  openA1?: boolean;
 }
 
 /** One building with its street-facing facade on the frame's a axis from a0 to a1. */
@@ -264,8 +267,8 @@ function building(B: Builder, f: Frame, a0: number, a1: number, o: HouseOpts = {
   // parapet with a coloured coping
   bx('shell', am, H + 0.45, 0.1, w, 0.9, 0.2, wall);
   bx('shell', am, H + 0.93, 0.1, w + 0.06, 0.08, 0.28, trim);
-  bx('shell', a0 + 0.1, H + 0.45, D / 2, 0.2, 0.9, D, wall);
-  bx('shell', a1 - 0.1, H + 0.45, D / 2, 0.2, 0.9, D, wall);
+  if (!o.openA0) bx('shell', a0 + 0.1, H + 0.45, D / 2, 0.2, 0.9, D, wall);
+  if (!o.openA1) bx('shell', a1 - 0.1, H + 0.45, D / 2, 0.2, 0.9, D, wall);
   bx('shell', am, H + 0.45, D - 0.1, w, 0.9, 0.2, wall);
   // corner pilasters
   bx('detail', a0 + 0.12, H / 2, -0.06, 0.24, H, 0.12, darken(wall, 0.08));
@@ -541,10 +544,12 @@ function buildChowk(B: Builder) {
   const north: Frame = { ox: 0, oz: H, th: 0 };
   building(B, north, -C / 2, -11.5, { floors: 4 });
   building(B, north, -11.5, -5.5, { shop: 7, kind: 'shop', floors: 3 });
-  building(B, north, -5.5, 1.5, { shop: 0, kind: 'pataka', floors: 3 });
-  building(B, north, 1.5, 8, { shop: 1, kind: 'mithai', floors: 2, terrace: true });
+  // the pataka and mithai shops share one long roof: the family's big terrace
+  building(B, north, -5.5, 1.5, { shop: 0, kind: 'pataka', floors: 2, terrace: true, openA1: true });
+  building(B, north, 1.5, 8, { shop: 1, kind: 'mithai', floors: 2, terrace: true, openA0: true });
   building(B, north, 8, C / 2, { floors: 4, balcony: false });
   terraceAndBalcony(B);
+  friendsHouse(B);
   row(B, { ox: 0, oz: -H, th: Math.PI }, -C / 2, C / 2, [], { shops: [4, 6, 8], shopChance: 0.7 });
   const west: Frame = { ox: -H, oz: 0, th: -Math.PI / 2 };
   const east: Frame = { ox: H, oz: 0, th: Math.PI / 2 };
@@ -815,7 +820,7 @@ export function getVariants() {
 // ------------------------------------------------------------------------------------------
 // Collision and placement queries (world coordinates)
 
-const inRect = (r: Rect, x: number, z: number, m: number) => x > r.x0 + m && x < r.x1 - m && z > r.z0 + m && z < r.z1 - m;
+export const inRect = (r: Rect, x: number, z: number, m: number) => x > r.x0 + m && x < r.x1 - m && z > r.z0 + m && z < r.z1 - m;
 const nearRect = (r: Rect, x: number, z: number, m: number) => x > r.x0 - m && x < r.x1 + m && z > r.z0 - m && z < r.z1 + m;
 
 /** Is (x, z) open ground (gali, chowk, side gali, courtyards), at least `m` from walls and props? */
@@ -854,7 +859,7 @@ export function inSideGali(x: number, z: number) {
 // family terrace on the mithai shop's roof and a long balcony next door. Both look out
 // over the square, so the crowd below still sees (and hears) every burst.
 
-export type LevelId = 'street' | 'chowk' | 'terrace' | 'balcony';
+export type LevelId = 'street' | 'chowk' | 'terrace' | 'balcony' | 'friend';
 
 export interface Level {
   id: LevelId;
@@ -871,6 +876,10 @@ export interface Level {
 const TERRACE_Y = 2 * FH + 0.25;
 const BALCONY_Y = FH + 0.12;
 const CH = STREET.chowkHalf;
+/** the friend's courtyard sits on its own, south of the chowk, walled in by its houses */
+const FZ = -62;
+const FW = 8;
+const FD = 7;
 
 export const LEVELS: Record<LevelId, Level> = {
   street: { id: 'street', name: 'Gali', hint: 'By the chai stall', floor: 0, walk: null, burst: null, spawn: { x: -C - 9, z: -0.6, yaw: -Math.PI / 2 + 0.06, pitch: 0 } },
@@ -880,9 +889,9 @@ export const LEVELS: Record<LevelId, Level> = {
     name: 'Chhat',
     hint: 'The family terrace',
     floor: TERRACE_Y,
-    walk: { x0: 1.85, x1: 7.65, z0: CH + 0.3, z1: CH + 9.7 },
-    burst: { x0: 2.1, x1: 7.4, z0: CH + 0.5, z1: CH + 7.6 },
-    spawn: { x: 4.75, z: CH + 9.0, yaw: 0, pitch: -0.16 },
+    walk: { x0: -5.15, x1: 7.65, z0: CH + 0.3, z1: CH + 9.7 },
+    burst: { x0: -4.9, x1: 7.4, z0: CH + 0.5, z1: CH + 8.4 },
+    spawn: { x: 1.25, z: CH + 9.3, yaw: 0, pitch: -0.22 },
   },
   balcony: {
     id: 'balcony',
@@ -891,12 +900,21 @@ export const LEVELS: Record<LevelId, Level> = {
     floor: BALCONY_Y,
     walk: { x0: 8.5, x1: 13.5, z0: CH - 2.05, z1: CH - 0.05 },
     burst: { x0: 8.7, x1: 13.3, z0: CH - 1.9, z1: CH - 0.25 },
-    spawn: { x: 13.0, z: CH - 0.45, yaw: 0.8, pitch: -0.32 },
+    spawn: { x: 11.0, z: CH - 1.3, yaw: 0, pitch: -0.46 },
+  },
+  friend: {
+    id: 'friend',
+    name: 'Friend’s house',
+    hint: 'A courtyard full of friends',
+    floor: 0,
+    walk: { x0: -FW + 0.6, x1: FW - 0.6, z0: FZ - FD + 0.6, z1: FZ + FD - 0.6 },
+    burst: { x0: -FW + 1.4, x1: FW - 1.4, z0: FZ - FD + 1.6, z1: FZ + FD - 2.0 },
+    spawn: { x: 0, z: FZ - FD + 0.9, yaw: Math.PI, pitch: -0.12 },
   },
 };
 
 /** The floor the player is on now. */
-export const levelState: { id: LevelId } = { id: 'street' };
+export const levelState: { id: LevelId } = { id: 'chowk' };
 export const currentLevel = () => LEVELS[levelState.id];
 
 /** Walkable here, on the current floor? */
@@ -918,52 +936,183 @@ export function groundLevelAt(x: number, z: number): LevelId {
   return chunkOf(x) === 0 && Math.abs(x) < CH && Math.abs(z) < CH ? 'chowk' : 'street';
 }
 
+/** A candle: a short white stick and its flame. */
+function candle(B: Builder, x: number, y: number, z: number, h = 0.22) {
+  B.box('detail', x, y + h / 2, z, 0.06, h, 0.06, 0xfff3d8, 0, 1);
+  B.point(x, y + h + 0.06, z, 0xffc760, 0.34, 2);
+}
+
 function terraceAndBalcony(B: Builder) {
-  // terrace: a durrie, potted plants, diyas along the parapet, a kandil and the family
+  // the big terrace over the pataka and mithai shops: a tiled floor with room to spare,
+  // a canopy of fairy lights on bamboo poles, rangolis, rows of diyas and candles, kandils,
+  // and the family out on the durrie at the back
   const y = TERRACE_Y;
-  // a tiled terrace floor, a lamp over it
-  B.box('shell', 4.75, y + 0.005, CH + 5, 6.1, 0.01, 9.6, 0xc9a27e);
-  for (let i = 1; i < 6; i++) B.box('detail', 1.7 + i * 1.02, y + 0.012, CH + 5, 0.03, 0.006, 9.6, 0xa9876a);
-  B.d.lamps.push({ x: 4.75, y: y + 2.6, z: CH + 5.5, color: 0xffd9a0 });
-  B.box('detail', 4.75, y + 0.012, CH + 8.4, 3.6, 0.02, 1.8, 0xce382a);
-  B.box('detail', 4.75, y + 0.016, CH + 8.4, 3.0, 0.02, 1.3, 0xf5a623);
-  for (const [x, z] of [[2.2, CH + 0.6], [7.3, CH + 0.6], [2.2, CH + 9.4], [7.3, CH + 9.4]]) B.pottedPlant(x, y, z, 0.9);
+  const x0 = -5.35;
+  const x1 = 7.85;
+  const xm = (x0 + x1) / 2;
+  const w = x1 - x0;
+  const z0 = CH + 0.2;
+  const z1 = CH + 9.8;
+  const zm = (z0 + z1) / 2;
+  B.box('shell', xm, y + 0.005, zm, w, 0.01, z1 - z0, 0xc9a27e);
+  for (let i = 1; i < 13; i++) B.box('detail', x0 + i * (w / 13), y + 0.012, zm, 0.03, 0.006, z1 - z0, 0xa9876a);
+  for (let i = 1; i < 9; i++) B.box('detail', xm, y + 0.012, z0 + i * ((z1 - z0) / 9), w, 0.006, 0.03, 0xa9876a);
+  // rangolis: a big one in the middle, two either side
+  B.rangoli(xm, CH + 4.4, 3.4, y);
+  B.rangoli(xm - 4.4, CH + 4.4, 1.9, y);
+  B.rangoli(xm + 4.4, CH + 4.4, 1.9, y);
+  // diyas the whole length of the front parapet and down both sides
+  for (let i = 0; i < 22; i++) B.diya(x0 + 0.3 + i * ((w - 0.6) / 21), y + 0.92, CH + 0.1);
   for (let i = 0; i < 9; i++) {
-    const x = 1.9 + i * 0.72;
-    B.diya(x, y + 0.92, CH + 0.1);
+    B.diya(x0 + 0.1, y + 0.92, z0 + 0.6 + i * 1.05);
+    B.diya(x1 - 0.1, y + 0.92, z0 + 0.6 + i * 1.05);
   }
-  B.kandil(4.75, y + 2.4, CH + 4.5, 0xff6f91);
-  B.fairy([1.6, y + 2.2, CH + 0.2], [7.9, y + 2.2, CH + 9.8], 0.3, 0.6);
-  B.box('detail', 7.2, y + 1.1, CH + 6.0, 0.06, 2.2, 0.06, 0x8d8f97);
-  B.person('woman', 3.0, y, CH + 9.1, Math.PI + 0.3, 'wave');
-  B.person('elder', 6.6, y, CH + 9.2, Math.PI - 0.3, 'look');
-  B.person('child', 7.0, y, CH + 8.2, Math.PI - 0.6, 'talk');
-  B.point(4.75, y + 0.4, CH + 8.4, 0xffb547, 0.6, 2);
+  // diyas ringing the big rangoli, candles in clusters at its corners
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    B.diya(xm + Math.cos(a) * 2.05, y, CH + 4.4 + Math.sin(a) * 2.05);
+  }
+  for (const [cx, cz] of [[x0 + 0.6, z0 + 0.5], [x1 - 0.6, z0 + 0.5], [x0 + 0.6, z1 - 0.6], [x1 - 0.6, z1 - 0.6], [xm - 4.4, CH + 3], [xm + 4.4, CH + 3]]) {
+    for (let k = 0; k < 5; k++) candle(B, cx + B.rr(-0.25, 0.25), y, cz + B.rr(-0.25, 0.25), B.rr(0.14, 0.3));
+  }
+  // bamboo poles at the corners and the middle, with a canopy of lights between them
+  const poles: Vec3[] = [];
+  for (const px of [x0 + 0.25, xm, x1 - 0.25]) {
+    for (const pz of [z0 + 0.25, z1 - 0.25]) {
+      B.box('detail', px, y + 1.5, pz, 0.08, 3.0, 0.08, 0xc8a46a);
+      poles.push([px, y + 2.95, pz]);
+    }
+  }
+  for (let i = 0; i < 7; i++) {
+    const fz = z0 + 0.3 + i * ((z1 - z0 - 0.6) / 6);
+    B.fairy([x0 + 0.25, y + 2.9, fz], [x1 - 0.25, y + 2.9, fz + B.rr(-0.3, 0.3)], 0.32, 0.5);
+  }
+  for (let i = 0; i < 5; i++) {
+    const fx = x0 + 0.5 + i * ((w - 1) / 4);
+    B.fairy([fx, y + 2.95, z0 + 0.25], [fx, y + 2.95, z1 - 0.25], 0.34, 0.6, [0xffd15a, 0xfff3d0, 0xf5a623]);
+  }
+  B.fairy([x0 + 0.1, y + 1.0, z0], [x1 - 0.1, y + 1.0, z0], 0.24, 0.12);
+  // kandils hung from the canopy
+  for (const [kx, kz, kc] of [[xm - 3.6, CH + 2.6, 0xff6f91], [xm + 3.6, CH + 2.6, 0xffd15a], [xm - 2, CH + 6.6, 0xff8a3d], [xm + 2, CH + 6.6, 0x7fe3d6], [xm, CH + 4.4, 0xff6f91]] as const) B.kandil(kx, y + 2.3, kz, kc);
+  for (const [lx, lz] of [[xm - 3.5, CH + 3], [xm + 3.5, CH + 3], [xm, CH + 7.5]]) B.d.lamps.push({ x: lx, y: y + 2.6, z: lz, color: 0xffd9a0 });
+  B.point(xm, y + 0.5, CH + 4.4, 0xffb547, 0.8, 2);
+  // potted plants and a durrie at the back, the family on it
+  for (const [px, pz] of [[x0 + 0.5, CH + 2.4], [x1 - 0.5, CH + 2.4], [x0 + 0.5, CH + 7.4], [x1 - 0.5, CH + 7.4]]) B.pottedPlant(px, y, pz, 0.9);
+  B.box('detail', xm, y + 0.014, CH + 8.6, 5.2, 0.02, 1.6, 0xce382a);
+  B.box('detail', xm, y + 0.018, CH + 8.6, 4.6, 0.02, 1.1, 0xf5a623);
+  B.box('detail', xm + 1.6, y + 0.1, CH + 8.6, 0.6, 0.16, 0.4, 0xf2e2c4);
+  B.person('woman', xm - 2.0, y, CH + 9.1, Math.PI + 0.3, 'wave');
+  B.person('elder', xm - 0.8, y + 0.02, CH + 8.8, Math.PI, 'sip', { sit: true });
+  B.person('man', xm + 2.6, y, CH + 9.2, Math.PI - 0.3, 'look');
+  B.person('child', xm + 3.4, y, CH + 8.2, Math.PI - 0.6, 'talk');
+  B.person('child', xm - 3.4, y, CH + 8.4, Math.PI + 0.5, 'wave');
+  B.person('woman', x0 + 1.0, y, CH + 1.0, -0.5, 'lean');
 
   // a long balcony on the first floor next door, with a railing and its own lights
   const by = FH;
-  const x0 = 8.3;
-  const x1 = 13.7;
-  const xm = (x0 + x1) / 2;
-  const z0 = CH - 2.2;
-  B.box('shell', xm, by + 0.05, CH - 1.1, x1 - x0, 0.14, 2.2, 0xd9c7a3);
-  B.box('shell', xm, by - 0.08, CH - 1.1, x1 - x0, 0.12, 2.2, 0xa9573b);
+  const bx0 = 8.3;
+  const bx1 = 13.7;
+  const bxm = (bx0 + bx1) / 2;
+  const bz0 = CH - 2.2;
+  B.box('shell', bxm, by + 0.05, CH - 1.1, bx1 - bx0, 0.14, 2.2, 0xd9c7a3);
+  B.box('shell', bxm, by - 0.08, CH - 1.1, bx1 - bx0, 0.12, 2.2, 0xa9573b);
   const posts = 20;
-  for (let i = 0; i <= posts; i++) B.box('detail', x0 + (i / posts) * (x1 - x0), by + 0.6, z0 + 0.05, 0.04, 0.95, 0.04, 0x2e2e33);
-  B.box('detail', xm, by + 1.08, z0 + 0.05, x1 - x0, 0.07, 0.09, 0xf5a623);
-  for (const x of [x0, x1]) B.box('detail', x, by + 0.6, CH - 1.1, 0.05, 0.95, 2.2, 0x2e2e33);
-  B.fairy([x0, by + 1.08, z0], [x1, by + 1.08, z0], 0.22, 0.14);
-  B.fairy([x0, by + 2.7, z0 + 0.1], [x1, by + 2.7, z0 + 0.1], 0.3, 0.3);
+  for (let i = 0; i <= posts; i++) B.box('detail', bx0 + (i / posts) * (bx1 - bx0), by + 0.6, bz0 + 0.05, 0.04, 0.95, 0.04, 0x2e2e33);
+  B.box('detail', bxm, by + 1.08, bz0 + 0.05, bx1 - bx0, 0.07, 0.09, 0xf5a623);
+  for (const x of [bx0, bx1]) B.box('detail', x, by + 0.6, CH - 1.1, 0.05, 0.95, 2.2, 0x2e2e33);
+  B.fairy([bx0, by + 1.08, bz0], [bx1, by + 1.08, bz0], 0.22, 0.14);
+  B.fairy([bx0, by + 2.7, bz0 + 0.1], [bx1, by + 2.7, bz0 + 0.1], 0.3, 0.3);
   B.box('glow', 9.8, by + 1.15, CH - 0.012, 1.0, 2.0, 0.02, 0xffc874);
   B.box('glow', 12.4, by + 1.15, CH - 0.012, 1.0, 2.0, 0.02, 0xffd27a);
   B.pottedPlant(8.6, BALCONY_Y, CH - 0.3, 0.7);
-  for (let i = 0; i < 6; i++) B.diya(x0 + 0.4 + i * 0.95, by + 1.13, z0 + 0.05);
-  B.d.lamps.push({ x: xm, y: by + 2.4, z: CH - 0.6, color: 0xffd9a0 });
+  for (let i = 0; i < 6; i++) B.diya(bx0 + 0.4 + i * 0.95, by + 1.13, bz0 + 0.05);
+  B.d.lamps.push({ x: bxm, y: by + 2.4, z: CH - 0.6, color: 0xffd9a0 });
   B.person('woman', 8.9, BALCONY_Y, CH - 0.5, 0.6, 'lean');
 }
 
+function friendsHouse(B: Builder) {
+  // an aangan walled in by the friend's house and its neighbours, lit for the party
+  const x0 = -FW;
+  const x1 = FW;
+  const z0 = FZ - FD;
+  const z1 = FZ + FD;
+  building(B, { ox: 0, oz: z1, th: 0 }, x0 - 0.5, x1 + 0.5, { floors: 2, kind: 'house', depth: 6, people: false });
+  building(B, { ox: 0, oz: z0, th: Math.PI }, x0 - 0.5, x1 + 0.5, { floors: 2, depth: 6, people: false });
+  building(B, { ox: x0, oz: FZ, th: -Math.PI / 2 }, -FD, FD, { floors: 2, depth: 6, people: false });
+  building(B, { ox: x1, oz: FZ, th: Math.PI / 2 }, -FD, FD, { floors: 2, depth: 6, people: false });
+  B.box('shell', 0, -0.02, FZ, 2 * FW + 1, 0.04, 2 * FD + 1, 0x8a7a68);
+  B.d.pave.push({ x0, x1, z0, z1 });
+  B.d.walk.push({ x0: x0 + 0.42, x1: x1 - 0.42, z0: z0 + 0.42, z1: z1 - 0.42 });
+  B.d.burst.push({ x0: x0 + 1.4, x1: x1 - 1.4, z0: z0 + 1.6, z1: z1 - 2.0 });
+  // a big rangoli ringed with diyas in the middle, smaller ones by the doors
+  B.rangoli(0, FZ, 3.0);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    B.diya(Math.cos(a) * 1.8, 0, FZ + Math.sin(a) * 1.8);
+  }
+  B.rangoli(-4.5, z1 - 1.4, 1.4);
+  B.rangoli(4.5, z1 - 1.4, 1.4);
+  // diyas along the foot of every wall, candles in the corners
+  for (let i = 0; i < 18; i++) {
+    const t = x0 + 0.5 + i * ((2 * FW - 1) / 17);
+    B.diya(t, 0, z1 - 0.25);
+    B.diya(t, 0, z0 + 0.25);
+  }
+  for (let i = 0; i < 14; i++) {
+    const t = z0 + 0.6 + i * ((2 * FD - 1.2) / 13);
+    B.diya(x0 + 0.25, 0, t);
+    B.diya(x1 - 0.25, 0, t);
+  }
+  for (const [cx, cz] of [[x0 + 0.7, z0 + 0.7], [x1 - 0.7, z0 + 0.7], [x0 + 0.7, z1 - 0.7], [x1 - 0.7, z1 - 0.7]]) {
+    for (let k = 0; k < 6; k++) candle(B, cx + B.rr(-0.3, 0.3), 0, cz + B.rr(-0.3, 0.3), B.rr(0.16, 0.34));
+  }
+  // fairy lights criss-crossing the courtyard, marigold garlands on the front house
+  for (let i = 0; i < 6; i++) {
+    const fx = x0 + 1 + i * ((2 * FW - 2) / 5);
+    B.fairy([fx, 6.2, z0], [fx + B.rr(-1, 1), 6.2, z1], 0.32, 1.1);
+  }
+  B.fairy([x0, 6.6, z0], [x1, 6.6, z1], 0.34, 1.3, [0xffd15a, 0xfff3d0, 0xf5a623]);
+  B.fairy([x0, 6.6, z1], [x1, 6.6, z0], 0.34, 1.3, [0xffd15a, 0xfff3d0, 0xf5a623]);
+  for (let i = 0; i < 4; i++) B.garland([x0 + 1 + i * 3.8, 3.2, z1 - 0.05], [x0 + 4.4 + i * 3.8, 3.2, z1 - 0.05], 0.35);
+  for (const [kx, kz, kc] of [[-4, FZ - 2.5, 0xff6f91], [4, FZ - 2.5, 0xffd15a], [-4, FZ + 3, 0x7fe3d6], [4, FZ + 3, 0xff8a3d]] as const) B.kandil(kx, 4.6, kz, kc);
+  for (const [lx, lz] of [[-4, FZ], [4, FZ], [0, FZ + 4]]) B.d.lamps.push({ x: lx, y: 3.6, z: lz, color: 0xffd9a0 });
+  // a jhoola on the left, a table of mithai on the right, a charpai by the back wall
+  const jx = x0 + 2;
+  const jz = FZ + 2.6;
+  for (const dx of [-0.9, 0.9]) B.box('detail', jx + dx, 1.25, jz, 0.1, 2.5, 0.1, 0x6b3d24);
+  B.box('detail', jx, 2.5, jz, 2.0, 0.1, 0.12, 0x6b3d24);
+  for (const dx of [-0.55, 0.55]) B.box('detail', jx + dx, 1.5, jz, 0.02, 1.95, 0.02, 0xd8c8aa);
+  B.box('detail', jx, 0.52, jz, 1.3, 0.06, 0.45, 0xce382a);
+  B.garland([jx - 0.9, 2.45, jz - 0.07], [jx + 0.9, 2.45, jz - 0.07], 0.12);
+  B.d.obstacles.push({ x0: jx - 1, x1: jx + 1, z0: jz - 0.4, z1: jz + 0.4 });
+  const tx = x1 - 2;
+  const tz = FZ + 2.6;
+  B.box('detail', tx, 0.42, tz, 1.8, 0.06, 0.8, 0x8a5233);
+  for (const dx of [-0.8, 0.8]) for (const dz of [-0.32, 0.32]) B.box('detail', tx + dx, 0.2, tz + dz, 0.06, 0.4, 0.06, 0x5a2e1c);
+  for (let i = 0; i < 4; i++) {
+    B.box('detail', tx - 0.6 + i * 0.4, 0.47, tz, 0.32, 0.03, 0.32, 0xd8d8d8, 0, 1);
+    for (let k = 0; k < 4; k++) B.box('detail', tx - 0.65 + i * 0.4 + (k % 2) * 0.1, 0.52, tz - 0.05 + Math.floor(k / 2) * 0.1, 0.08, 0.06, 0.08, B.pick([0xf5a623, 0xfff0d2, 0xd64a91, 0x8a5233]), 0, 2);
+  }
+  B.d.obstacles.push({ x0: tx - 1, x1: tx + 1, z0: tz - 0.5, z1: tz + 0.5 });
+  B.box('detail', 0, 0.38, z1 - 1.2, 2.2, 0.1, 0.9, 0xd8c8aa);
+  for (const dx of [-1.0, 1.0]) for (const dz of [-0.4, 0.4]) B.box('detail', dx, 0.18, z1 - 1.2 + dz, 0.08, 0.36, 0.08, 0x6b3d24);
+  B.d.obstacles.push({ x0: -1.2, x1: 1.2, z0: z1 - 1.7, z1: z1 - 0.7 });
+  for (const [px, pz] of [[x0 + 0.6, FZ - 2], [x1 - 0.6, FZ - 2]]) B.pottedPlant(px, 0, pz, 1);
+  // the friends: on the charpai, at the jhoola, round the mithai, kids running about
+  B.person('elder', -0.5, 0.45, z1 - 1.2, Math.PI, 'sip', { sit: true });
+  B.person('woman', 0.5, 0.45, z1 - 1.2, Math.PI, 'talk', { sit: true });
+  B.person('child', jx, 0, jz - 0.9, 0.2, 'wave');
+  B.person('woman', jx + 1.6, 0, jz - 0.6, -0.6, 'talk');
+  B.person('man', tx - 0.4, 0, tz - 1.0, 0.3, 'talk');
+  B.person('woman', tx + 0.6, 0, tz - 0.9, -0.3, 'look');
+  B.person('man', 3.2, 0, FZ - 3.6, 0.6, 'wave');
+  const kids: Rect = { x0: -5, x1: 5, z0: FZ - 5, z1: FZ - 2.6 };
+  for (let i = 0; i < 3; i++) B.person('child', B.rr(kids.x0, kids.x1), 0, B.rr(kids.z0, kids.z1), 0, 'play', { zone: kids });
+  B.person('dog', -5.6, 0, FZ - 4.2, 0.8, 'sleep');
+}
+
 // ------------------------------------------------------------------------------------------
-// Where the eight boxes hide (world coordinates, each in one canonical chunk only)
+// Where the eight boxes hide: all of them in the chowk (world coordinates)
 
 export interface BoxSpot {
   pos: Vec3;
@@ -972,18 +1121,18 @@ export interface BoxSpot {
 }
 
 export const BOX_SPOTS: Record<PackageId, BoxSpot> = {
-  bomb_wale_chacha: { pos: [-0.2, 0, STREET.chowkHalf - 1.2], ry: Math.PI, hint: 'At the pataka shop’s table in the chowk.' },
-  rocket_bua: { pos: [C - 4.9, 0, GH + 1.4], ry: Math.PI + 0.3, hint: 'By the temple steps, just past the chowk.' },
-  chakri_dadi: { pos: [7.4, 0, -10.6], ry: 0.4, hint: 'Beside a rangoli in the chowk.' },
-  phuljhadi_mami: { pos: [-2 * C - 1 - 1.2, 0, GH + 12.5], ry: Math.PI / 2, hint: 'Up the side gali, two lanes before the chowk.' },
-  anaar_maasi: { pos: [2 * C + 3.5, 0, -GH + 0.7], ry: 0, hint: 'On a doorstep in the house lane past the temple.' },
-  ladi_tauji: { pos: [C + 8 + 1.2, 0, -GH - 1.8], ry: -Math.PI / 2, hint: 'At the mouth of the side gali by the temple.' },
-  saat_shot_nana: { pos: [-C - 4.9, 0, GH - 0.1], ry: Math.PI, hint: 'Beside the bench at the chai stall.' },
-  pop_pop_chotu: { pos: [-10.2, 0, -11.2], ry: 0.6, hint: 'Next to the parked scooters in the chowk.' },
+  bomb_wale_chacha: { pos: [-0.2, 0, STREET.chowkHalf - 1.2], ry: Math.PI, hint: 'At the pataka shop’s table, north side of the chowk.' },
+  rocket_bua: { pos: [-11.6, 0, 11.4], ry: Math.PI * 0.75, hint: 'Under the lamp post behind the neem tree.' },
+  chakri_dadi: { pos: [7.4, 0, -10.6], ry: 0.4, hint: 'Beside the rangoli in the south-east corner.' },
+  phuljhadi_mami: { pos: [10.9, 0, 7.6], ry: -Math.PI * 0.75, hint: 'By the rangoli near the north-east lamp post.' },
+  anaar_maasi: { pos: [4.6, 0, STREET.chowkHalf - 0.9], ry: Math.PI, hint: 'On the mithai shop’s step.' },
+  ladi_tauji: { pos: [2.6, 0, -STREET.chowkHalf + 0.9], ry: 0, hint: 'On a shop step, south side of the chowk.' },
+  saat_shot_nana: { pos: [-6.4, 0, 5.4], ry: -Math.PI / 2, hint: 'Beside the bench under the neem tree.' },
+  pop_pop_chotu: { pos: [-10.2, 0, -11.2], ry: 0.6, hint: 'Next to the parked scooters, south-west corner.' },
 };
 
-/** Where the player stands when the doors open: in the chai lane, looking down the gali to the chowk. */
-export const START = { x: -C - 9, z: -0.6, yaw: -Math.PI / 2 + 0.06 };
+/** Where the player stands when the doors open: in the chowk, where all the patakas are. */
+export const START = { x: LEVELS.chowk.spawn.x, z: LEVELS.chowk.spawn.z, yaw: LEVELS.chowk.spawn.yaw };
 
 function darken(c: number, k: number) {
   const r = ((c >> 16) & 255) * (1 - k);

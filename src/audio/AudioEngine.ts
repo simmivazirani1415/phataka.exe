@@ -252,6 +252,43 @@ class Engine {
   chime() {
     [784, 988, 1175, 1568].forEach((f, i) => this.tone('world', f, 0.35, { type: 'triangle', gain: 0.05, delay: i * 0.06 }));
   }
+  /** People yelling and scattering: a few short voiced "aaah!"s, rising then falling. */
+  yelp(n = 1) {
+    const ctx = this.live();
+    if (!ctx) return;
+    for (let i = 0; i < n; i++) {
+      const t = ctx.currentTime + i * (0.09 + Math.random() * 0.1);
+      const f0 = 260 + Math.random() * 260;
+      const dur = 0.42 + Math.random() * 0.2;
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * 1.7, t + dur * 0.3);
+      o.frequency.exponentialRampToValueAtTime(f0 * 0.9, t + dur);
+      const vib = ctx.createOscillator();
+      vib.frequency.value = 6 + Math.random() * 3;
+      const vg = ctx.createGain();
+      vg.gain.value = f0 * 0.04;
+      vib.connect(vg).connect(o.frequency);
+      // two vowel formants, an open "aa"
+      const g = ctx.createGain();
+      this.env(g, t, 0.09, 0.03, dur);
+      for (const [fq, q, k] of [[850, 6, 1], [1300, 8, 0.6]] as const) {
+        const f = ctx.createBiquadFilter();
+        f.type = 'bandpass';
+        f.frequency.value = fq * (0.9 + Math.random() * 0.25);
+        f.Q.value = q;
+        const fg = ctx.createGain();
+        fg.gain.value = k * 2.2;
+        o.connect(f).connect(fg).connect(g);
+      }
+      g.connect(this.out('world'));
+      o.start(t);
+      vib.start(t);
+      o.stop(t + dur + 0.05);
+      vib.stop(t + dur + 0.05);
+    }
+  }
   woof() {
     this.burstNoise('world', 0.12, { type: 'lowpass', freq: 700, gain: 0.08 });
     this.tone('world', 210, 0.12, { type: 'triangle', to: 150, gain: 0.08 });

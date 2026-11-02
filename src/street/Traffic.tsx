@@ -157,8 +157,30 @@ export function Traffic() {
     () =>
       runtime.on((e: WorldEvent) => {
         if (e.kind === 'interaction' || e.kind === 'stage') return;
-        const R = e.kind === 'bomb' ? 16 : 11;
         const now = performance.now();
+        // a cracker thrown down onto a car or an auto: everything close leans on the horn,
+        // parked ones too (somebody is always sitting in them)
+        const t = runtime.thrownAt;
+        const onThrown = e.kind === 'thrown' || (t && Math.hypot(e.pos[0] - t[0], e.pos[2] - t[2]) < 3);
+        if (onThrown) {
+          const close = list.current
+            .map((v) => ({ v, d: Math.hypot(v.x - e.pos[0], v.z + v.off - e.pos[2]) }))
+            .filter((o) => o.d < 9)
+            .sort((p, q) => p.d - q.d)
+            .slice(0, 3);
+          close.forEach(({ v }, i) => {
+            if (!v.parked) v.brakeUntil = now + rnd(1600, 2400);
+            v.honked = now;
+            window.setTimeout(() => audio.horn(), 120 + i * 260 + Math.random() * 120);
+            if (i === 0) window.setTimeout(() => audio.horn(), 700 + Math.random() * 200);
+          });
+          if (close.length) {
+            const v = close[0].v;
+            window.setTimeout(() => sayLine(pickA(LINES.rider), v.x, 2.3, v.z + v.off, true), 500);
+          }
+          if (e.kind === 'thrown') return;
+        }
+        const R = e.kind === 'bomb' ? 16 : 11;
         let spoke = false;
         for (const v of list.current) {
           const d = Math.hypot(v.x - e.pos[0], v.z - e.pos[2]);

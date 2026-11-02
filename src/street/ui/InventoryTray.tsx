@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PACKAGES, type PackageId } from '../../assets/AssetRegistry';
-import { keepTray, MAX_USES, useGame, wide } from '../../game/GameState';
+import { keepTray, MAX_USES, useGame } from '../../game/GameState';
 import { cancelPlacing, pickFromPanel } from '../../game/DiscoverySystem';
 import { IconClose, IconCracker, IconLock } from '../../components/Icons';
 import { crackerRender, renderCrackers } from './crackerRenders';
@@ -51,7 +51,6 @@ export function InventoryTray() {
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) d.moved = true;
       if (d.moved) {
         setGhost({ id: d.id, x: e.clientX, y: e.clientY });
-        if (!wide() && useGame.getState().ui.tray && !(document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('.inv')) useGame.getState().setUi({ tray: false });
       }
       const canvas = document.querySelector('.world-canvas canvas');
       const under = document.elementFromPoint(e.clientX, e.clientY);

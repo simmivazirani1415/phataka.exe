@@ -3,7 +3,7 @@ import { keepTray, MAX_USES, useGame } from './GameState';
 import { runtime } from './Runtime';
 import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
-import { BOX_SPOTS, burstOnLevel, currentLevel, inSideGali, isBurstGround } from '../street/StreetLayout';
+import { BOX_SPOTS, burstOnLevel, currentLevel, inRect, inSideGali, isBurstGround } from '../street/StreetLayout';
 import { goToLevel } from '../street/Locations';
 
 // Orchestrates the package lifecycle:
@@ -219,30 +219,39 @@ let hazardId = 0;
 export type PlaceCheck = 'ok' | 'ground' | 'person' | 'vehicle' | 'far' | 'near';
 
 /** Pop-pops are thrown: from a terrace or balcony they land on the street below. */
-export function throwsDown(id: PackageId) {
-  return PACKAGE_BY_ID[id].crackerType === 'popPop' && currentLevel().floor > 0.5;
+export function throwsDown(id: PackageId, x?: number, z?: number) {
+  const L = currentLevel();
+  if (L.floor <= 0.5) return false;
+  // the balcony is for throwing: everything goes over the railing onto the chowk
+  if (L.id === 'balcony' || !L.walk) return true;
+  // on the terrace a spot on its own floor stays up here, one past the parapet is a throw
+  if (x === undefined || z === undefined) return PACKAGE_BY_ID[id].crackerType === 'popPop';
+  return !inRect(L.walk, x, z, 0);
 }
 
 /** The floor this cracker goes down on. */
-export function placeFloor(id: PackageId) {
-  return throwsDown(id) ? 0 : currentLevel().floor;
+export function placeFloor(id: PackageId, x?: number, z?: number) {
+  return throwsDown(id, x, z) ? 0 : currentLevel().floor;
 }
 
 /** Is this a good spot for the cracker? Any open ground with room, clear of people and vehicles. */
 export function checkSpot(id: PackageId, x: number, z: number): PlaceCheck {
   const type = PACKAGE_BY_ID[id].crackerType;
   const R = CLEARANCE[type];
-  const thrown = throwsDown(id);
+  const thrown = throwsDown(id, x, z);
   const d = Math.hypot(x - runtime.player.x, z - runtime.player.z);
-  if (d > (thrown ? 22 : 16)) return 'far';
+  if (d > (thrown ? 30 : 16)) return 'far';
   if (d < 1.1 && !thrown) return 'near';
   if (thrown ? !isBurstGround(x, z, 0.8) : !burstOnLevel(x, z, R)) return 'ground';
   // a ladi lies along the road: both of its ends must be on open ground too
   if (type === 'ladi') {
-    const [ax, az] = ladiAxis(x, z);
-    if (!burstOnLevel(x + ax * 1.9, z + az * 1.9, 0.6) || !burstOnLevel(x - ax * 1.7, z - az * 1.7, 0.6)) return 'ground';
+    const [ax, az] = ladiAxis(x, z, thrown);
+    const ok = (px: number, pz: number) => (thrown ? isBurstGround(px, pz, 0.4) : burstOnLevel(px, pz, 0.6));
+    if (!ok(x + ax * 1.9, z + az * 1.9) || !ok(x - ax * 1.7, z - az * 1.7)) return 'ground';
   }
-  const y = placeFloor(id);
+  // thrown from above it may land right among people, or on a car
+  if (thrown) return 'ok';
+  const y = placeFloor(id, x, z);
   // people and vehicles nearby: only the cracker's own blast radius needs to be clear.
   // Pop-pops are harmless snappers, so they may land right at people's feet.
   for (const [kind, s] of runtime.solids) {
@@ -288,8 +297,8 @@ export async function placeNear(id: PackageId, x: number, z: number) {
 }
 
 /** Along the road at this spot: the gali and chowk run along x, side galis along z. */
-export function ladiAxis(x: number, z: number): [number, number] {
-  if (currentLevel().walk) return [1, 0];
+export function ladiAxis(x: number, z: number, thrown = false): [number, number] {
+  if (currentLevel().walk && !thrown) return [1, 0];
   return inSideGali(x, z) ? [0, 1] : [1, 0];
 }
 
@@ -299,28 +308,29 @@ export async function placeCracker(id: PackageId, x: number, z: number) {
   if (busy() || g.uses[id] <= 0) return false;
   if (checkSpot(id, x, z) !== 'ok') return false;
   const pkg = PACKAGE_BY_ID[id];
-  const thrown = throwsDown(id);
-  const pos: Vec3 = [x, placeFloor(id), z];
+  const thrown = throwsDown(id, x, z);
+  const pos: Vec3 = [x, thrown ? 0 : currentLevel().floor, z];
   g.setPlacing(null);
   g.setActive({ id, step: 'spotlight', replay: false, capture: g.packages[id] !== 'MEMORY_CAPTURED', pos });
   // people and traffic on the road keep clear of a cracker down there (a terrace is out of their way)
   if (pos[1] < 0.5) runtime.hazards.push({ id: ++hazardId, pos, radius: CLEARANCE[pkg.crackerType] });
-  runtime.fireworks?.stage(id, pos, ladiAxis(x, z));
+  runtime.fireworks?.stage(id, pos, ladiAxis(x, z, thrown));
   audio.tap();
+  // a cracker dropped on people from above: they yell and scatter, cars below honk
+  runtime.thrownAt = thrown ? pos : null;
+  if (thrown) {
+    audio.whoosh(0.5);
+    window.setTimeout(() => runtime.emit({ kind: 'thrown', pos, strength: 0.6 }), 380);
+  }
   const cam = runtime.camera;
   cam?.setUserInput(false);
   runtime.reveal.pos = [x, pos[1] + 1.3, z];
   runtime.reveal.intensity = 0.6;
-  // thrown from above: step to the edge nearest it and look down over the parapet
-  const L = currentLevel();
-  if (thrown && L.walk && cam) {
-    const w = L.walk;
-    const ex = Math.min(w.x1 - 0.35, Math.max(w.x0 + 0.35, x));
-    const ez = Math.min(w.z1 - 0.35, Math.max(w.z0 + 0.35, z));
-    const dist = Math.max(0.5, Math.hypot(x - ex, z - ez));
-    const yaw = Math.atan2(-(x - ex), -(z - ez));
-    const pitch = Math.max(-0.95, -Math.atan2(L.floor + 1.6, dist) + 0.12);
-    await cam.travel({ x: ex, z: ez, yaw, pitch, floor: L.floor }, 0.9);
+  // thrown from above: the camera follows it down and hangs over it, between the cracker
+  // and the balcony, so the people scattering round it are in the picture
+  if (thrown && cam) {
+    const d = Math.hypot(x - runtime.player.x, z - runtime.player.z);
+    await cam.frame(pos, { dist: Math.max(2.4, Math.min(4.2, d * 0.5)), height: 2.3, lookY: -0.25, duration: 0.9, free: true });
   } else await cam?.frame(pos, FRAMING[pkg.crackerType]);
   return true;
 }

@@ -286,6 +286,8 @@ export function IntroOverlay() {
         applySoft();
         useGame.getState().setPhase('playing');
         useIntro.getState().setStage('GAMEPLAY_ACTIVE');
+        // straight into "where to?": the five places as cards in the middle of the screen
+        useGame.getState().setUi({ map: true });
       },
     });
     tl.current = t;
@@ -296,7 +298,7 @@ export function IntroOverlay() {
     t.to([r.scrim.current, r.haze.current, r.controls.current], { autoAlpha: 0, duration: 0.5, ease: 'power1.out' }, 0.1);
     t.to(soft, { blur: 0, dim: 1, duration: dur * 0.8, ease: 'power2.out' }, 0.05);
     t.set({}, {}, dur);
-    // a few steps into the gali, with the controls still held until the walk is done
+    // a few steps into the chowk, with the controls still held until the walk is done
     void runtime.camera?.travel({ x: START.x + (reduced ? 0.5 : 3.5), z: START.z, yaw: START.yaw, pitch: 0, floor: 0 }, dur);
   };
 

@@ -6,6 +6,7 @@ import { PACKAGE_BY_ID, type PackageId } from '../assets/AssetRegistry';
 import { useGame } from '../game/GameState';
 import { runtime } from '../game/Runtime';
 import { checkSpot, CLEARANCE, placeFloor, placeNear, type PlaceCheck } from '../game/DiscoverySystem';
+import { currentLevel, inRect } from './StreetLayout';
 import { audio } from '../audio/AudioEngine';
 
 // Carrying a cracker from the tray to the ground. A reticle follows the pointer (or the
@@ -32,7 +33,15 @@ function groundUnder(camera: THREE.Camera, w: number, h: number, id: PackageId):
   const y = pointer.has ? pointer.y : h * 0.72;
   _ndc.set((x / w) * 2 - 1, -(y / h) * 2 + 1);
   _ray.setFromCamera(_ndc, camera);
-  GROUND.constant = -placeFloor(id);
+  // on a raised floor: its own floor where the pointer is over it (the terrace), otherwise
+  // the street below, where a thrown cracker lands
+  const L = currentLevel();
+  if (L.floor > 0.5 && L.walk && L.id !== 'balcony') {
+    GROUND.constant = -L.floor;
+    const up = _ray.ray.intersectPlane(GROUND, _hit);
+    if (up && inRect(L.walk, up.x, up.z, 0)) return up;
+  }
+  GROUND.constant = L.floor > 0.5 ? 0 : -placeFloor(id);
   return _ray.ray.intersectPlane(GROUND, _hit);
 }
 
@@ -144,7 +153,7 @@ export function Placement() {
     if (!r) return;
     const R = CLEARANCE[PACKAGE_BY_ID[id].crackerType];
     const ok = r.check === 'ok';
-    g.position.set(r.x, placeFloor(id) + 0.04, r.z);
+    g.position.set(r.x, placeFloor(id, r.x, r.z) + 0.04, r.z);
     const t = st.clock.elapsedTime;
     ring.current.scale.setScalar(R * (1 + Math.sin(t * 5) * 0.03));
     const c = ok ? mats.ok : mats.bad;

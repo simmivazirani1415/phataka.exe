@@ -21,7 +21,7 @@ export interface CameraApi {
   setUserInput: (enabled: boolean) => void;
   shake: (amount: number, duration: number) => void;
   /** Ease into a low spotlight framing of a point on the ground, seen from the player's side. */
-  frame: (target: Vec3, opts?: { dist?: number; height?: number; lookY?: number; duration?: number }) => Promise<void>;
+  frame: (target: Vec3, opts?: { dist?: number; height?: number; lookY?: number; duration?: number; free?: boolean }) => Promise<void>;
   /** While framed, swing the look target (the rocket's climb). */
   aim: (target: Vec3, duration: number) => void;
   /** Turn to face a point (used by "show me"). */
@@ -53,7 +53,7 @@ export interface FireworkApi {
 
 type Listener = (e: WorldEvent) => void;
 export interface WorldEvent {
-  kind: 'firework' | 'bigBurst' | 'bomb' | 'interaction' | 'stage' | 'launch';
+  kind: 'firework' | 'bigBurst' | 'bomb' | 'interaction' | 'stage' | 'launch' | 'thrown';
   pos: Vec3;
   strength: number;
   text?: string;
@@ -84,6 +84,8 @@ export const runtime = {
   joy: { x: 0, y: 0 },
   /** crackers on the ground right now; people and vehicles keep away */
   hazards: [] as Hazard[],
+  /** where a cracker thrown down from the balcony or terrace landed (people near it run) */
+  thrownAt: null as Vec3 | null,
   /** where the carried cracker would go, and whether it may */
   reticle: null as { x: number; z: number; check: 'ok' | 'ground' | 'person' | 'vehicle' | 'far' | 'near' } | null,
   /** longest step the firework timeline takes per frame (headless tests raise it) */

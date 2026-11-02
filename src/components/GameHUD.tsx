@@ -6,10 +6,10 @@ import { SITE } from '../config/site';
 import { LEVELS } from '../street/StreetLayout';
 import { whereNow } from '../street/Locations';
 
-// The HUD stays small so the mohalla is the picture: the logo and the place you are in at
-// the top left, the collection count at the top right, four round buttons at the bottom
-// right (inventory, memories, sound, settings). Everything steps back while a cracker or
-// a box is in focus.
+// The HUD stays small so the mohalla is the picture: the logo at the top left, the place
+// switcher at the bottom centre, the collection count at the top right, four round buttons
+// at the bottom right (inventory, memories, sound, settings). Everything steps back while a
+// cracker or a box is in focus.
 
 const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
@@ -57,7 +57,8 @@ export function GameHUD() {
     audio.tap();
     // on phones one sheet at a time; on wide screens the side panels stay, but the settings
     // panel and the inventory share the right-hand side
-    if (!wide()) setUi({ tray: false, map: false, settings: false, ...u });
+    // (the pataka column on the right stays put)
+    if (!wide()) setUi({ map: false, settings: false, ...(u.settings ? { tray: false } : {}), ...u });
     else setUi({ ...(u.settings ? { tray: false } : {}), ...(u.tray ? { settings: false } : {}), ...u });
   };
 
@@ -67,11 +68,16 @@ export function GameHUD() {
         <div className="hud-logo">
           <img src={`${import.meta.env.BASE_URL}assets/intro/bombastic_logo.webp`} alt={SITE.name} draggable={false} />
         </div>
-        <button className={`hud-place ${ui.map ? 'on' : ''}`} onClick={() => open({ map: !ui.map })} aria-expanded={ui.map} aria-label={`Choose location. You are at the ${LEVELS[here].name}.`} disabled={busy}>
-          <IconPin size={16} />
-          <span>{LEVELS[here].name}</span>
-        </button>
       </div>
+
+      <button className={`hud-place ${ui.map ? 'on' : ''}`} onClick={() => open({ map: !ui.map })} aria-expanded={ui.map} aria-label={`Change place. You are at the ${LEVELS[here].name}.`} disabled={busy}>
+        <IconPin size={17} />
+        <span className="hud-place-text">
+          <small>You are at</small>
+          <b>{LEVELS[here].name}</b>
+        </span>
+        <span className="hud-place-go">Change place</span>
+      </button>
 
       <button className={`hud-count ${bump ? 'bump' : ''}`} onClick={() => open({ tray: !ui.tray })} aria-label={`Collection: ${found} of 8 patakas collected. Open inventory.`}>
         <IconCracker size={16} />
@@ -80,9 +86,9 @@ export function GameHUD() {
         </span>
       </button>
 
-      {hint && !busy && !placing && (
+      {hint && !busy && !placing && !ui.map && (
         <p className="hud-hint" aria-live="polite">
-          {isTouch() ? 'Open the inventory, pick a pataka, follow the arrows · joystick to walk' : 'Open the inventory, pick a pataka, follow the arrows · WASD to walk'}
+          {isTouch() ? 'Tap a pataka on the right and follow the arrows · joystick to walk' : 'Tap a pataka on the right and follow the arrows · WASD to walk'}
         </p>
       )}
 
