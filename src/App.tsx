@@ -5,24 +5,20 @@ import { GameHUD } from './components/GameHUD';
 import { IntroOverlay } from './intro/IntroOverlay';
 import { useIntro } from './intro/introState';
 import { SITE } from './config/site';
-import { PackageReveal } from './components/PackageReveal';
 import { NewMemory } from './components/PolaroidCard';
 import { MemoryAlbum } from './components/MemoryAlbum';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GestureLayer } from './components/GestureLayer';
 import { PACKAGES } from './assets/AssetRegistry';
 import { getThumbUrl } from './assets/PackageTextures';
-import { cancelPlacing, closeActive, distanceToBox } from './game/DiscoverySystem';
-import { BOX_SPOTS } from './street/StreetLayout';
+import { cancelPlacing, closeActive } from './game/DiscoverySystem';
+import { StoreShelf } from './street/ui/StoreShelf';
+import { CameraExplainer } from './street/ui/CameraExplainer';
 import { InventoryTray } from './street/ui/InventoryTray';
-import { CollectCard } from './street/ui/CollectCard';
 import { LocationMap } from './street/ui/LocationMap';
-import { GuideHUD } from './street/ui/GuideHUD';
 import { SpotlightCard } from './street/ui/SpotlightCard';
 import { Joystick } from './street/ui/Joystick';
-import { NearPrompt } from './street/ui/NearPrompt';
 import { audio } from './audio/AudioEngine';
-import { IconClose } from './components/Icons';
 
 const WorldScene = lazy(() => import('./world/WorldScene'));
 
@@ -81,29 +77,6 @@ function FinalBanner() {
       </button>
       <button className="btn-quiet" onClick={() => setUi({ finalSeen: true })}>
         Keep exploring
-      </button>
-    </div>
-  );
-}
-
-function ShowMePrompt() {
-  const id = useGame((s) => s.ui.showMe);
-  const active = useGame((s) => s.active);
-  const setUi = useGame((s) => s.setUi);
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (!id) return;
-    const t = window.setInterval(() => tick((n) => n + 1), 500);
-    return () => window.clearInterval(t);
-  }, [id]);
-  if (!id || active) return null;
-  return (
-    <div className="showme" role="status">
-      <span>
-        {BOX_SPOTS[id].hint} <b>~{Math.round(distanceToBox(id))} m</b>
-      </span>
-      <button className="icon-btn" onClick={() => setUi({ showMe: null })} aria-label="Hide the hint">
-        <IconClose size={16} />
       </button>
     </div>
   );
@@ -220,19 +193,16 @@ export default function App() {
       {!ready && <div className="loading">Mohalla jag raha hai…</div>}
       {introStage !== 'GAMEPLAY_ACTIVE' && <IntroOverlay />}
       {phase === 'playing' && <GameHUD />}
-      <PackageReveal />
       <GestureLayer />
       <NewMemory />
+      <StoreShelf />
       <InventoryTray />
-      <CollectCard />
+      <CameraExplainer />
       <LocationMap />
-      <GuideHUD />
       <SpotlightCard />
-      <NearPrompt />
       <Joystick />
       <SettingsPanel />
       <MemoryAlbum />
-      <ShowMePrompt />
       <FinalBanner />
       <Toasts />
     </div>

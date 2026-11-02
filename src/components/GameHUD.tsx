@@ -66,7 +66,7 @@ export function GameHUD() {
     <div className={`hud ${busy ? 'hud-busy' : ''}`}>
       <div className="hud-tl">
         <div className="hud-logo">
-          <img src={`${import.meta.env.BASE_URL}assets/intro/bombastic_logo.webp`} alt={SITE.name} draggable={false} />
+          <img src={`${import.meta.env.BASE_URL}assets/intro/phataka_party_logo.webp`} alt={SITE.name} draggable={false} />
         </div>
       </div>
 
@@ -79,16 +79,16 @@ export function GameHUD() {
         <span className="hud-place-go">Change place</span>
       </button>
 
-      <button className={`hud-count ${bump ? 'bump' : ''}`} onClick={() => open({ tray: !ui.tray })} aria-label={`Collection: ${found} of 8 patakas collected. Open inventory.`}>
+      <button className={`hud-count ${bump ? 'bump' : ''}`} onClick={() => open({ tray: !ui.tray })} aria-label={`${found} of 8 patakas collected. Open the stash.`}>
         <IconCracker size={16} />
         <span>
           <b>{found}</b> / 8
         </span>
       </button>
 
-      {hint && !busy && !placing && !ui.map && (
+      {hint && !busy && !placing && !ui.map && here !== 'store' && (
         <p className="hud-hint" aria-live="polite">
-          {isTouch() ? 'Tap a pataka on the right and follow the arrows · joystick to walk' : 'Tap a pataka on the right and follow the arrows · WASD to walk'}
+          {isTouch() ? 'Tap a pataka on the right to light it · joystick to walk' : 'Tap a pataka on the right to light it · WASD to walk'}
         </p>
       )}
 

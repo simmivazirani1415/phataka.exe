@@ -4,7 +4,7 @@ import { SITE } from '../config/site';
 import { useGame } from '../game/GameState';
 import { runtime } from '../game/Runtime';
 import { audio } from '../audio/AudioEngine';
-import { levelState, START } from '../street/StreetLayout';
+import { LEVELS, levelState, START } from '../street/StreetLayout';
 import { IconSoundOff, IconSoundOn } from '../components/Icons';
 import { useIntro } from './introState';
 
@@ -24,7 +24,7 @@ function videoSrc() {
 }
 const POSTER = `${BASE}assets/intro/intro_first.jpg`;
 const STILL = `${BASE}assets/intro/intro_last.jpg`;
-const LOGO = `${BASE}assets/intro/bombastic_logo.webp`;
+const LOGO = `${BASE}assets/intro/phataka_party_logo.webp`;
 
 /** automated checks step the timelines by hand */
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -59,33 +59,6 @@ function Badge() {
       </defs>
       <path d={BADGE} fill="url(#ib-fill)" stroke="#F6B53A" strokeWidth="5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
       <path d={BADGE} fill="none" stroke="#FFD27A" strokeOpacity="0.45" strokeWidth="1.5" vectorEffect="non-scaling-stroke" transform="translate(220 131) scale(0.95 0.91) translate(-220 -131)" />
-    </svg>
-  );
-}
-
-/** A string of fairy lights sagging between two cards. */
-function Garland() {
-  const pts = Array.from({ length: 9 }, (_, i) => {
-    const t = i / 8;
-    return [6 + t * 108, 8 + Math.sin(t * Math.PI) * 12];
-  });
-  return (
-    <svg className="intro-garland" viewBox="0 0 120 30" aria-hidden="true">
-      <path d="M2 8 Q60 32 118 8" fill="none" stroke="#F6B53A" strokeOpacity="0.8" strokeWidth="1.6" />
-      {pts.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="3.2" fill="#FFD983" />
-      ))}
-    </svg>
-  );
-}
-
-/** Little burst marks either side of the button and the outer cards. */
-function Splash({ side }: { side: 'l' | 'r' }) {
-  return (
-    <svg className={`intro-splash intro-splash-${side}`} viewBox="0 0 60 70" aria-hidden="true">
-      <path d="M40 6 L52 26 L45 28 Z" fill="#F6B53A" />
-      <path d="M8 30 L44 36 L42 43 Z" fill="#F08A2C" />
-      <path d="M14 62 L44 48 L46 55 Z" fill="#F6B53A" />
     </svg>
   );
 }
@@ -178,8 +151,8 @@ export function IntroOverlay() {
     soft.blur = 0;
     soft.dim = 1;
     applySoft();
-    levelState.id = 'street';
-    runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0, floor: 0 });
+    levelState.id = 'store';
+    runtime.camera?.teleport({ x: START.x, z: START.z - 3.5, yaw: START.yaw, pitch: LEVELS.store.spawn.pitch, floor: 0 });
 
     const reduced = useGame.getState().settings.reducedMotion;
     if (reduced) {
@@ -286,8 +259,6 @@ export function IntroOverlay() {
         applySoft();
         useGame.getState().setPhase('playing');
         useIntro.getState().setStage('GAMEPLAY_ACTIVE');
-        // straight into "where to?": the five places as cards in the middle of the screen
-        useGame.getState().setUi({ map: true });
       },
     });
     tl.current = t;
@@ -298,8 +269,8 @@ export function IntroOverlay() {
     t.to([r.scrim.current, r.haze.current, r.controls.current], { autoAlpha: 0, duration: 0.5, ease: 'power1.out' }, 0.1);
     t.to(soft, { blur: 0, dim: 1, duration: dur * 0.8, ease: 'power2.out' }, 0.05);
     t.set({}, {}, dur);
-    // a few steps into the chowk, with the controls still held until the walk is done
-    void runtime.camera?.travel({ x: START.x + (reduced ? 0.5 : 3.5), z: START.z, yaw: START.yaw, pitch: 0, floor: 0 }, dur);
+    // a few steps up to the pataka store, with the controls held until the walk is done
+    void runtime.camera?.travel({ x: START.x, z: START.z, yaw: START.yaw, pitch: LEVELS.store.spawn.pitch, floor: 0 }, dur);
   };
 
   const filmUp = stage === 'VIDEO_PLAYING';
@@ -323,19 +294,14 @@ export function IntroOverlay() {
               <img className="intro-step-art" src={s.art} alt="" draggable={false} />
               <span className="intro-step-n">0{i + 1}</span>
               <span className="intro-step-text">{s.text}</span>
-              {i < STEPS.length - 1 && <Garland />}
-              {i === 0 && <Splash side="l" />}
-              {i === STEPS.length - 1 && <Splash side="r" />}
             </li>
           ))}
         </ol>
         <div className="intro-cta-wrap" ref={r.ctaWrap}>
-          <Splash side="l" />
           <button className="intro-cta" ref={r.cta} onClick={enter} disabled={stage !== 'WELCOME_VISIBLE'} tabIndex={welcome ? 0 : -1}>
             {SITE.enter}
             <IconArrow />
           </button>
-          <Splash side="r" />
         </div>
       </div>
 

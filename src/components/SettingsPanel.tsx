@@ -123,7 +123,7 @@ export function SettingsPanel() {
                   reset();
                   setConfirm(false);
                   groundMarks.clear();
-                  levelState.id = 'street';
+                  levelState.id = 'store';
                   runtime.camera?.teleport({ x: START.x, z: START.z, yaw: START.yaw, pitch: 0, floor: 0 });
                 }}
               >

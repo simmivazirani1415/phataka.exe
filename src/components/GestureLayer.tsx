@@ -111,7 +111,7 @@ export function GestureLayer() {
     <>
       {!spot && (
         <HandCam className="hand-preview">
-          <span className="hand-preview-tag">{'\u{1F590}\u{FE0F}'} Hand lighting on</span>
+          <span className="hand-preview-tag"><i className="dot on" /> Hand gestures</span>
           <button className="hand-preview-close" onClick={stopHands} aria-label="Turn off hand gestures">
             <IconClose size={14} />
           </button>

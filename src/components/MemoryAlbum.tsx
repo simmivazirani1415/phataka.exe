@@ -42,7 +42,7 @@ function PageView({ page, index }: { page: Page; index: number }) {
     case 'cover':
       return (
         <div className="page cover">
-          <img className="cover-logo" src={`${import.meta.env.BASE_URL}assets/intro/bombastic_logo.webp`} alt={SITE.name} draggable={false} />
+          <img className="cover-logo" src={`${import.meta.env.BASE_URL}assets/intro/phataka_party_logo.webp`} alt={SITE.name} draggable={false} />
           <p className="cover-kicker">Diwali {new Date().getFullYear()} · scrapbook</p>
           <h2>
             My Diwali,

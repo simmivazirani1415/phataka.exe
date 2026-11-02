@@ -18,7 +18,7 @@ export function renderCrackers(): Promise<void> {
     // give the main scene its first frames before borrowing the GPU
     window.setTimeout(() => {
       try {
-        const S = 192;
+        const S = 288;
         const canvas = document.createElement('canvas');
         canvas.width = canvas.height = S;
         const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });

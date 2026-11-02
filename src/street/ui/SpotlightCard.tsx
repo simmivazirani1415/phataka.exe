@@ -2,20 +2,30 @@ import { useEffect, useRef, useState } from 'react';
 import type { CrackerType } from '../../assets/AssetRegistry';
 import { PACKAGE_BY_ID } from '../../assets/AssetRegistry';
 import { useGame } from '../../game/GameState';
-import { cancelPlaced, lightPlaced } from '../../game/DiscoverySystem';
+import { cancelPlaced } from '../../game/DiscoverySystem';
 import { GESTURE_INFO } from '../../input/gestures';
 import { handsRemembered, startHands, useHands } from '../../input/HandTracker';
 import { HandCam } from '../../components/GestureLayer';
-import { IconClose, IconHand, IconSpark } from '../../components/Icons';
+import { IconClose, IconHand } from '../../components/Icons';
 import { GestureDemo } from './GestureDemo';
 
-// While a cracker waits on the ground: a card at the bottom centre that teaches the hand
-// gesture. On the left the gesture plays as a big loop ("Do this"); on the right is the live
-// camera with your hand marked on it ("You"), a prompt that follows along (start the motion,
-// finish it), and a meter that fills as you go. The cracker lights the moment the motion is
-// close enough. "Let it burst" lights it without the camera.
+// The gesture guide, while a readied cracker waits in its gold ring. Left: the gesture as a
+// big loop with an arrow for the direction of the motion. Right: the live camera with the
+// tracked hand drawn on it. Under them a ring fills as the hand moves; the cracker fires the
+// moment the motion is complete. (The "Burst it!" fallback sits beside the cracker itself.)
 
-/** The gesture loop, scaled up to fill its pane (its animation is laid out at 150 x 110). */
+/** The direction of each motion, drawn over the demo (its layout is 150 x 110). */
+const ARROWS: Record<CrackerType, string[]> = {
+  bomb: ['M34 34 Q66 26 94 46'],
+  rocket: ['M75 98 L75 18'],
+  chakri: ['M107 55 A32 32 0 1 1 75 23'],
+  sparkler: ['M26 36 Q75 68 124 36'],
+  anaar: ['M14 58 L54 58', 'M136 58 L96 58'],
+  ladi: ['M14 46 L136 46'],
+  skyshot: ['M75 100 L75 18'],
+  popPop: ['M75 12 L75 84'],
+};
+
 function BigDemo({ type }: { type: CrackerType }) {
   const box = useRef<HTMLDivElement>(null);
   const [k, setK] = useState(1.4);
@@ -32,8 +42,32 @@ function BigDemo({ type }: { type: CrackerType }) {
     <div className="hs-demo-box" ref={box}>
       <div className="hs-demo-scale" style={{ transform: `translate(-50%, -50%) scale(${k})` }}>
         <GestureDemo type={type} />
+        <svg className="hs-arrow" viewBox="0 0 150 110" aria-hidden="true">
+          <defs>
+            <marker id={`ah-${type}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#ffc34d" />
+            </marker>
+          </defs>
+          {ARROWS[type].map((d) => (
+            <path key={d} d={d} markerEnd={`url(#ah-${type})`} />
+          ))}
+        </svg>
       </div>
     </div>
+  );
+}
+
+function Ring({ p, lit }: { p: number; lit: boolean }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg className={`hs-ring ${lit ? 'lit' : ''}`} viewBox="0 0 56 56" aria-hidden="true">
+      <circle cx="28" cy="28" r={r} className="ring-bg" />
+      <circle cx="28" cy="28" r={r} className="ring-fg" strokeDasharray={c} strokeDashoffset={c * (1 - p)} transform="rotate(-90 28 28)" />
+      <text x="28" y="33" textAnchor="middle">
+        {Math.round(p * 100)}
+      </text>
+    </svg>
   );
 }
 
@@ -46,7 +80,6 @@ export function SpotlightCard() {
   const [best, setBest] = useState(0);
   const id = active?.step === 'spotlight' ? active.id : null;
 
-  // the camera comes back on by itself for anyone who used it before
   useEffect(() => {
     if (id && useHands.getState().status === 'off' && handsRemembered()) void startHands();
   }, [id]);
@@ -61,71 +94,49 @@ export function SpotlightCard() {
   const pkg = PACKAGE_BY_ID[active.id];
   const info = GESTURE_INFO[active.id];
   const live = status === 'ready';
-  const noCam = status === 'error' || status === 'denied';
   const lit = live && performance.now() - litAt < 1500;
-  const p = live ? Math.max(progress, best * 0.9) : 0;
-  const prompt = lit
-    ? 'Lit! Stand back…'
-    : !live
-      ? ''
-      : hands === 0
-        ? 'Show your hand to the camera'
-        : p < 0.15
-          ? info.steps[0]
-          : p < 0.6
-            ? info.steps[1]
-            : 'Almost there, finish the motion!';
+  const p = live ? Math.min(1, Math.max(progress, best * 0.9) / 0.85) : 0;
+  const prompt = lit ? 'Lit! Stand back…' : !live ? info.how : hands === 0 ? 'Show your hand to the camera' : p < 0.15 ? info.steps[0] : 'Keep going… complete the motion';
   return (
-    <section className={`panel focus spot-panel hand-studio ${lit ? 'is-lit' : ''}`} role="dialog" aria-label={`${pkg.crackerLabel} is ready to light`} style={{ ['--pk' as string]: pkg.palette[0] }}>
-      <button className="icon-btn focus-close" onClick={cancelPlaced} aria-label="Pick it back up">
-        <IconClose size={18} />
+    <section className={`hguide ${lit ? 'is-lit' : ''}`} role="dialog" aria-label={`Light ${pkg.name}`}>
+      <button className="hguide-x" onClick={cancelPlaced} aria-label="Put it back">
+        <IconClose size={16} />
       </button>
-      <header className="hs-head">
-        <p className="focus-kicker">{pkg.crackerLabel}</p>
-        <h2 className="focus-name">{pkg.name}</h2>
-      </header>
-      <div className="hs-panes">
-        <figure className="hs-pane hs-demo">
+      <div className="hguide-panes">
+        <figure className="hguide-pane hguide-demo">
           <BigDemo type={pkg.crackerType} />
           <figcaption>
-            <b>Do this</b> {info.title}
+            <b>{info.title}</b>
           </figcaption>
         </figure>
-        <figure className={`hs-pane hs-cam ${live ? 'on' : ''}`}>
+        <figure className={`hguide-pane hguide-cam ${live ? 'on' : ''}`}>
           {live ? (
-            <HandCam className="hs-video">
-              {hands === 0 && !lit && <span className="hs-nohand">{'\u{1F590}\u{FE0F}'}</span>}
-              {lit && <span className="hs-lit">{'\u{1F525}'}</span>}
-            </HandCam>
+            <HandCam className="hs-video">{lit && <span className="hs-lit">{'\u{1F525}'}</span>}</HandCam>
           ) : (
-            <div className="hs-off">
+            <div className="hguide-off">
               {status === 'loading' ? (
                 <p>Starting the camera…</p>
-              ) : noCam ? (
-                <p>Camera not available here, so let it burst.</p>
+              ) : status === 'denied' || status === 'error' ? (
+                <p>Camera not available</p>
               ) : (
-                <button className="btn-primary" autoFocus onClick={startHands}>
-                  <IconHand size={18} /> Light it yourself
+                <button className="pill-cta small" onClick={startHands}>
+                  <IconHand size={16} /> Turn on camera
                 </button>
               )}
             </div>
           )}
           <figcaption>
-            <b>You</b> {live ? (hands ? 'Hand found' : 'Looking for your hand') : 'Camera off'}
+            <span className={`dot ${live ? 'on' : ''}`} /> Hand gestures
           </figcaption>
         </figure>
       </div>
-      {live && (
-        <div className="hs-progress" role="status" aria-live="polite">
-          <p className="hs-prompt">{prompt}</p>
-          <div className="spot-meter" aria-hidden="true">
-            <i style={{ width: `${Math.round(Math.min(1, p / 0.85) * 100)}%` }} />
-          </div>
-        </div>
-      )}
-      <button className={noCam ? 'btn-primary' : 'btn-line'} autoFocus={status !== 'off'} onClick={() => lightPlaced()}>
-        <IconSpark size={16} /> {live ? 'Skip, let it burst' : 'Let it burst'}
-      </button>
+      <div className="hguide-progress" role="status" aria-live="polite">
+        {live && <Ring p={p} lit={lit} />}
+        <p>
+          <small>{pkg.name}</small>
+          {prompt}
+        </p>
+      </div>
     </section>
   );
 }

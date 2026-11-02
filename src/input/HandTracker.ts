@@ -22,9 +22,11 @@ interface HandStore {
   hands: number;
   /** when the last gesture lit a cracker (performance.now), for the "Lit!" flash */
   litAt: number;
+  /** the one-time camera explainer is up */
+  ask: boolean;
 }
 
-export const useHands = create<HandStore>(() => ({ status: 'off', error: null, progress: 0, cursor: null, hands: 0, litAt: 0 }));
+export const useHands = create<HandStore>(() => ({ status: 'off', error: null, progress: 0, cursor: null, hands: 0, litAt: 0, ask: false }));
 
 /** A gesture this far along lights the cracker: close enough is good enough. */
 const FIRE_AT = 0.85;
@@ -43,6 +45,54 @@ function remember(on: boolean) {
   } catch {
     /* private mode */
   }
+}
+
+const ASKED = 'bombastic.camAsked';
+let answer: (() => void) | null = null;
+let askedThisVisit = false;
+function asked() {
+  try {
+    return askedThisVisit || localStorage.getItem(ASKED) === '1';
+  } catch {
+    return askedThisVisit;
+  }
+}
+
+/**
+ * Entering a place: the camera turns on by itself. The first time, a short explainer comes
+ * first; it resolves once the player has answered (or straight away when nothing is needed).
+ */
+export function ensureCamera(): Promise<void> {
+  const s = useHands.getState();
+  if (s.status === 'loading' || s.status === 'ready') return Promise.resolve();
+  if (handsRemembered()) {
+    void startHands();
+    return Promise.resolve();
+  }
+  if (asked() || s.status === 'denied' || s.status === 'error') return Promise.resolve();
+  useHands.setState({ ask: true });
+  return new Promise((resolve) => {
+    const prev = answer;
+    answer = () => {
+      prev?.();
+      resolve();
+    };
+  });
+}
+
+/** The explainer's answer: turn the camera on, or not now. Asked once. */
+export function answerCamera(yes: boolean) {
+  askedThisVisit = true;
+  try {
+    localStorage.setItem(ASKED, '1');
+  } catch {
+    /* private mode */
+  }
+  useHands.setState({ ask: false });
+  if (yes) void startHands();
+  const a = answer;
+  answer = null;
+  a?.();
 }
 
 /** Latest smoothed landmarks in video fractions (mirrored), for the preview skeleton. */
