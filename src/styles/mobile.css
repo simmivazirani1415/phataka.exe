@@ -1,0 +1,430 @@
+/* ============================================================================================
+   Phones (max-width: 640px). Loaded last, so it wins over the desktop-first sheets.
+   Layout: logo top left, scrapbook top right; the stash is a dock along the bottom with the
+   place pill sitting on top of it; places open as a dropdown from that pill; the joystick
+   sits above the pill on the left.
+   ============================================================================================ */
+
+.hud-place-caret {
+  display: none;
+}
+.place-drop-wrap {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --dock-h: 88px;
+    --dock-b: max(8px, env(safe-area-inset-bottom));
+    --pill-b: calc(var(--dock-b) + var(--dock-h) + 8px);
+    --above-pill: calc(var(--pill-b) + 54px);
+  }
+
+  /* ---- top bar: logo left, scrapbook right; the count and the stash button go ---- */
+  .hud .hud-count,
+  .hud .hud-actions .hud-btn {
+    display: none !important;
+  }
+  .hud .hud-actions {
+    position: fixed !important;
+    inset: auto !important;
+    top: max(12px, calc(env(safe-area-inset-top) + 6px)) !important;
+    right: 12px !important;
+    bottom: auto !important;
+    left: auto !important;
+    padding: 0 !important;
+    z-index: 9;
+  }
+  .hud .hud-book {
+    height: 38px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  /* ---- the stash dock ---- */
+  .panel.inv,
+  .panel.inv.panel {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 10px 12px calc(var(--dock-b) + 2px) !important;
+    border-radius: 22px 22px 0 0 !important;
+    border: 0 !important;
+    border-top: 1.5px solid rgba(246, 181, 58, 0.85) !important;
+    background: linear-gradient(180deg, #741f49, #4a1230) !important;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.35) !important;
+    transform: none !important;
+    animation: none !important;
+    z-index: 8;
+  }
+  .panel.inv::before,
+  .panel.inv::after {
+    display: none !important;
+  }
+  .inv .panel-head {
+    display: none !important;
+  }
+  .inv .inv-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    padding: 2px 2px 4px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    grid-template-columns: none !important;
+  }
+  .inv .inv-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .inv .inv-grid {
+    height: 66px !important;
+    flex: none !important;
+    min-height: 0 !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+  }
+  .inv .inv-grid > li {
+    flex: 0 0 auto !important;
+    width: 62px !important;
+    height: 62px !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    scroll-snap-align: start;
+  }
+  .inv .inv-item {
+    width: 62px !important;
+    height: 62px !important;
+    padding: 0 !important;
+  }
+  .inv .inv-art {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .inv .inv-name {
+    display: none !important;
+  }
+  .inv .inv-empty button {
+    height: 62px;
+  }
+
+  /* ---- the place pill, on top of the dock ---- */
+  .hud .hud-place {
+    position: fixed !important;
+    left: 12px !important;
+    right: auto !important;
+    bottom: var(--pill-b) !important;
+    top: auto !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px);
+    height: 44px !important;
+    min-height: 0 !important;
+    padding: 0 14px 0 12px !important;
+    gap: 8px !important;
+    z-index: 9;
+  }
+  .hud .hud-place .hud-place-text small,
+  .hud .hud-place .hud-place-go {
+    display: none !important;
+  }
+  .hud .hud-place .hud-place-text {
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .hud .hud-place::before,
+  .hud .hud-place::after {
+    display: none !important;
+  }
+  .hud .hud-place .hud-place-text b {
+    font-size: 15px !important;
+  }
+  .hud .hud-place .hud-place-caret {
+    display: inline;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--pp-plum, #4a1230);
+  }
+
+  /* ---- the places dropdown, rising from the pill ---- */
+  .place-drop-wrap {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+  }
+  .place-drop-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 6, 12, 0.35);
+  }
+  .place-drop {
+    position: absolute;
+    left: 12px;
+    bottom: calc(var(--pill-b) + 52px);
+    width: min(300px, calc(100vw - 24px));
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #741f49, #4a1230);
+    border: 1.5px solid rgba(246, 181, 58, 0.8);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    transform-origin: 20% 100%;
+    animation: dropIn 200ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+  }
+  @keyframes dropIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  }
+  .place-drop-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 7px 10px 7px 7px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #fff1d7;
+    text-align: left;
+    cursor: pointer;
+  }
+  .place-drop-item + .place-drop-item,
+  .place-drop li + li .place-drop-item {
+    margin-top: 2px;
+  }
+  .place-drop-item img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    flex: none;
+  }
+  .place-drop-item b {
+    flex: 1;
+    font: 400 17px/1.1 'Rozha One', serif;
+  }
+  .place-drop-item span {
+    font: 600 12px/1 var(--ui, 'DM Sans', sans-serif);
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--pp-gold, #f3b83e);
+    color: #4a1230;
+  }
+  .place-drop-item.here {
+    background: rgba(255, 241, 215, 0.1);
+  }
+  .place-drop-item.here span {
+    background: transparent;
+    color: #f6b53a;
+    padding-right: 4px;
+  }
+
+  /* ---- joystick above the pill ---- */
+  .joy {
+    position: fixed !important;
+    left: 14px !important;
+    bottom: calc(var(--above-pill) + 10px) !important;
+    width: 100px !important;
+    height: 100px !important;
+  }
+
+  /* ---- things that sit above the dock ---- */
+  .hud-hint {
+    bottom: calc(var(--pill-b) + 54px) !important;
+    top: auto !important;
+  }
+  .aim-choice {
+    bottom: calc(var(--pill-b) + 6px) !important;
+    z-index: 12;
+  }
+  .toast,
+  .toast.action {
+    top: max(62px, calc(env(safe-area-inset-top) + 56px)) !important;
+    bottom: auto !important;
+    left: 12px !important;
+    right: 12px !important;
+    max-width: none !important;
+    transform: none !important;
+    justify-content: center;
+    flex-wrap: wrap;
+    text-align: center !important;
+  }
+  .toast.action {
+    padding: 8px 10px !important;
+    gap: 6px 10px !important;
+    font-size: 12px !important;
+  }
+  .toast.action > span {
+    flex: 1 1 100%;
+  }
+
+  /* ---- the store: two rows of two, the dock below ---- */
+  .coll {
+    padding: max(60px, calc(env(safe-area-inset-top) + 56px)) 10px calc(var(--above-pill) + 4px) !important;
+  }
+  .coll-head h2 {
+    font-size: 28px;
+  }
+  .coll-head p {
+    font-size: 13px;
+  }
+  .coll-shelf {
+    height: 100% !important;
+  }
+  .coll-plinth {
+    display: none !important;
+  }
+  .coll-track {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-template-rows: 1fr 1fr;
+    grid-auto-columns: 50%;
+  }
+  .coll-track > li {
+    position: relative;
+    height: auto !important;
+    min-height: 0;
+  }
+  /* every cell has its own bit of shelf */
+  .coll-track > li::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    bottom: 6px;
+    height: 54px;
+    border-radius: 6px;
+    background:
+      linear-gradient(180deg, #3a2a20 0, #2a1d16 16px, rgba(0, 0, 0, 0) 16px),
+      linear-gradient(180deg, #17100c 16px, #0f0a08 100%);
+    box-shadow: 0 14px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 220, 170, 0.12);
+  }
+  .coll-item {
+    padding-bottom: 6px !important;
+  }
+  .coll-art {
+    margin-bottom: -44px !important;
+  }
+  .coll-name {
+    height: 38px !important;
+    margin-top: 44px !important;
+    font-size: 13px !important;
+  }
+  .coll-tag {
+    bottom: 2px !important;
+  }
+  .coll-arrow {
+    position: absolute !important;
+    top: 50%;
+    z-index: 3;
+    transform: translateY(-50%);
+    background: rgba(20, 10, 6, 0.55) !important;
+  }
+  .coll-arrow.l {
+    left: -2px;
+  }
+  .coll-arrow.r {
+    right: -2px;
+  }
+  .coll-foot {
+    margin-top: 8px !important;
+    gap: 8px;
+  }
+}
+
+/* ---- phone polish, round 2 ---- */
+@media (max-width: 640px) {
+  /* gesture card: full width, a clear close inside the card, readable instructions */
+  .hguide {
+    width: calc(100% - 24px) !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    padding: 12px 12px 12px !important;
+  }
+  .hguide-x {
+    top: 8px !important;
+    right: 8px !important;
+    width: 40px !important;
+    height: 40px !important;
+    color: #fff1d7 !important;
+    background: rgba(40, 8, 22, 0.75) !important;
+    border-color: rgba(246, 181, 58, 0.8) !important;
+  }
+  .hguide-pane figcaption {
+    font-size: 13px !important;
+  }
+  .hguide-progress p {
+    font-size: 15px !important;
+    line-height: 1.3 !important;
+  }
+  .hguide-progress small {
+    font-size: 12px !important;
+  }
+
+  /* scrapbook: the strip scrolls with a soft fade at its edge; download is just an icon */
+  .sb-thumbs {
+    scroll-snap-type: x proximity;
+    padding-right: 28px !important;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent);
+  }
+  .sb-thumbs > li {
+    scroll-snap-align: center;
+  }
+  .sb-dl-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0 !important;
+    justify-content: center;
+    font-size: 0 !important;
+    gap: 0 !important;
+  }
+  .sb-dl-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* tap targets: at least 44px */
+  .hud .hud-book,
+  .icon-btn,
+  .place-drop-item,
+  .aim-opt {
+    min-height: 44px;
+  }
+}
+
+/* short phones (iPhone SE and the like): the landing fits without scrolling */
+@media (max-width: 640px) and (max-height: 720px) {
+  .intro-welcome {
+    padding-top: max(18px, calc(env(safe-area-inset-top) + 10px)) !important;
+  }
+  .intro-welcome .intro-logo {
+    width: min(220px, 58vw) !important;
+  }
+  .intro-steps {
+    --card: min(250px, 66vw) !important;
+    gap: 6px !important;
+    margin-top: 14px !important;
+  }
+  .intro-cta-wrap {
+    margin-top: 10px !important;
+    margin-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  }
+}
+@media (max-width: 640px) {
+  /* keep the camera button clear of the close button in the corner */
+  .hguide-off {
+    padding-top: 34px !important;
+  }
+}

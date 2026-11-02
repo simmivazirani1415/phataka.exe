@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { PackageAsset, PackageId } from './AssetRegistry';
 import { PACKAGE_BY_ID, PACKAGES } from './AssetRegistry';
 import { addGrain, FONTS, makeCanvas, mulberry32, toTexture } from '../utils/TextureGenerator';
+import { SITE } from '../config/site';
 
 // Canvas-generated packaging faces. Front artwork comes from the registry image when present;
 // sides, back and top are always printed procedurally from the package palette so the box
@@ -124,7 +125,7 @@ export function drawBack(pkg: PackageAsset, index: number, w = 400, h = 512) {
   ctx.font = `17px ${FONTS.ui}`;
   ctx.fillStyle = '#FFF0D2';
   ctx.fillText(`Contains: 1 ${pkg.crackerLabel.toLowerCase()} (100% virtual)`, w / 2, h * 0.83);
-  ctx.fillText(`Collectible ${index + 1} of 8 · Pataka.exe Mohalla`, w / 2, h * 0.87);
+  ctx.fillText(`Collectible ${index + 1} of 8 · ${SITE.name} Mohalla`, w / 2, h * 0.87);
   addGrain(ctx, w, h, 16, index * 31);
   return c;
 }

@@ -1,7 +1,8 @@
 // Small, failure-tolerant persistence helpers. Compact metadata goes to localStorage;
 // Polaroid images go to IndexedDB. Every call degrades to a no-op if storage is unavailable.
 
-const LS_KEY = 'pataka.exe.v1';
+// the street build keeps its own progress, so it can live beside the original on one site
+const LS_KEY = 'pataka.exe.street.v1';
 
 export function loadMeta<T>(): T | null {
   try {
@@ -28,7 +29,7 @@ export function clearMeta() {
   }
 }
 
-const DB_NAME = 'pataka-exe';
+const DB_NAME = 'pataka-exe-street';
 const STORE = 'memories';
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
@@ -96,4 +97,14 @@ export async function clearImages() {
       resolve();
     }
   });
+}
+
+export async function deleteImages(id: string) {
+  const db = await openDb();
+  if (!db) return;
+  try {
+    db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+  } catch {
+    /* ignore */
+  }
 }

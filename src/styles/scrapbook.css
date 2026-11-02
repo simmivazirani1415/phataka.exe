@@ -1,0 +1,384 @@
+/* ---------- the memory scrapbook, in the festive plum and gold ----------
+   A jamun-plum hardcover with a gold frame, cream handmade-paper pages with rangoli corners
+   in gold, a marigold thread down the spine, polaroids held on with patterned washi tape. */
+
+.album-backdrop {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 196, 92, 0.18), transparent 22%),
+    radial-gradient(circle at 88% 12%, rgba(255, 120, 150, 0.14), transparent 20%),
+    radial-gradient(circle at 80% 86%, rgba(255, 196, 92, 0.14), transparent 24%),
+    radial-gradient(ellipse at 50% 50%, rgba(46, 10, 34, 0.78), rgba(18, 4, 14, 0.9));
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.album {
+  padding: 18px 18px 12px;
+  color: var(--char);
+  background: linear-gradient(160deg, #9a2654, #5e1236 70%);
+  border: 2px solid var(--gold);
+  border-radius: 18px;
+  box-shadow: 0 0 0 5px rgba(94, 18, 54, 0.6), 0 0 26px rgba(255, 176, 64, 0.35), 0 34px 80px rgba(0, 0, 0, 0.6);
+}
+.album::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(255, 210, 122, 0.45);
+  border-radius: 13px;
+  pointer-events: none;
+}
+.album-close {
+  top: -14px;
+  right: -14px;
+  width: 38px;
+  height: 38px;
+  color: var(--jm-2);
+  background: linear-gradient(#ffcb45, #f7ad22);
+  border: 2px solid #ffe29a;
+  border-radius: 50%;
+  box-shadow: 0 3px 0 #b3302d, 0 6px 14px rgba(0, 0, 0, 0.4);
+}
+.album-close:hover {
+  color: var(--jm-2);
+  background: linear-gradient(#ffd560, #f9b630);
+}
+.album-pages {
+  position: relative;
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+/* the marigold thread binding the spread */
+.album.spread .album-pages::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 50%;
+  width: 6px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, #ffb21e 0 2.6px, #f07b18 2.8px 3px, transparent 3.2px) 0 0 / 6px 11px repeat-y;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+
+/* handmade paper with a soft vignette and gold rangoli corners */
+.page {
+  padding: 40px 38px 34px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><g fill='none' stroke='%23d9a23a' stroke-width='1.4'><path d='M0 46 A46 46 0 0 1 46 0'/><path d='M0 30 A30 30 0 0 1 30 0'/></g><g fill='%23e7b24a'><circle cx='13' cy='13' r='4'/><ellipse cx='26' cy='10' rx='5' ry='2.6' transform='rotate(-25 26 10)'/><ellipse cx='10' cy='26' rx='2.6' ry='5' transform='rotate(-25 10 26)'/><circle cx='38' cy='6' r='1.8'/><circle cx='6' cy='38' r='1.8'/><circle cx='30' cy='30' r='2.2'/></g><g fill='%23ce382a'><circle cx='13' cy='13' r='1.6'/><circle cx='52' cy='3' r='1.6'/><circle cx='3' cy='52' r='1.6'/></g></svg>") no-repeat left 6px top 6px / 64px,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><g transform='rotate(180 40 40)'><g fill='none' stroke='%23d9a23a' stroke-width='1.4'><path d='M0 46 A46 46 0 0 1 46 0'/><path d='M0 30 A30 30 0 0 1 30 0'/></g><g fill='%23e7b24a'><circle cx='13' cy='13' r='4'/><ellipse cx='26' cy='10' rx='5' ry='2.6' transform='rotate(-25 26 10)'/><ellipse cx='10' cy='26' rx='2.6' ry='5' transform='rotate(-25 10 26)'/><circle cx='38' cy='6' r='1.8'/><circle cx='6' cy='38' r='1.8'/><circle cx='30' cy='30' r='2.2'/></g><g fill='%23ce382a'><circle cx='13' cy='13' r='1.6'/><circle cx='52' cy='3' r='1.6'/><circle cx='3' cy='52' r='1.6'/></g></g></svg>") no-repeat right 6px bottom 6px / 64px,
+    radial-gradient(ellipse at 50% 45%, #fffaf0, #f6e7c8 78%, #ead3a6),
+    var(--grain);
+  box-shadow: inset 0 0 0 1px rgba(122, 70, 30, 0.12), inset 0 0 40px rgba(160, 100, 40, 0.18);
+}
+.album.single .page {
+  border-radius: 6px;
+}
+.album.spread .page:first-child {
+  border-radius: 6px 0 0 6px;
+  box-shadow: inset -22px 0 26px -18px rgba(90, 40, 20, 0.35), inset 0 0 0 1px rgba(122, 70, 30, 0.12), inset 0 0 40px rgba(160, 100, 40, 0.16);
+}
+.album.spread .page:nth-child(2) {
+  border-radius: 0 6px 6px 0;
+  box-shadow: inset 22px 0 26px -18px rgba(90, 40, 20, 0.35), inset 0 0 0 1px rgba(122, 70, 30, 0.12), inset 0 0 40px rgba(160, 100, 40, 0.16);
+}
+.page-title {
+  position: relative;
+  margin: 0 0 26px;
+  font: 400 30px / 1.05 var(--festive);
+  color: var(--jm-1);
+  text-align: center;
+}
+/* a gold rule with a little diya in the middle */
+.page-title::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 150px;
+  height: 12px;
+  transform: translateX(-50%);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'><path d='M12 0c2 2.6 2.2 4.2 0 6-2.2-1.8-2-3.4 0-6z' fill='%23f5a623'/><path d='M4 6h16c-1 4-4 6-8 6s-7-2-8-6z' fill='%23ce382a'/></svg>") no-repeat center / 24px 12px,
+    linear-gradient(90deg, transparent, #d9a23a 18%, #d9a23a 38%, transparent 40%, transparent 60%, #d9a23a 62%, #d9a23a 82%, transparent) center / 100% 1.5px no-repeat;
+}
+.page .hand {
+  font-size: 16px;
+  color: #7a5a48;
+}
+.page-no {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font: 400 13px / 1 var(--festive);
+  color: #b88a4e;
+}
+
+/* cover: a plum page with a gold arch frame, the logo and the stamps */
+.page.cover {
+  align-items: center;
+  text-align: center;
+  color: var(--on-jm);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 196, 92, 0.22), transparent 55%),
+    linear-gradient(170deg, var(--jm-1), var(--jm-2));
+}
+.page.cover::before {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border: 2px solid var(--gold);
+  border-radius: 50% 50% 14px 14px / 22% 22% 14px 14px;
+  box-shadow: inset 0 0 0 5px rgba(94, 18, 54, 0.5), inset 0 0 0 6px rgba(255, 210, 122, 0.4);
+  pointer-events: none;
+}
+.cover-logo {
+  width: min(250px, 70%);
+  margin-bottom: 6px;
+  filter: drop-shadow(0 0 1px #fff1d7) drop-shadow(0 0 1px #fff1d7) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45));
+}
+.cover-kicker {
+  margin: 4px 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-2);
+}
+.page.cover h2 {
+  font: 400 44px / 1.02 var(--festive);
+  letter-spacing: 0;
+  color: var(--gold-2);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.page.cover .cover-sub {
+  color: var(--on-jm-soft);
+}
+.cover-stamps {
+  justify-content: center;
+  margin-top: 26px;
+}
+.stamp {
+  width: 64px;
+  height: 80px;
+  background: #fffaf0;
+}
+.page.cover .stamp {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* the mohalla from above */
+.page.world {
+  align-items: center;
+}
+.page .print {
+  border: 10px solid #fff;
+  border-bottom-width: 34px;
+  border-radius: 2px;
+  box-shadow: 0 8px 18px rgba(90, 50, 20, 0.3);
+  transform: rotate(-1.5deg);
+}
+.page.world > .hand:last-child,
+.page.world > .hand:nth-last-child(1) {
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* the collection: stamps on matchbox tags */
+.label-grid {
+  gap: 18px 12px;
+}
+.label-grid li {
+  padding: 10px 6px 8px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(217, 162, 58, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(90, 50, 20, 0.12);
+}
+.label-grid b {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--jm-1);
+}
+.label-grid small {
+  font-size: 13px;
+}
+.label-grid .missing {
+  background: rgba(255, 255, 255, 0.25);
+  border-style: dashed;
+}
+
+/* photo pages: polaroids with washi tape and a little doodle */
+.page.photos figure {
+  padding: 9px 9px 0;
+  border-radius: 2px;
+  box-shadow: 0 8px 18px rgba(90, 50, 20, 0.28), 0 1px 2px rgba(90, 50, 20, 0.2);
+}
+.page.photos figure::after {
+  content: '';
+  position: absolute;
+  right: -14px;
+  bottom: 18px;
+  width: 30px;
+  height: 30px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -10 20 20'><path d='M0-9l2.3 6.2L9-2.6 3.7 1.6 5.6 8.2 0 4.4-5.6 8.2-3.7 1.6-9-2.6-2.3-2.8z' fill='%23f5a623' stroke='%23ce382a' stroke-width='0.8'/></svg>") no-repeat center / contain;
+  transform: rotate(14deg);
+}
+.page.photos figure:nth-child(odd)::after {
+  right: auto;
+  left: -14px;
+  top: 30px;
+  bottom: auto;
+  transform: rotate(-10deg) scale(0.8);
+}
+.page.photos figcaption {
+  font-size: 16px;
+  color: #5a3a2c;
+  text-align: center;
+}
+.tape {
+  top: -11px;
+  width: 84px;
+  height: 22px;
+  opacity: 0.92;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  background: repeating-linear-gradient(45deg, rgba(245, 166, 35, 0.85) 0 6px, rgba(255, 226, 154, 0.85) 6px 12px);
+}
+.tape.t1 {
+  background: repeating-linear-gradient(90deg, rgba(214, 74, 145, 0.75) 0 5px, rgba(255, 210, 230, 0.8) 5px 10px);
+  transform: translateX(-50%) rotate(4deg);
+}
+.tape.t2 {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0 2px, transparent 2.5px) 0 0 / 9px 9px, rgba(20, 140, 136, 0.7);
+  transform: translateX(-50%) rotate(-6deg);
+}
+.page.photos.empty .hand {
+  max-width: 260px;
+  font-size: 18px;
+}
+
+/* the last page */
+.page.end {
+  align-items: center;
+  text-align: center;
+}
+.end-diya {
+  width: 72px;
+  height: 46px;
+  margin-bottom: 14px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 23'><path d='M18 0c3.4 4.4 3.8 7 0 10.2C14.2 7 14.6 4.4 18 0z' fill='%23f5a623'/><path d='M18 3.4c1.5 2 1.7 3.3 0 4.8-1.7-1.5-1.5-2.8 0-4.8z' fill='%23fff1d7'/><path d='M2 11h32c-2 7.4-8 12-16 12S4 18.4 2 11z' fill='%23ce382a'/><path d='M2 11h32' stroke='%235e1236' stroke-width='2'/></svg>") no-repeat center / contain;
+  filter: drop-shadow(0 0 10px rgba(255, 176, 64, 0.7));
+}
+.page.end h3 {
+  font: 400 34px / 1.12 var(--festive);
+  color: var(--jm-1);
+}
+.page.end h3 span {
+  color: #d1401f;
+}
+
+/* the export row and the page nav, on the plum cover */
+.album .export {
+  padding: 14px 4px 2px;
+  color: var(--on-jm);
+}
+.album .export .btn-primary {
+  color: var(--jm-2);
+  background: linear-gradient(#ffcb45, #f7ad22);
+  border: 2px solid #ffe29a;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 #b3302d;
+}
+.album .export .btn-quiet,
+.album .export .btn-line {
+  color: var(--on-jm);
+  border-color: rgba(255, 210, 122, 0.6);
+}
+.album .export-share small,
+.album .export-msg {
+  color: var(--gold-2);
+}
+.album .export-share select {
+  color: var(--on-jm);
+  border-color: rgba(255, 210, 122, 0.6);
+}
+.album .export-share select option {
+  color: var(--char);
+}
+.album-nav {
+  color: var(--gold-2);
+  font-weight: 700;
+}
+.album-nav .icon-btn {
+  color: var(--jm-2);
+  background: var(--gold);
+  border-radius: 50%;
+}
+.album-nav .icon-btn:hover:not(:disabled) {
+  color: var(--jm-2);
+  background: var(--gold-2);
+}
+.album-nav .icon-btn:disabled {
+  opacity: 0.35;
+}
+@media (max-width: 640px) {
+  .album {
+    padding: 12px 10px 8px;
+  }
+  .album-close {
+    top: -10px;
+    right: -6px;
+  }
+  .page {
+    padding: 30px 22px 28px;
+    background-size: 46px, 46px, auto, auto;
+  }
+  .page-title {
+    font-size: 25px;
+  }
+  .page.cover h2 {
+    font-size: 34px;
+  }
+  .page.end h3 {
+    font-size: 28px;
+  }
+}
+
+/* keep two polaroids on a page inside the screen */
+.page.photos figure {
+  width: auto;
+  max-width: 82%;
+}
+.page.photos .polaroid-img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(28vh, 250px);
+  margin: 0 auto;
+}
+.page.photos.n1 .polaroid-img {
+  max-height: min(54vh, 460px);
+}
+.page.photos figcaption {
+  max-width: 230px;
+  margin: 0 auto;
+}
+.album {
+  max-height: calc(100dvh - 32px);
+}
+.album-pages {
+  overflow-y: auto;
+}
+@media (max-width: 640px) {
+  .cover-stamps {
+    gap: 8px;
+  }
+  .cover-stamps .stamp {
+    width: 50px;
+    height: 62px;
+  }
+  .label-grid {
+    gap: 10px 8px;
+  }
+}

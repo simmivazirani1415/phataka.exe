@@ -1,3 +1,4 @@
+import { levelState } from '../street/StreetLayout';
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGame } from '../game/GameState';
@@ -8,6 +9,11 @@ import { useGame } from '../game/GameState';
 
 export function PerformanceMonitor() {
   const setDpr = useThree((s) => s.setDpr);
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    // headless tests read draw calls and triangles from here
+    if (new URLSearchParams(location.search).has('debug')) (window as unknown as Record<string, unknown>).__gl = gl;
+  }, [gl]);
   const graphics = useGame((s) => s.settings.graphics);
   const maxDpr = graphics === 'high' ? Math.min(2, window.devicePixelRatio || 1) : Math.min(1, window.devicePixelRatio || 1);
   const minDpr = graphics === 'high' ? 1 : 0.7;
@@ -35,7 +41,9 @@ export function PerformanceMonitor() {
       setDpr(dpr.current);
     }
     const st = useGame.getState();
-    if (st.phase === 'playing' && st.settings.graphics === 'high' && !w.suggested) {
+    // never in the middle of a moment: not at the store, not while a cracker is in focus
+    const quiet = !!st.active || levelState.id === 'store' || st.ui.album || st.ui.map;
+    if (st.phase === 'playing' && st.settings.graphics === 'high' && !w.suggested && !quiet) {
       w.bad = fps < 28 ? w.bad + 1 : 0;
       if (w.bad >= 3) {
         w.suggested = true;

@@ -38,9 +38,9 @@
       "palette": "Red, yellow, royal blue"
     },
     {
-      "id": "snake_wale_nana",
-      "file": "snake_wale_nana.png",
-      "type": "snake",
+      "id": "saat_shot_nana",
+      "file": "saat_shot_nana.png",
+      "type": "skyshot",
       "palette": "Dark green, cream, orange"
     },
     {

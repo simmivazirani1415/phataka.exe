@@ -2,14 +2,14 @@ import { create } from 'zustand';
 import type { HandLandmarker } from '@mediapipe/tasks-vision';
 import type { PackageId } from '../assets/AssetRegistry';
 import { useGame } from '../game/GameState';
-import { lightActive } from '../game/DiscoverySystem';
+import { lightPlaced } from '../game/DiscoverySystem';
 import { describeHand, type Frame, type P } from './handFeatures';
 import { createDetector, type Detector } from './gestures';
 
 // Webcam hand tracking with MediaPipe Hand Landmarker, entirely on this device.
 // The model and WASM runtime ship with the app (public/mediapipe) and load only when
-// the player turns gestures on. While a box is open and ready, the frames feed that
-// cracker's detector, and finishing the gesture lights it exactly like the button does.
+// the player turns gestures on. While a cracker waits in the spotlight, the frames feed that
+// cracker's detector, and finishing the gesture lights it exactly like a tap does.
 
 export type HandStatus = 'off' | 'loading' | 'ready' | 'denied' | 'error';
 
@@ -20,9 +20,80 @@ interface HandStore {
   /** Index fingertip of the main hand in screen fractions (0..1), mirrored. */
   cursor: { x: number; y: number } | null;
   hands: number;
+  /** when the last gesture lit a cracker (performance.now), for the "Lit!" flash */
+  litAt: number;
+  /** the one-time camera explainer is up */
+  ask: boolean;
 }
 
-export const useHands = create<HandStore>(() => ({ status: 'off', error: null, progress: 0, cursor: null, hands: 0 }));
+export const useHands = create<HandStore>(() => ({ status: 'off', error: null, progress: 0, cursor: null, hands: 0, litAt: 0, ask: false }));
+
+/** A gesture this far along lights the cracker: close enough is good enough. */
+const FIRE_AT = 0.85;
+const PREF = 'bombastic.hands';
+/** The player turned the camera on before (and did not switch it off): start it again on its own. */
+export function handsRemembered() {
+  try {
+    return localStorage.getItem(PREF) === '1';
+  } catch {
+    return false;
+  }
+}
+function remember(on: boolean) {
+  try {
+    localStorage.setItem(PREF, on ? '1' : '0');
+  } catch {
+    /* private mode */
+  }
+}
+
+const ASKED = 'bombastic.camAsked';
+let answer: (() => void) | null = null;
+let askedThisVisit = false;
+function asked() {
+  try {
+    return askedThisVisit || localStorage.getItem(ASKED) === '1';
+  } catch {
+    return askedThisVisit;
+  }
+}
+
+/**
+ * Entering a place: the camera turns on by itself. The first time, a short explainer comes
+ * first; it resolves once the player has answered (or straight away when nothing is needed).
+ */
+export function ensureCamera(): Promise<void> {
+  const s = useHands.getState();
+  if (s.status === 'loading' || s.status === 'ready') return Promise.resolve();
+  if (handsRemembered()) {
+    void startHands();
+    return Promise.resolve();
+  }
+  if (asked() || s.status === 'denied' || s.status === 'error') return Promise.resolve();
+  useHands.setState({ ask: true });
+  return new Promise((resolve) => {
+    const prev = answer;
+    answer = () => {
+      prev?.();
+      resolve();
+    };
+  });
+}
+
+/** The explainer's answer: turn the camera on, or not now. Asked once. */
+export function answerCamera(yes: boolean) {
+  askedThisVisit = true;
+  try {
+    localStorage.setItem(ASKED, '1');
+  } catch {
+    /* private mode */
+  }
+  useHands.setState({ ask: false });
+  if (yes) void startHands();
+  const a = answer;
+  answer = null;
+  a?.();
+}
 
 /** Latest smoothed landmarks in video fractions (mirrored), for the preview skeleton. */
 export const handView: { hands: P[][] } = { hands: [] };
@@ -76,6 +147,7 @@ export async function startHands() {
     video.srcObject = media;
     await video.play();
     lastVideoTime = -1;
+    remember(true);
     useHands.setState({ status: 'ready' });
     raf = requestAnimationFrame(loop);
   } catch (e) {
@@ -98,6 +170,7 @@ function stopStream() {
 }
 
 export function stopHands() {
+  remember(false);
   stopStream();
   detector = null;
   useHands.setState({ status: 'off', progress: 0, cursor: null, hands: 0 });
@@ -138,13 +211,15 @@ function loop() {
 
   const a = useGame.getState().active;
   let progress = 0;
-  if (a && a.step === 'opened' && now > cooldownUntil) {
+  if (a && a.step === 'spotlight' && now > cooldownUntil) {
     if (!detector || detector.id !== a.id) detector = { id: a.id, d: createDetector(a.id) };
     progress = detector.d.update(frame);
-    if (progress >= 1) {
+    if (progress >= FIRE_AT) {
       detector.d.reset();
       cooldownUntil = now + 1500;
-      void lightActive(false);
+      progress = 1;
+      useHands.setState({ litAt: now });
+      void lightPlaced();
     }
   } else if (detector) {
     detector.d.reset();
