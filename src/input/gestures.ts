@@ -3,7 +3,9 @@ import { dist, type Frame, type Hand, type P } from './handFeatures';
 
 // One gesture per cracker, each acting out how that cracker is really lit or what it does.
 // Only the open box's detector runs, so they never compete with each other.
-// A detector is fed every frame and returns progress 0..1; reaching 1 lights the cracker.
+// A detector is fed every frame and returns progress 0..1. The thresholds are forgiving on
+// purpose: a motion that goes roughly the right way lights the cracker (the tracker fires at
+// 0.85), so the hand and the burst feel connected.
 
 export interface Detector {
   update: (f: Frame) => number;
@@ -14,17 +16,19 @@ export interface GestureInfo {
   icon: string;
   title: string;
   how: string;
+  /** the two beats of the motion, shown as the live prompt: start it, then finish it */
+  steps: [string, string];
 }
 
 export const GESTURE_INFO: Record<PackageId, GestureInfo> = {
-  bomb_wale_chacha: { icon: '🤏', title: 'Agarbatti to the fuse', how: 'Pinch thumb and index like holding an agarbatti, hold, then let go and pull back.' },
-  rocket_bua: { icon: '✊', title: 'Launch from the bottle', how: 'Make a fist, then burst it open upward. Whoosh.' },
-  chakri_dadi: { icon: '☝️', title: 'Spin the chakri', how: 'Point your index finger and draw a big circle in the air.' },
-  phuljhadi_mami: { icon: '✨', title: 'Wave the phuljhadi', how: 'Pinch as if holding the sparkler stick and wave it left and right.' },
-  anaar_maasi: { icon: '🔺', title: 'Make the anaar cone', how: 'Touch both thumbs and both index fingers to make a triangle, and hold.' },
-  ladi_tauji: { icon: '👋', title: 'Run the fuse down the ladi', how: 'Open palm, swipe across the screen along the string.' },
-  saat_shot_nana: { icon: '🖐️', title: 'Send them up', how: 'Open palm, raise it slowly upward and the seven shots follow.' },
-  pop_pop_chotu: { icon: '👇', title: 'Throw the pop-pop', how: 'Flick your hand down fast, like throwing it on the floor.' },
+  bomb_wale_chacha: { icon: '🤏', title: 'Agarbatti to the fuse', how: 'Pinch thumb and index like holding an agarbatti, hold, then let go and pull back.', steps: ['Pinch thumb and finger together', 'Now let go!'] },
+  rocket_bua: { icon: '✊', title: 'Launch from the bottle', how: 'Make a fist, then burst it open upward. Whoosh.', steps: ['Make a fist', 'Now open it up!'] },
+  chakri_dadi: { icon: '☝️', title: 'Spin the chakri', how: 'Point your index finger and draw a big circle in the air.', steps: ['Point one finger', 'Draw a circle in the air'] },
+  phuljhadi_mami: { icon: '✨', title: 'Wave the phuljhadi', how: 'Pinch as if holding the sparkler stick and wave it left and right.', steps: ['Pinch, like holding the stick', 'Wave it left and right'] },
+  anaar_maasi: { icon: '🔺', title: 'Make the anaar cone', how: 'Touch both thumbs and both index fingers to make a triangle, and hold.', steps: ['Bring both hands up', 'Touch thumbs and fingers: a triangle'] },
+  ladi_tauji: { icon: '👋', title: 'Run the fuse down the ladi', how: 'Open palm, swipe across the screen along the string.', steps: ['Show your open hand', 'Swipe it across'] },
+  saat_shot_nana: { icon: '🖐️', title: 'Send them up', how: 'Open palm, raise it slowly upward and the seven shots follow.', steps: ['Show your open hand', 'Raise it up'] },
+  pop_pop_chotu: { icon: '👇', title: 'Throw the pop-pop', how: 'Flick your hand down fast, like throwing it on the floor.', steps: ['Hold your hand up', 'Flick it down fast'] },
 };
 
 /** The hand the player is gesturing with; the tracker keeps it first across frames. */
@@ -62,11 +66,11 @@ function bomb(): Detector {
       if (h.pinch < 0.25) {
         if (since < 0) since = f.t;
         const held = f.t - since;
-        if (held >= 0.4) armedAt = f.t;
-        return Math.min(held / 0.4, 1) * 0.7;
+        if (held >= 0.22) armedAt = f.t;
+        return Math.min(held / 0.22, 1) * 0.7;
       }
       since = -1;
-      if (armedAt >= 0 && h.pinch > 0.45) {
+      if (armedAt >= 0 && h.pinch > 0.36) {
         if (f.t - armedAt < 1.5) return 1;
         armedAt = -1;
       }
@@ -86,11 +90,12 @@ function rocket(): Detector {
       if (h?.fist) {
         if (fistSince < 0) fistSince = f.t;
         lastFist = f.t;
-        return Math.min((f.t - fistSince) / 0.25, 1) * 0.5;
+        return Math.min((f.t - fistSince) / 0.15, 1) * 0.5;
       }
-      const armed = fistSince >= 0 && lastFist - fistSince >= 0.25;
-      if (armed && f.t - lastFist < 0.8) {
-        if (h?.open) return 1;
+      const armed = fistSince >= 0 && lastFist - fistSince >= 0.15;
+      if (armed && f.t - lastFist < 0.9) {
+        // the fingers starting to open is enough: no need for a perfectly flat palm
+        if (h && !h.fist) return 1;
         return 0.5;
       }
       fistSince = lastFist = -1;
@@ -112,13 +117,13 @@ function chakri(): Detector {
         path.push(f.t, h.tip);
       } else if (f.t - lastPoint > LOST) path.clear();
       const pts = path.items.map((i) => i.v);
-      if (pts.length < 8 || !h) return 0;
+      if (pts.length < 6 || !h) return 0;
       const c = pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
       const radius = pts.reduce((a, p) => a + dist(p, c), 0) / pts.length;
-      if (radius < 0.5 * h.palm) return 0; // a wiggle, not a circle
+      if (radius < 0.3 * h.palm) return 0; // a wiggle, not a circle
       const w = Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x));
       const ht = Math.max(...pts.map((p) => p.y)) - Math.min(...pts.map((p) => p.y));
-      if (Math.min(w, ht) < 0.45 * Math.max(w, ht)) return 0; // a line, not a circle
+      if (Math.min(w, ht) < 0.28 * Math.max(w, ht)) return 0; // a line, not a circle
       let sweep = 0;
       for (let i = 1; i < pts.length; i++) {
         let d = Math.atan2(pts[i].y - c.y, pts[i].x - c.x) - Math.atan2(pts[i - 1].y - c.y, pts[i - 1].x - c.x);
@@ -126,7 +131,7 @@ function chakri(): Detector {
         if (d < -Math.PI) d += 2 * Math.PI;
         sweep += d;
       }
-      return Math.min(Math.abs(sweep) / (1.7 * Math.PI), 1);
+      return Math.min(Math.abs(sweep) / (1.1 * Math.PI), 1);
     },
   };
 }
@@ -141,9 +146,9 @@ function phuljhadi(): Detector {
     reset: () => ((lastPinch = -1), (turns = 0), (dir = 0)),
     update(f) {
       const h = main(f);
-      if (!h || h.pinch > (lastPinch >= 0 && f.t - lastPinch < LOST ? 0.45 : 0.3)) {
+      if (!h || h.pinch > (lastPinch >= 0 && f.t - lastPinch < LOST ? 0.55 : 0.4)) {
         if (f.t - lastPinch > LOST) (turns = 0), (dir = 0);
-        return turns / 4;
+        return Math.min(turns / 2, 1);
       }
       if (lastPinch < 0 || f.t - lastPinch > LOST) {
         turns = 0;
@@ -152,7 +157,7 @@ function phuljhadi(): Detector {
       }
       lastPinch = f.t;
       const x = h.pinchPt.x;
-      const step = 0.45 * h.palm;
+      const step = 0.32 * h.palm;
       // a turn counts once the hand travels back far enough from the furthest point reached
       if (dir === 0) {
         if (Math.abs(x - extreme) > step) (dir = Math.sign(x - extreme)), (extreme = x);
@@ -163,7 +168,7 @@ function phuljhadi(): Detector {
         dir = -dir;
         extreme = x;
       }
-      return Math.min(turns / 4, 1);
+      return Math.min(turns / 2 + (dir !== 0 ? 0.2 : 0), 1);
     },
   };
 }
@@ -182,13 +187,13 @@ function anaar(): Detector {
         const index = dist(a.lm[8], b.lm[8]) / palm;
         const apexAbove = (a.lm[4].y + b.lm[4].y) / 2 - (a.lm[8].y + b.lm[8].y) / 2;
         const wide = dist(a.wrist, b.wrist) / palm;
-        if (thumbs < 0.75 && index < 0.75 && Math.abs(apexAbove) > 0.4 * palm && wide > 0.9) {
+        if (thumbs < 1.05 && index < 1.05 && Math.abs(apexAbove) > 0.25 * palm && wide > 0.6) {
           if (since < 0) since = f.t;
           last = f.t;
-          return Math.min((f.t - since) / 0.5, 1);
+          return Math.min((f.t - since) / 0.25, 1);
         }
       }
-      if (since >= 0 && f.t - last < 0.2) return Math.min((last - since) / 0.5, 1);
+      if (since >= 0 && f.t - last < 0.3) return Math.min((last - since) / 0.25, 1);
       since = -1;
       return 0;
     },
@@ -203,14 +208,14 @@ function ladi(): Detector {
     update(f) {
       const h = main(f);
       // fast motion blurs the fingers, so only a fist breaks the swipe
-      if (!h || h.fist || (!trail.items.length && !h.open)) {
+      if (!h || h.fist) {
         trail.clear();
         return 0;
       }
       trail.push(f.t, h.wrist.x / f.aspect);
       const xs = trail.items.map((i) => i.v);
       const net = Math.abs(xs[xs.length - 1] - xs[0]);
-      return Math.min(net / 0.35, 1);
+      return Math.min(net / 0.2, 1);
     },
   };
 }
@@ -222,13 +227,13 @@ function skyshot(): Detector {
     reset: () => trail.clear(),
     update(f) {
       const h = main(f);
-      if (!h || !h.open) {
+      if (!h || h.fist) {
         trail.clear();
         return 0;
       }
       trail.push(f.t, h.wrist.y);
       const lowest = Math.max(...trail.items.map((i) => i.v));
-      return Math.min((lowest - h.wrist.y) / 0.18, 1);
+      return Math.min((lowest - h.wrist.y) / 0.1, 1);
     },
   };
 }
@@ -246,7 +251,7 @@ function poppop(): Detector {
       }
       trail.push(f.t, h.wrist.y);
       const highest = Math.min(...trail.items.map((i) => i.v));
-      return Math.min(Math.max(0, h.wrist.y - highest) / 0.22, 1);
+      return Math.min(Math.max(0, h.wrist.y - highest) / 0.12, 1);
     },
   };
 }

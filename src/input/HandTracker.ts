@@ -20,9 +20,30 @@ interface HandStore {
   /** Index fingertip of the main hand in screen fractions (0..1), mirrored. */
   cursor: { x: number; y: number } | null;
   hands: number;
+  /** when the last gesture lit a cracker (performance.now), for the "Lit!" flash */
+  litAt: number;
 }
 
-export const useHands = create<HandStore>(() => ({ status: 'off', error: null, progress: 0, cursor: null, hands: 0 }));
+export const useHands = create<HandStore>(() => ({ status: 'off', error: null, progress: 0, cursor: null, hands: 0, litAt: 0 }));
+
+/** A gesture this far along lights the cracker: close enough is good enough. */
+const FIRE_AT = 0.85;
+const PREF = 'bombastic.hands';
+/** The player turned the camera on before (and did not switch it off): start it again on its own. */
+export function handsRemembered() {
+  try {
+    return localStorage.getItem(PREF) === '1';
+  } catch {
+    return false;
+  }
+}
+function remember(on: boolean) {
+  try {
+    localStorage.setItem(PREF, on ? '1' : '0');
+  } catch {
+    /* private mode */
+  }
+}
 
 /** Latest smoothed landmarks in video fractions (mirrored), for the preview skeleton. */
 export const handView: { hands: P[][] } = { hands: [] };
@@ -76,6 +97,7 @@ export async function startHands() {
     video.srcObject = media;
     await video.play();
     lastVideoTime = -1;
+    remember(true);
     useHands.setState({ status: 'ready' });
     raf = requestAnimationFrame(loop);
   } catch (e) {
@@ -98,6 +120,7 @@ function stopStream() {
 }
 
 export function stopHands() {
+  remember(false);
   stopStream();
   detector = null;
   useHands.setState({ status: 'off', progress: 0, cursor: null, hands: 0 });
@@ -141,9 +164,11 @@ function loop() {
   if (a && a.step === 'spotlight' && now > cooldownUntil) {
     if (!detector || detector.id !== a.id) detector = { id: a.id, d: createDetector(a.id) };
     progress = detector.d.update(frame);
-    if (progress >= 1) {
+    if (progress >= FIRE_AT) {
       detector.d.reset();
       cooldownUntil = now + 1500;
+      progress = 1;
+      useHands.setState({ litAt: now });
       void lightPlaced();
     }
   } else if (detector) {

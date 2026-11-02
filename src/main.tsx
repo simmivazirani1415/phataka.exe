@@ -14,6 +14,7 @@ import '@fontsource/dm-sans/700.css';
 import './styles/ui.css';
 import './styles/intro.css';
 import './styles/festive.css';
+import './styles/scrapbook.css';
 import gsap from 'gsap';
 import App from './App';
 import { SITE } from './config/site';

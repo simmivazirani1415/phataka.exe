@@ -42,7 +42,8 @@ function PageView({ page, index }: { page: Page; index: number }) {
     case 'cover':
       return (
         <div className="page cover">
-          <p className="cover-kicker">{SITE.name} · Diwali {new Date().getFullYear()}</p>
+          <img className="cover-logo" src={`${import.meta.env.BASE_URL}assets/intro/bombastic_logo.webp`} alt={SITE.name} draggable={false} />
+          <p className="cover-kicker">Diwali {new Date().getFullYear()} · scrapbook</p>
           <h2>
             My Diwali,
             <br />
@@ -60,6 +61,7 @@ function PageView({ page, index }: { page: Page; index: number }) {
       return (
         <div className="page world">
           <h3 className="page-title">Hamara Mohalla</h3>
+          <span className="page-no">{index + 1}</span>
           {worldPhoto ? <img className="print" src={worldPhoto} alt="The whole mohalla, photographed from above" /> : <p className="hand muted">Photo develop ho rahi hai…</p>}
           <p className="hand">
             {found.length} of 8 patakas found · {memories.length} {memories.length === 1 ? 'memory' : 'memories'} made
@@ -70,6 +72,7 @@ function PageView({ page, index }: { page: Page; index: number }) {
       return (
         <div className="page collection">
           <h3 className="page-title">The Pataka Parivaar</h3>
+          <span className="page-no">{index + 1}</span>
           <ul className="label-grid">
             {PACKAGES.map((p) =>
               packages[p.id] !== 'HIDDEN' ? (
@@ -91,9 +94,10 @@ function PageView({ page, index }: { page: Page; index: number }) {
     case 'photos':
       return (
         <div className={`page photos n${page.items.length}`}>
+          <span className="page-no">{index + 1}</span>
           {page.items.map((m, i) => (
             <figure key={m.id} style={{ transform: `rotate(${(i % 2 ? 2.2 : -2.6) + (index % 3) * 0.6}deg)` }}>
-              <span className="tape" />
+              <span className={`tape t${(index + i) % 3}`} />
               <PolaroidImage memory={m} />
               <figcaption className="hand">
                 {PACKAGE_BY_ID[m.packageId].personality} <small>{formatDate(m.createdAt)}</small>
@@ -111,6 +115,7 @@ function PageView({ page, index }: { page: Page; index: number }) {
     case 'end':
       return (
         <div className="page end">
+          <span className="end-diya" aria-hidden="true" />
           <h3>
             Patake toh khatam ho gaye.
             <br />

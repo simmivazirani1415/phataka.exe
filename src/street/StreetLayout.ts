@@ -1122,7 +1122,7 @@ export interface BoxSpot {
 
 export const BOX_SPOTS: Record<PackageId, BoxSpot> = {
   bomb_wale_chacha: { pos: [-0.2, 0, STREET.chowkHalf - 1.2], ry: Math.PI, hint: 'At the pataka shop’s table, north side of the chowk.' },
-  rocket_bua: { pos: [-11.6, 0, 11.4], ry: Math.PI * 0.75, hint: 'Under the lamp post behind the neem tree.' },
+  rocket_bua: { pos: [12.6, 0, 5.0], ry: -Math.PI / 2, hint: 'On the east side, where the gali leaves the chowk.' },
   chakri_dadi: { pos: [7.4, 0, -10.6], ry: 0.4, hint: 'Beside the rangoli in the south-east corner.' },
   phuljhadi_mami: { pos: [10.9, 0, 7.6], ry: -Math.PI * 0.75, hint: 'By the rangoli near the north-east lamp post.' },
   anaar_maasi: { pos: [4.6, 0, STREET.chowkHalf - 0.9], ry: Math.PI, hint: 'On the mithai shop’s step.' },

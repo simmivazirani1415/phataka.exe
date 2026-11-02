@@ -155,9 +155,15 @@ export function pickFromPanel(id: PackageId) {
   const g = useGame.getState();
   if (busy()) return;
   if (!isOpened(id)) {
+    // the arrows to its box start straight away; its card shows alongside
     g.setPlacing(null);
-    g.setUi({ card: id, tray: keepTray(), showMe: null });
+    g.setUi({ card: id, guide: id, tray: keepTray(), showMe: null, toast: null });
     audio.tap();
+    // every box is in the chowk: from a roof, the balcony or the friend's house, go there first
+    const p = BOX_SPOTS[id].pos;
+    if (currentLevel().walk) void goToLevel('chowk').then(() => runtime.camera?.face([p[0], 0.6, p[2]], 0.8));
+    // turn towards the box so the arrows on the ground are in view
+    else void runtime.camera?.face([p[0], 0.6, p[2]], 0.8);
     return;
   }
   if (g.placing === id) return cancelPlacing();

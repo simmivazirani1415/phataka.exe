@@ -39,7 +39,7 @@ export function CollectCard() {
         <IconPin size={14} /> {BOX_SPOTS[id].hint}
       </p>
       <button className="btn-primary" autoFocus onClick={keepCard}>
-        Find it
+        Follow the arrows
       </button>
     </section>
   );
