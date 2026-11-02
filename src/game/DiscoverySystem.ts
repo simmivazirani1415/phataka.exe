@@ -26,7 +26,8 @@ const FRAMING: Record<string, { dist: number; height: number; lookY: number }> =
   bomb: { dist: 2.8, height: 1.05, lookY: -0.35 },
   rocket: { dist: 3.6, height: 1.15, lookY: -0.1 },
   chakri: { dist: 2.7, height: 1.15, lookY: -0.45 },
-  sparkler: { dist: 2.5, height: 0.95, lookY: -0.1 },
+  // held in the hand: the camera stays at eye height, looking ahead
+  sparkler: { dist: 2.5, height: 1.45, lookY: 0.9 },
   anaar: { dist: 3.2, height: 1.1, lookY: 0.1 },
   ladi: { dist: 3.6, height: 1.3, lookY: -0.45 },
   skyshot: { dist: 3.0, height: 1.1, lookY: -0.3 },
@@ -100,7 +101,8 @@ export const AIM_PLACES = ['balcony', 'society'];
 
 /** Ask where it should go (Balcony and Society), or ready it in front of the player elsewhere. */
 export function offerPlacement(id: PackageId) {
-  if (AIM_PLACES.includes(levelState.id)) {
+  // the phuljhadi is held in the hand, so there is nowhere to aim it
+  if (AIM_PLACES.includes(levelState.id) && PACKAGE_BY_ID[id].crackerType !== 'sparkler') {
     useGame.getState().setUi({ placeChoice: id });
     return;
   }

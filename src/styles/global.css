@@ -603,8 +603,16 @@ button {
 }
 /* phuljhadi: pinch the stick and wave it side to side */
 .gd-wave { animation-name: gdDraw; }
-.gd-sparkler .gd-h1 { animation-name: gdWave; }
-.gd-sparkler .gd-sp { animation-name: gdWaveSp; font-size: 22px; }
+.gd-sparkler .gd-guide { transform: rotate(-90deg) scaleY(-1); }
+.gd-sparkler .gd-h1 { animation-name: gdCirc; animation-timing-function: linear; }
+.gd-sparkler .gd-sp { animation-name: gdCircSp; animation-timing-function: linear; font-size: 22px; }
+@keyframes gdCircSp {
+  0%, 8% { left: 75px; top: -7px; }
+  28% { left: 107px; top: 25px; }
+  48% { left: 75px; top: 57px; }
+  68% { left: 43px; top: 25px; }
+  88%, 100% { left: 75px; top: -7px; }
+}
 @keyframes gdWave {
   0% { left: 28px; top: 54px; }
   25% { left: 122px; top: 54px; }
@@ -622,8 +630,13 @@ button {
 /* anaar: bring both hands together into a triangle and hold */
 .gd-tri { stroke-dasharray: 190; stroke-dashoffset: 190; animation-name: gdTri; }
 @keyframes gdTri { 0%, 40% { stroke-dashoffset: 190; } 80%, 100% { stroke-dashoffset: 0; } }
-.gd-anaar .gd-h1 { animation-name: gdAnaar1; }
-.gd-anaar .gd-h2 { animation-name: gdAnaar2; }
+.gd-hand ellipse { fill: #e0a57a !important; stroke: #8a4f2e; stroke-width: 1.5; }
+.gd-hand path { fill: none !important; stroke: #e0a57a; stroke-width: 7; stroke-linecap: round; }
+.gd-hand { animation: var(--d) ease-in-out infinite; }
+.gd-hand-l { animation-name: gdHandL; }
+.gd-hand-r { animation-name: gdHandR; }
+@keyframes gdHandL { 0% { transform: translateX(-26px); opacity: 0.6; } 40%, 100% { transform: none; opacity: 1; } }
+@keyframes gdHandR { 0% { transform: translateX(26px); opacity: 0.6; } 40%, 100% { transform: none; opacity: 1; } }
 @keyframes gdAnaar1 { 0% { left: 12px; top: 64px; } 45%, 100% { left: 52px; top: 64px; } }
 @keyframes gdAnaar2 { 0% { left: 138px; top: 64px; } 45%, 100% { left: 98px; top: 64px; } }
 /* ladi: an open palm swipes along the string, the crackers pop in turn */
@@ -642,10 +655,28 @@ button {
 .gd-burst line { stroke: #ffd15a; stroke-width: 2.5; }
 .gd-burst { opacity: 0; transform-origin: 75px 92px; animation: gdBurst var(--d) infinite; }
 @keyframes gdBurst { 0%, 44% { opacity: 0; transform: scale(0.3); } 52% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
-.gd-popPop .gd-h1 { animation-name: gdFlick; }
-@keyframes gdFlick {
-  0%, 28% { left: 75px; top: 20px; transform: translate(-50%, -50%) rotate(-20deg); }
-  44%, 100% { left: 75px; top: 72px; transform: translate(-50%, -50%) rotate(25deg); }
+.gd-popPop .gd-h1 { animation-name: gdThrow; }
+@keyframes gdThrow {
+  0%, 18% { left: 106px; top: 22px; transform: translate(-50%, -50%) rotate(-35deg) scale(0.85); }
+  36% { left: 84px; top: 40px; transform: translate(-50%, -50%) rotate(10deg) scale(1.1); }
+  44%, 100% { left: 78px; top: 50px; transform: translate(-50%, -50%) rotate(30deg) scale(1.15); opacity: 0.85; }
+}
+/* the pop-pop leaves the hand like a ball, arcs down and pops */
+.gd-ball {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff1d7;
+  box-shadow: 0 0 0 2px #d64a91 inset;
+  transform: translate(-50%, -50%);
+  animation: gdBall var(--d) infinite;
+}
+@keyframes gdBall {
+  0%, 18% { left: 100px; top: 14px; opacity: 1; }
+  36% { left: 82px; top: 34px; opacity: 1; }
+  44% { left: 76px; top: 70px; opacity: 1; }
+  47%, 100% { left: 75px; top: 90px; opacity: 0; }
 }
 .gd-skyshot .gd-trail { animation-timing-function: linear; }
 

@@ -205,14 +205,6 @@ export function StoreShelf() {
             <button className="pill-cta" autoFocus onClick={collectAll}>
               Collect all
             </button>
-            <button
-              className="coll-nag-later"
-              onClick={() => {
-                setUi({ nag: false, map: true });
-              }}
-            >
-              Go anyway
-            </button>
           </div>
         </div>
       )}

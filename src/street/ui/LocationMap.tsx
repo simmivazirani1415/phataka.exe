@@ -10,9 +10,8 @@ import { audio } from '../../audio/AudioEngine';
 
 export const PLACE_ORDER: LevelId[] = ['store', 'terrace', 'balcony', 'society', 'aangan'];
 
-/** Simran's cut-out icons, reused for the new set of places. */
-const ICON: Record<LevelId, string> = { store: 'terrace', terrace: 'chowk', balcony: 'balcony', society: 'street', aangan: 'friend' };
-const ART = (id: LevelId) => `${import.meta.env.BASE_URL}assets/places/${ICON[id]}.webp`;
+/** Simran's icons, one per place. */
+const ART = (id: LevelId) => `${import.meta.env.BASE_URL}assets/places/new_${id}.webp`;
 
 /** A cusped Mughal arch, top and bottom: the card's plum body with its glowing gold edge. */
 const ARCH =

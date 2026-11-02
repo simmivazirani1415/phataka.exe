@@ -19,7 +19,7 @@ const ARROWS: Record<CrackerType, string[]> = {
   bomb: ['M34 34 Q66 26 94 46'],
   rocket: ['M75 98 L75 18'],
   chakri: ['M107 55 A32 32 0 1 1 75 23'],
-  sparkler: ['M26 36 Q75 68 124 36'],
+  sparkler: ['M107 55 A32 32 0 1 1 75 23'],
   anaar: ['M14 58 L54 58', 'M136 58 L96 58'],
   ladi: ['M14 46 L136 46'],
   skyshot: ['M75 100 L75 18'],

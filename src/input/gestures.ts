@@ -24,11 +24,11 @@ export const GESTURE_INFO: Record<PackageId, GestureInfo> = {
   bomb_wale_chacha: { icon: '🤏', title: 'Agarbatti to the fuse', how: 'Pinch thumb and index like holding an agarbatti, hold, then let go and pull back.', steps: ['Pinch thumb and finger together', 'Now let go!'] },
   rocket_bua: { icon: '✊', title: 'Launch from the bottle', how: 'Make a fist, then burst it open upward. Whoosh.', steps: ['Make a fist', 'Now open it up!'] },
   chakri_dadi: { icon: '☝️', title: 'Spin the chakri', how: 'Point your index finger and draw a big circle in the air.', steps: ['Point one finger', 'Draw a circle in the air'] },
-  phuljhadi_mami: { icon: '✨', title: 'Wave the phuljhadi', how: 'Pinch as if holding the sparkler stick and wave it left and right.', steps: ['Pinch, like holding the stick', 'Wave it left and right'] },
-  anaar_maasi: { icon: '🔺', title: 'Make the anaar cone', how: 'Touch both thumbs and both index fingers to make a triangle, and hold.', steps: ['Bring both hands up', 'Touch thumbs and fingers: a triangle'] },
+  phuljhadi_mami: { icon: '✊', title: 'Twirl the phuljhadi', how: 'Hold the phuljhadis in your fist and twirl your hand in circles, like drawing with light.', steps: ['Hold them up in your hand', 'Twirl your hand in circles'] },
+  anaar_maasi: { icon: '🔺', title: 'Make the anaar cone', how: 'Join both index fingertips at the top and rest your thumbs on each other below, palms apart: a triangle. Hold it.', steps: ['Both hands up, palms apart', 'Fingertips together, thumbs together'] },
   ladi_tauji: { icon: '👋', title: 'Run the fuse down the ladi', how: 'Open palm, swipe across the screen along the string.', steps: ['Show your open hand', 'Swipe it across'] },
   saat_shot_nana: { icon: '🖐️', title: 'Send them up', how: 'Open palm, raise it slowly upward and the seven shots follow.', steps: ['Show your open hand', 'Raise it up'] },
-  pop_pop_chotu: { icon: '👇', title: 'Throw the pop-pop', how: 'Flick your hand down fast, like throwing it on the floor.', steps: ['Hold your hand up', 'Flick it down fast'] },
+  pop_pop_chotu: { icon: '⚾', title: 'Throw the pop-pop', how: 'Hold it up like a ball, then throw it forward and let go.', steps: ['Hold it up like a ball', 'Throw it and let go!'] },
 };
 
 /** The hand the player is gesturing with; the tracker keeps it first across frames. */
@@ -136,39 +136,35 @@ function chakri(): Detector {
   };
 }
 
-// Phuljhadi: keep pinching the stick and wave it; count left/right turns.
+// Phuljhadi: the hand holding the sticks (a fist, a pinch, or just the hand) twirls in a circle.
+// Tracked at the middle knuckle, which stays put whatever the fingers do.
 function phuljhadi(): Detector {
-  let lastPinch = -1;
-  let turns = 0;
-  let dir = 0;
-  let extreme = 0;
+  const path = new Trail<P>(1.9);
+  let seen = -1;
   return {
-    reset: () => ((lastPinch = -1), (turns = 0), (dir = 0)),
+    reset: () => (path.clear(), (seen = -1)),
     update(f) {
       const h = main(f);
-      if (!h || h.pinch > (lastPinch >= 0 && f.t - lastPinch < LOST ? 0.55 : 0.4)) {
-        if (f.t - lastPinch > LOST) (turns = 0), (dir = 0);
-        return Math.min(turns / 2, 1);
+      if (h) {
+        seen = f.t;
+        path.push(f.t, h.lm[9]);
+      } else if (f.t - seen > LOST) path.clear();
+      const pts = path.items.map((i) => i.v);
+      if (pts.length < 6 || !h) return 0;
+      const c = pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
+      const radius = pts.reduce((a, p) => a + dist(p, c), 0) / pts.length;
+      if (radius < 0.25 * h.palm) return 0; // holding still, not twirling yet
+      const w = Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x));
+      const ht = Math.max(...pts.map((p) => p.y)) - Math.min(...pts.map((p) => p.y));
+      if (Math.min(w, ht) < 0.25 * Math.max(w, ht)) return 0.15; // a wave, not a twirl
+      let sweep = 0;
+      for (let i = 1; i < pts.length; i++) {
+        let d = Math.atan2(pts[i].y - c.y, pts[i].x - c.x) - Math.atan2(pts[i - 1].y - c.y, pts[i - 1].x - c.x);
+        if (d > Math.PI) d -= 2 * Math.PI;
+        if (d < -Math.PI) d += 2 * Math.PI;
+        sweep += d;
       }
-      if (lastPinch < 0 || f.t - lastPinch > LOST) {
-        turns = 0;
-        dir = 0;
-        extreme = h.pinchPt.x;
-      }
-      lastPinch = f.t;
-      const x = h.pinchPt.x;
-      const step = 0.32 * h.palm;
-      // a turn counts once the hand travels back far enough from the furthest point reached
-      if (dir === 0) {
-        if (Math.abs(x - extreme) > step) (dir = Math.sign(x - extreme)), (extreme = x);
-      } else if ((x - extreme) * dir > 0) {
-        extreme = x;
-      } else if (Math.abs(x - extreme) > step) {
-        turns++;
-        dir = -dir;
-        extreme = x;
-      }
-      return Math.min(turns / 2 + (dir !== 0 ? 0.2 : 0), 1);
+      return Math.min(Math.abs(sweep) / (1.2 * Math.PI), 1);
     },
   };
 }
@@ -238,9 +234,10 @@ function skyshot(): Detector {
   };
 }
 
-// Pop-pop: the hand drops fast, like throwing it down.
+// Pop-pop: thrown like a ball. The hand swings forward (towards the camera it drops and grows
+// bigger) and opens as it lets go. Either the swing or the release with some swing lights it.
 function poppop(): Detector {
-  const trail = new Trail<number>(0.45);
+  const trail = new Trail<{ y: number; size: number; open: boolean }>(0.6);
   return {
     reset: () => trail.clear(),
     update(f) {
@@ -249,9 +246,17 @@ function poppop(): Detector {
         trail.clear();
         return 0;
       }
-      trail.push(f.t, h.wrist.y);
-      const highest = Math.min(...trail.items.map((i) => i.v));
-      return Math.min(Math.max(0, h.wrist.y - highest) / 0.12, 1);
+      trail.push(f.t, { y: h.wrist.y, size: h.palm, open: h.open });
+      const it = trail.items.map((i) => i.v);
+      const highest = Math.min(...it.map((v) => v.y));
+      const smallest = Math.min(...it.map((v) => v.size));
+      const drop = Math.max(0, h.wrist.y - highest);
+      const grow = h.palm / Math.max(1e-6, smallest) - 1;
+      const swing = Math.max(drop / 0.13, grow / 0.4);
+      // held closed a moment ago, open now: the ball has left the hand
+      const released = h.open && it.slice(0, -2).some((v) => !v.open);
+      if (released && swing > 0.45) return 1;
+      return Math.min(swing, 1);
     },
   };
 }

@@ -12,6 +12,62 @@ import { groundMarks } from '../street/Scorch';
 import type { Vec3 } from '../assets/AssetRegistry';
 import { currentLevel, isOpen } from '../street/StreetLayout';
 import { crowd, sayLine } from '../street/Crowd';
+import { handView } from '../input/HandTracker';
+
+/** the camera this frame, for things held in the player's hand */
+let liveCam: THREE.Camera | null = null;
+const _f = new THREE.Vector3();
+const _r = new THREE.Vector3();
+const _u = new THREE.Vector3();
+const _w = new THREE.Vector3();
+
+// ---- phuljhadi in the hand ----------------------------------------------------------------
+// A bunch of four sparklers held upright in the player's fist, just in front of the camera.
+// With the camera on they follow the hand, so twirling the hand draws circles of light; without
+// it they twirl on their own.
+
+const STICKS: { x: number; tilt: number; delay: number }[] = [
+  { x: -0.03, tilt: 0.1, delay: 0 },
+  { x: -0.01, tilt: 0.03, delay: 0.12 },
+  { x: 0.01, tilt: -0.04, delay: 0.24 },
+  { x: 0.03, tilt: -0.11, delay: 0.36 },
+];
+const WIRE_LEN = 0.62;
+const COAT_FROM = 0.2;
+
+function buildBunch(palette: string[]) {
+  const g = new THREE.Group();
+  const coats: THREE.Mesh[] = [];
+  const glows: THREE.Sprite[] = [];
+  const glowTex = getGlowTexture();
+  for (const st of STICKS) {
+    const s = new THREE.Group();
+    s.position.x = st.x;
+    s.rotation.z = st.tilt;
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, WIRE_LEN, 5).translate(0, WIRE_LEN / 2, 0), new THREE.MeshBasicMaterial({ color: '#C9C6BF' }));
+    // the grey coating that burns down; its base sits where the bare wire begins
+    const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, WIRE_LEN - COAT_FROM, 6).translate(0, (WIRE_LEN - COAT_FROM) / 2, 0), new THREE.MeshBasicMaterial({ color: '#A39C90' }));
+    coat.position.y = COAT_FROM;
+    // the burning tip: a hot white-gold glow that creeps down the stick
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#FFE2A0', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    glow.scale.setScalar(0.2);
+    glow.position.y = WIRE_LEN;
+    glow.visible = false;
+    s.add(wire, coat, glow);
+    coats.push(coat);
+    glows.push(glow);
+    g.add(s);
+  }
+  // the fist around the bottom of the sticks, in a festive sleeve
+  const fist = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10).scale(1, 1.15, 0.9), new THREE.MeshBasicMaterial({ color: '#B97B55' }));
+  fist.position.set(0, 0.07, 0);
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.062, 0.2, 14).translate(0, -0.08, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(palette[0] ?? '#B4235A').multiplyScalar(0.7) }));
+  sleeve.rotation.x = 0.5;
+  g.add(fist, sleeve);
+  g.scale.setScalar(0.55);
+  return { g, coats, glows };
+}
+
 
 // Every cracker is a short scripted, entirely virtual effect: particles from the shared pool,
 // one shared light for the warm wash on nearby walls, a sound cue, a camera response,
@@ -25,6 +81,8 @@ interface EffectSpec {
   captureAt: number;
   setup: (ctx: EffectCtx) => void;
   update: (ctx: EffectCtx, t: number, dt: number) => void;
+  /** every frame from the moment it is readied, lit or not (the phuljhadi stays in the hand) */
+  follow?: (ctx: EffectCtx, dt: number) => void;
 }
 
 interface EffectCtx {
@@ -342,32 +400,92 @@ const EFFECTS: Record<CrackerType, EffectSpec> = {
   },
 
   sparkler: {
-    duration: 5.4,
-    captureAt: 2.3,
+    duration: 6.2,
+    captureAt: 2.6,
     setup: (c) => {
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.12, 10), paint('#A9573B', 1));
-      stand.position.set(...add(c.o, [0, 0.06, 0]));
-      c.group.add(stand);
-      c.model.position.set(...c.o);
-      c.model.scale.setScalar(1.1);
+      // held, not set down: the box on the ground is not shown
+      c.model.visible = false;
+      const { g, coats, glows } = buildBunch(c.pkg.palette);
+      c.group.add(g);
+      c.data.bunch = g;
+      c.data.coats = coats;
+      c.data.glows = glows;
+      c.vars.hx = 0;
+      c.vars.hy = 0;
+      c.vars.auto = 0;
+      c.vars.burnAt = -1;
     },
-    update: (c, t, dt) => {
-      const [x, y, z] = c.o;
-      c.once('crackle', 0.2, () => {
-        audio.crackle(4.6, 26, 0.04);
-        audio.hiss(4.6, 6000, 0.025);
-        groundMarks.scorch(c.o, 0.45, 0.5);
-      });
-      if (t > 0.2 && t < 4.8 && Math.random() < dt * 5) groundMarks.flash(c.o, 1.6, '#FFE7A3', 0.4, 0.3);
-      if (t > 0.2 && t < 4.8) {
-        const burn = Math.min(1, (t - 0.2) / 4.6);
-        const tip: V3 = [x, y + 0.8 - burn * 0.45, z];
-        sparks(tip, 6, 2.6, ['#FFF3D0', '#FFE7A3', '#FFD15A'], { size: 0.08, life: rnd(0.25, 0.5), gravity: 2.5, drag: 1.8 });
-        if (Math.random() < 0.5) sparks(add(tip, [rnd(-0.3, 0.3), rnd(-0.1, 0.3), rnd(-0.3, 0.3)]), 3, 1.4, ['#FFF3D0'], { size: 0.05, life: 0.2 });
-        c.light(tip, '#FFD9A0', 0.45 + Math.random() * 0.12);
+    follow: (c, dt) => {
+      const g = c.data.bunch as THREE.Group | undefined;
+      if (!g || !liveCam) return;
+      liveCam.getWorldDirection(_f);
+      _f.y = 0;
+      _f.normalize();
+      _r.set(-_f.z, 0, _f.x);
+      _u.set(0, 1, 0);
+      // where the hand is: from the camera when it sees one, else a twirl of its own once lit
+      const hand = handView.hands[0];
+      let tx = 0;
+      let ty = 0;
+      if (hand && hand[9]) {
+        tx = (0.5 - hand[9].x) * -0.75;
+        ty = (0.55 - hand[9].y) * 0.55;
+        c.vars.auto = 0;
+      } else if (c.vars.burnAt >= 0) {
+        c.vars.auto += dt * 6.5;
+        tx = Math.cos(c.vars.auto) * 0.13;
+        ty = Math.sin(c.vars.auto) * 0.1;
       }
-      c.once('react', 1.2, () => runtime.emit({ kind: 'firework', pos: c.o, strength: 0.4, text: 'Ek photo toh banti hai!' }));
-      if (t >= 4.8) c.light([x, y + 0.4, z], '#FFD9A0', Math.max(0, 0.4 - (t - 4.8)));
+      const k = Math.min(1, dt * 14);
+      const vx = (tx - c.vars.hx) * k;
+      const vy = (ty - c.vars.hy) * k;
+      c.vars.hx += vx;
+      c.vars.hy += vy;
+      const cp = liveCam.position;
+      g.position.set(cp.x + _f.x * 1.1 + _r.x * (0.22 + c.vars.hx), cp.y - 0.52 + c.vars.hy, cp.z + _f.z * 1.1 + _r.z * (0.22 + c.vars.hx));
+      g.rotation.set(0, Math.atan2(-_f.x, -_f.z), 0);
+      // kept straight, leaning a little into the swing
+      g.rotation.z = THREE.MathUtils.clamp(-vx * 6, -0.25, 0.25);
+    },
+    update: (c, t) => {
+      const g = c.data.bunch as THREE.Group;
+      const coats = c.data.coats as THREE.Mesh[];
+      const glows = c.data.glows as THREE.Sprite[];
+      if (c.vars.burnAt < 0) c.vars.burnAt = t;
+      c.once('crackle', 0.15, () => {
+        audio.crackle(5.6, 30, 0.045);
+        audio.hiss(5.6, 6500, 0.03);
+      });
+      g.updateMatrixWorld();
+      let lit = 0;
+      for (let i = 0; i < STICKS.length; i++) {
+        const st = STICKS[i];
+        const bt = t - 0.15 - st.delay;
+        if (bt < 0 || bt > 5.4) {
+          if (bt > 5.4) coats[i].visible = glows[i].visible = false;
+          continue;
+        }
+        lit++;
+        const burn = Math.min(1, bt / 5.4);
+        coats[i].scale.y = Math.max(0.001, 1 - burn);
+        const tipY = COAT_FROM + (WIRE_LEN - COAT_FROM) * (1 - burn);
+        glows[i].visible = true;
+        glows[i].position.y = tipY;
+        glows[i].scale.setScalar(0.16 + Math.random() * 0.1);
+        _w.set(Math.sin(-st.tilt) * tipY, Math.cos(st.tilt) * tipY, 0);
+        _w.x += st.x;
+        g.localToWorld(_w);
+        const tip: V3 = [_w.x, _w.y, _w.z];
+        sparks(tip, 3, 1.3, ['#FFF7E0', '#FFE7A3', '#FFD15A'], { size: 0.04, life: rnd(0.18, 0.38), gravity: 1.6, drag: 2.6 });
+        if (Math.random() < 0.5) sparks(tip, 1, 0.35, ['#FFFFFF', '#FFF3D0'], { size: 0.05, life: rnd(0.35, 0.6), gravity: 0.2, drag: 3.5 });
+      }
+      if (lit) {
+        // the warm wash falls on the ground and walls ahead, not on the lens
+        g.getWorldPosition(_w);
+        c.data.lp = [_w.x + _f.x * 3.5, (runtime.player.floor ?? 0) + 2.2, _w.z + _f.z * 3.5];
+        c.light(c.data.lp as V3, '#FFD9A0', 0.14 + Math.random() * 0.04 + lit * 0.015);
+      } else c.light(c.data.lp ? (c.data.lp as V3) : [c.o[0], c.o[1] + 1, c.o[2]], '#FFD9A0', t > 1 ? Math.max(0, Math.min(0.15, 0.15 - (t - 5.8) * 0.5)) : 0);
+      c.once('react', 1.2, () => runtime.emit({ kind: 'firework', pos: c.o, strength: 0.35, text: 'Ek photo toh banti hai!' }));
     },
   },
 
@@ -785,9 +903,13 @@ export function FireworkDirector() {
     };
   }, []);
 
-  useFrame((_, rawDt) => {
+  useFrame((state, rawDt) => {
+    liveCam = state.camera;
     const r = running.current;
     const dt = Math.min(rawDt, runtime.maxDt);
+    const st = staged.current;
+    if (st) EFFECTS[st.ctx.pkg.crackerType].follow?.(st.ctx, dt);
+    if (r) r.spec.follow?.(r.ctx, dt);
     const fl = runtime.fireworkLight;
     if (r) {
       r.t += dt;

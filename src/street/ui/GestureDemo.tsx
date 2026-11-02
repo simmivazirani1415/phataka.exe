@@ -41,9 +41,9 @@ export function GestureDemo({ type }: { type: CrackerType }) {
       {type === 'sparkler' && (
         <>
           <svg viewBox="0 0 150 110" className="gd-guide">
-            <path d="M28 40 Q75 70 122 40" className="gd-trail gd-wave" />
+            <circle cx="75" cy="55" r="32" className="gd-trail gd-circle" />
           </svg>
-          <span className="gd-h gd-h1">🤏</span>
+          <span className="gd-h gd-h1">✊</span>
           <span className="gd-sp">✨</span>
         </>
       )}
@@ -51,9 +51,22 @@ export function GestureDemo({ type }: { type: CrackerType }) {
         <>
           <svg viewBox="0 0 150 110" className="gd-guide">
             <path d="M75 26 L103 82 L47 82 Z" className="gd-trail gd-tri" />
+            {/* two hands: index fingertips meet at the top, thumbs rest on each other below, palms apart */}
+            <g className="gd-hand gd-hand-l">
+              <ellipse cx="30" cy="92" rx="15" ry="11" transform="rotate(-35 30 92)" />
+              <path d="M40 84 L75 27" />
+              <path d="M42 88 L74 84" />
+              <path d="M36 82 Q46 70 50 78" />
+              <path d="M32 84 Q40 74 45 82" />
+            </g>
+            <g className="gd-hand gd-hand-r">
+              <ellipse cx="120" cy="92" rx="15" ry="11" transform="rotate(35 120 92)" />
+              <path d="M110 84 L75 27" />
+              <path d="M108 88 L76 84" />
+              <path d="M114 82 Q104 70 100 78" />
+              <path d="M118 84 Q110 74 105 82" />
+            </g>
           </svg>
-          <span className="gd-h gd-h1">👉</span>
-          <span className="gd-h gd-h2">👈</span>
         </>
       )}
       {type === 'ladi' && (
@@ -88,7 +101,8 @@ export function GestureDemo({ type }: { type: CrackerType }) {
               ))}
             </g>
           </svg>
-          <span className="gd-h gd-h1">✋</span>
+          <span className="gd-h gd-h1">✊</span>
+          <span className="gd-ball" />
         </>
       )}
     </div>
