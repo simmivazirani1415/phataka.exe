@@ -16,6 +16,7 @@ import './styles/intro.css';
 import './styles/festive.css';
 import './styles/scrapbook.css';
 import './styles/party.css';
+import './styles/book.css';
 import gsap from 'gsap';
 import App from './App';
 import { SITE } from './config/site';

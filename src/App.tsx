@@ -6,7 +6,7 @@ import { IntroOverlay } from './intro/IntroOverlay';
 import { useIntro } from './intro/introState';
 import { SITE } from './config/site';
 import { NewMemory } from './components/PolaroidCard';
-import { MemoryAlbum } from './components/MemoryAlbum';
+import { Scrapbook } from './scrapbook/Scrapbook';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GestureLayer } from './components/GestureLayer';
 import { PACKAGES } from './assets/AssetRegistry';
@@ -202,7 +202,7 @@ export default function App() {
       <SpotlightCard />
       <Joystick />
       <SettingsPanel />
-      <MemoryAlbum />
+      <Scrapbook />
       <FinalBanner />
       <Toasts />
     </div>

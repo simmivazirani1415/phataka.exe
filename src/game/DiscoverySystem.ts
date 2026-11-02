@@ -273,7 +273,8 @@ export async function lightPlaced() {
   const a = g.active;
   if (!a || a.step !== 'spotlight' || !a.pos || !runtime.fireworks || runtime.fireworks.busy()) return;
   const id = a.id;
-  const shouldCapture = g.packages[id] !== 'MEMORY_CAPTURED';
+  // every burst is photographed; the newest Polaroid takes the cracker's scrapbook page
+  const shouldCapture = true;
   g.setUses(id, g.uses[id] - 1);
   g.setStep('playing');
   runtime.reveal.intensity = 0;

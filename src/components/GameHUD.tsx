@@ -88,7 +88,7 @@ export function GameHUD() {
         <button className={`hud-btn ${ui.tray ? 'on' : ''}`} onClick={() => open({ tray: !ui.tray })} aria-label="Inventory" aria-expanded={ui.tray} title="Inventory">
           <IconGrid size={20} />
         </button>
-        <button className="hud-book" onClick={() => { audio.paper(); open({ album: true }); }} aria-label={`Your scrapbook${memories ? `, ${memories} memories` : ''}`}>
+        <button className="hud-book" onClick={() => { audio.paper(); open({ album: true, bookPage: 0 }); }} aria-label={`Your scrapbook${memories ? `, ${memories} memories` : ''}`}>
           <IconAlbum size={18} />
           <span>Your scrapbook</span>
           {memories > 0 && <span className="badge">{memories}</span>}

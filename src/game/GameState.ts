@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { PACKAGE_IDS, type PackageId, type Vec3 } from '../assets/AssetRegistry';
-import { clearImages, clearMeta, getImages, loadMeta, putImages, saveMeta } from '../utils/Storage';
+import { useNotes } from '../scrapbook/notes';
+import { clearImages, clearMeta, deleteImages, getImages, loadMeta, putImages, saveMeta } from '../utils/Storage';
 
 export type PackageState = 'HIDDEN' | 'DISCOVERED' | 'OPENING' | 'UNLOCKED' | 'PLAYED' | 'MEMORY_CAPTURED';
 
@@ -69,6 +70,8 @@ interface GameStore {
     settings: boolean;
     howTo: boolean;
     newMemory: string | null;
+    /** the scrapbook page to open at (0 = cover, 1..8 = the crackers in PACKAGES order) */
+    bookPage: number;
     hintUntil: number;
     showMe: PackageId | null;
     perfSuggest: boolean;
@@ -170,7 +173,7 @@ export const useGame = create<GameStore>((set, get) => ({
   active: null,
   uses: restoreUses(),
   placing: null,
-  ui: { tray: true, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null, queued: null, nag: false },
+  ui: { tray: true, album: false, settings: false, howTo: false, newMemory: null, bookPage: 0, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null, queued: null, nag: false },
   captions: [],
   worldPhoto: null,
 
@@ -188,8 +191,11 @@ export const useGame = create<GameStore>((set, get) => ({
     if (a) set({ active: { ...a, step } });
   },
   addMemory: (m) => {
-    set({ memories: [...get().memories, m] });
+    // one Polaroid per cracker: the newest burst takes the page
+    const old = get().memories.filter((x) => x.packageId === m.packageId);
+    set({ memories: [...get().memories.filter((x) => x.packageId !== m.packageId), m] });
     putImages(m.id, { polaroid: m.polaroid, photo: m.photo });
+    old.forEach((x) => deleteImages(x.id));
   },
   updateSettings: (s) => set({ settings: { ...get().settings, ...s } }),
   setUi: (u) => set({ ui: { ...get().ui, ...u } }),
@@ -206,6 +212,7 @@ export const useGame = create<GameStore>((set, get) => ({
   reset: () => {
     clearMeta();
     clearImages();
+    void useNotes.getState().clear();
     set({
       packages: freshPackages(),
       uses: freshUses(),

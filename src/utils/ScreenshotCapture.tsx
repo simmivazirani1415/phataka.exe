@@ -23,7 +23,7 @@ export function ScreenshotCapture() {
 
   useEffect(() => {
     runtime.capture = {
-      shot: (maxSize = 1100) => {
+      shot: (maxSize = 1600) => {
         try {
           if (runtime.composer) runtime.composer.render(0);
           else gl.render(scene, camera);

@@ -98,3 +98,13 @@ export async function clearImages() {
     }
   });
 }
+
+export async function deleteImages(id: string) {
+  const db = await openDb();
+  if (!db) return;
+  try {
+    db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+  } catch {
+    /* ignore */
+  }
+}

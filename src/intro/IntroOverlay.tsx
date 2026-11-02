@@ -24,7 +24,7 @@ function videoSrc() {
 }
 const POSTER = `${BASE}assets/intro/intro_first.jpg`;
 const STILL = `${BASE}assets/intro/intro_last.jpg`;
-const LOGO = `${BASE}assets/intro/phataka_party_logo.webp`;
+const LOGO = `${BASE}assets/intro/phataka_party_logo_gold.webp`;
 
 /** automated checks step the timelines by hand */
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -121,21 +121,19 @@ export function IntroOverlay() {
         t.call(() => useIntro.getState().setStage('WELCOME_VISIBLE'), [], 0.15);
         return;
       }
-      // the world comes up a touch softer than it settles, so the seam stays gentle
-      t.fromTo(soft, { blur: BLUR + 4, dim: 0.95 }, { blur: BLUR, dim: 0.86, duration: 1.5, ease: 'power2.out' }, 0);
-      // warm light spilling out of the doorway, as in the film, cooling into the night street
-      t.fromTo(r.haze.current, { autoAlpha: 0 }, { autoAlpha: 0.62, duration: 0.25, ease: 'power1.out' }, 0);
-      t.to(r.haze.current, { autoAlpha: 0.14, duration: 1.2, ease: 'power2.inOut' }, 0.35);
-      // the doorway opens first, then the doors themselves dissolve outward
-      t.fromTo(r.film.current, { '--hole': 0 }, { '--hole': 1.6, duration: 1.15, ease: 'power2.inOut' }, 0.05);
-      t.to(r.film.current, { autoAlpha: 0, duration: 0.55, ease: 'power1.in' }, 0.7);
-      t.to(r.scrim.current, { autoAlpha: 1, duration: 0.8, ease: 'power1.out' }, 0.5);
+      // no peek inside: the doorway's light swells over the film, the film melts into it, and
+      // the store is only ever seen deeply blurred and dimmed behind the welcome
+      t.set(r.scrim.current, { autoAlpha: 1 }, 0);
+      t.fromTo(soft, { blur: BLUR + 14, dim: 0.45 }, { blur: BLUR, dim: 0.86, duration: 2.0, ease: 'power2.inOut' }, 0.5);
+      t.fromTo(r.haze.current, { autoAlpha: 0 }, { autoAlpha: 0.8, duration: 0.45, ease: 'power1.out' }, 0);
+      t.to(r.haze.current, { autoAlpha: 0.14, duration: 1.4, ease: 'power2.inOut' }, 0.6);
+      t.to(r.film.current, { autoAlpha: 0, duration: 0.8, ease: 'power1.inOut' }, 0.25);
       // the welcome: logo, the steps in a quick stagger, then the button
-      t.fromTo(r.logo.current, { autoAlpha: 0, y: 18, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.55, ease: 'power3.out' }, 0.75);
-      t.fromTo(steps, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out', stagger: 0.085 }, 1.0);
-      t.fromTo(r.ctaWrap.current, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 1.22);
+      t.fromTo(r.logo.current, { autoAlpha: 0, y: 18, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, ease: 'power3.out' }, 0.95);
+      t.fromTo(steps, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out', stagger: 0.085 }, 1.2);
+      t.fromTo(r.ctaWrap.current, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 1.42);
       // the button works as soon as the welcome starts to appear
-      t.call(() => useIntro.getState().setStage('WELCOME_VISIBLE'), [], 0.75);
+      t.call(() => useIntro.getState().setStage('WELCOME_VISIBLE'), [], 0.95);
     };
     go();
   };
@@ -286,6 +284,9 @@ export function IntroOverlay() {
       <div className="intro-welcome" ref={r.welcome} aria-hidden={!welcome}>
         <div className="intro-logo" ref={r.logo}>
           <img src={LOGO} alt={SITE.name} draggable={false} />
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+            <span key={i} className={`intro-charm c${i}`} aria-hidden="true" />
+          ))}
         </div>
         <ol className="intro-steps" ref={r.steps}>
           {STEPS.map((s, i) => (

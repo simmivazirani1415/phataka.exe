@@ -995,3 +995,42 @@ span.burst-note {
 /* four to a view, with breathing room around each cracker */
 .coll-art img { inset: 0 14%; width: 72%; }
 @media (max-width: 640px) { .coll-art img { inset: 0 8%; width: 84%; } }
+
+/* landing logo: smaller, gold, with a few twinkling charms around it */
+.intro-logo {
+  position: relative;
+  width: min(380px, 44vw);
+}
+.intro-logo img {
+  filter: drop-shadow(0 0 14px rgba(255, 196, 90, 0.35)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+.intro-charm {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #ffd98a;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  filter: drop-shadow(0 0 6px rgba(255, 210, 120, 0.9));
+  animation: charmTwinkle 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.intro-charm.c0 { left: -9%; top: 18%; }
+.intro-charm.c1 { left: -3%; top: 78%; width: 9px; height: 9px; animation-delay: 0.7s; }
+.intro-charm.c2 { left: 30%; top: -18%; width: 10px; height: 10px; animation-delay: 1.3s; }
+.intro-charm.c3 { left: 56%; top: 112%; width: 9px; height: 9px; animation-delay: 0.4s; }
+.intro-charm.c4 { right: -8%; top: 4%; width: 12px; height: 12px; animation-delay: 1.8s; }
+.intro-charm.c5 { right: -4%; top: 82%; animation-delay: 1s; }
+.intro-charm.c6 { left: 12%; top: 118%; width: 7px; height: 7px; border-radius: 50%; clip-path: none; animation-delay: 2.1s; }
+@keyframes charmTwinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.7) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(20deg); }
+}
+@media (max-width: 640px) {
+  .intro-logo { width: min(280px, 70vw); }
+}
+@media (max-height: 640px) and (min-width: 641px) {
+  .intro-logo { width: min(320px, 40vw); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-charm { animation: none; opacity: 0.8; }
+}
