@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useThrow } from './throwing';
 import { runtime, type CameraApi, type ViewState } from '../game/Runtime';
 import { useGame } from '../game/GameState';
-import { currentLevel, openOnLevel, START, STREET } from './StreetLayout';
+import { currentLevel, inRect, levelState, openOnLevel, START, STREET } from './StreetLayout';
 import type { Vec3 } from '../assets/AssetRegistry';
 
 // The player's eyes: a perspective camera at 1.6 m that walks the gali.
@@ -92,6 +93,26 @@ export function StreetCamera() {
     out.set(v.x, (v.floor ?? 0) + STREET.eye, v.z);
     _e.set(v.pitch, v.yaw, 0, 'YXZ');
     q.setFromEuler(_e);
+    // the society is played over the shoulder: the camera sits behind and to the right of the
+    // player's figure, pulled in wherever the compound wall is close
+    if (levelState.id === 'society') {
+      const L = currentLevel();
+      const sy = Math.sin(v.yaw);
+      const cy = Math.cos(v.yaw);
+      const bx = sy;
+      const bz = cy;
+      const rx = cy;
+      const rz = -sy;
+      let back = 3.1;
+      for (; back > 0.6; back -= 0.2) {
+        const x = v.x + bx * back + rx * 0.55;
+        const z = v.z + bz * back + rz * 0.55;
+        if (inRect(L.walk, x, z, -0.4)) break;
+      }
+      out.x += bx * back + rx * 0.55;
+      out.z += bz * back + rz * 0.55;
+      out.y += 0.8 - Math.sin(v.pitch) * back * 0.6;
+    }
   };
 
   const startTween = (toP: THREE.Vector3, toQ: THREE.Quaternion, dur: number, walk: boolean) =>
@@ -234,7 +255,7 @@ export function StreetCamera() {
       lx = e.clientX;
       ly = e.clientY;
       moved += Math.abs(dx) + Math.abs(dy);
-      if (!input.current || mode.current !== 'walk' || moved < 4) return;
+      if (!input.current || mode.current !== 'walk' || moved < 4 || useThrow.getState().aiming) return;
       const k = e.pointerType === 'touch' ? 0.0062 : 0.0042;
       const v = view.current;
       v.yaw -= dx * k;

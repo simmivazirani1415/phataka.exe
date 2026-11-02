@@ -53,7 +53,7 @@ export interface FireworkApi {
 
 type Listener = (e: WorldEvent) => void;
 export interface WorldEvent {
-  kind: 'firework' | 'bigBurst' | 'bomb' | 'interaction' | 'stage' | 'launch' | 'thrown';
+  kind: 'firework' | 'bigBurst' | 'bomb' | 'interaction' | 'stage' | 'launch' | 'thrown' | 'landed';
   pos: Vec3;
   strength: number;
   text?: string;

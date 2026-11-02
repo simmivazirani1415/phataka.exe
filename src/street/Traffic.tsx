@@ -68,6 +68,8 @@ const MIX: VType[] = ['scooter', 'bicycle', 'scooter', 'bicycle', 'rickshaw', 's
 /** The vehicles on the road right now, for the cut-out renderer. */
 export const trafficState: { list: Vehicle[]; fades: Record<VType, THREE.InstancedBufferAttribute> | null } = { list: [], fades: null };
 
+let lastAlarm = -1e9;
+
 export function Traffic() {
   const graphics = useGame((s) => s.settings.graphics);
   const high = graphics === 'high';
@@ -156,8 +158,16 @@ export function Traffic() {
   useEffect(
     () =>
       runtime.on((e: WorldEvent) => {
-        if (e.kind === 'interaction' || e.kind === 'stage') return;
+        if (e.kind === 'interaction' || e.kind === 'stage' || e.kind === 'landed') return;
         const now = performance.now();
+        // a parked car close to a loud one chirps its alarm, once in a while
+        if (e.kind !== 'launch' && now - lastAlarm > 9000) {
+          const pv = list.current.find((v) => v.parked && Math.hypot(v.x - e.pos[0], v.z - e.pos[2]) < (e.kind === 'bomb' ? 12 : 8));
+          if (pv) {
+            lastAlarm = now;
+            window.setTimeout(() => audio.alarm(), 300 + Math.random() * 300);
+          }
+        }
         // a cracker thrown down onto a car or an auto: everything close leans on the horn,
         // parked ones too (somebody is always sitting in them)
         const t = runtime.thrownAt;
@@ -187,7 +197,8 @@ export function Traffic() {
           if (d > R) continue;
           v.brakeUntil = now + rnd(1400, 2200);
           const away = Math.sign(v.z + v.off - e.pos[2]) || -v.dir;
-          v.offTarget = THREE.MathUtils.clamp(v.offTarget + away * 0.8, -LANE - 0.9, LANE + 0.9) - 0;
+          // a small, safe ease away within its own lane, never across into people
+          if (!v.parked) v.offTarget = THREE.MathUtils.clamp(v.offTarget + away * 0.35, -0.5, 0.5);
           if (!spoke && d < 9 && Math.random() < 0.6) {
             spoke = true;
             window.setTimeout(() => sayLine(pickA(LINES.rider), v.x, 2.3, v.z + v.off), 400);

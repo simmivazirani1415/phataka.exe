@@ -35,7 +35,7 @@ createRoot(document.getElementById('root')!).render(
 
 // Test hook for automated browser checks (?debug)
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  Promise.all([import('./game/Runtime'), import('./game/GameState'), import('./world/WorldBuilder'), import('./game/DiscoverySystem'), import('./input/HandTracker'), import('./input/handFeatures'), import('./intro/introState'), import('./street/StreetLayout'), import('./street/Crowd'), import('./street/Locations'), import('./game/FireworkSystem'), import('./street/Traffic'), import('./audio/AudioEngine')]).then(([r, g, w, d, h, f, i, s, c, l, fw, tr, au]) => {
-    (window as unknown as Record<string, unknown>).__pataka = { runtime: r.runtime, useGame: g.useGame, world: w.getWorld(), discovery: d, hands: { ...h, describeHand: f.describeHand }, intro: i, street: s, crowd: c.crowd, locations: l, fw, traffic: tr.trafficState, audio: au.audio, gsap };
+  Promise.all([import('./game/Runtime'), import('./game/GameState'), import('./world/WorldBuilder'), import('./game/DiscoverySystem'), import('./input/HandTracker'), import('./input/handFeatures'), import('./intro/introState'), import('./street/StreetLayout'), import('./street/Crowd'), import('./street/Locations'), import('./game/FireworkSystem'), import('./street/Traffic'), import('./audio/AudioEngine'), import('./street/throwing'), import('./scrapbook/notes'), import('./game/MemorySystem')]).then(([r, g, w, d, h, f, i, s, c, l, fw, tr, au, th, nt, ms]) => {
+    (window as unknown as Record<string, unknown>).__pataka = { runtime: r.runtime, useGame: g.useGame, world: w.getWorld(), discovery: d, hands: { ...h, describeHand: f.describeHand }, intro: i, street: s, crowd: c.crowd, locations: l, fw, traffic: tr.trafficState, audio: au.audio, gsap, throwing: th, notes: nt, memory: ms };
   });
 }

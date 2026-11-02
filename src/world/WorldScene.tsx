@@ -1,3 +1,4 @@
+import { Throwing } from '../street/Throwing';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PostFX } from './PostFX';
 import * as THREE from 'three';
@@ -37,6 +38,7 @@ function Street() {
       <CastSprites />
       <BurstMarker />
       <Placement />
+      <Throwing />
       <Scorch />
       <Bubbles />
     </group>

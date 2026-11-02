@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { runtime, simStep, type WorldEvent } from '../game/Runtime';
 import { useGame } from '../game/GameState';
 import { audio } from '../audio/AudioEngine';
-import { chunkOf, getVariants, isOpen, STREET, variantAt, type PersonAnim, type PersonKind, type Rect } from './StreetLayout';
+import { chunkOf, getVariants, isOpen, levelState, STREET, variantAt, type PersonAnim, type PersonKind, type Rect } from './StreetLayout';
 import { makeCanvas, toTexture } from '../utils/TextureGenerator';
 
 // The people of the mohalla, drawn as instanced body parts: every leg in the street is one
@@ -20,12 +20,15 @@ import { makeCanvas, toTexture } from '../utils/TextureGenerator';
 
 const GH = STREET.galiHalf;
 
-export type ReactKind = 'none' | 'flinch' | 'ears' | 'step' | 'cheer' | 'film' | 'clap' | 'watch' | 'flee';
+export type ReactKind = 'none' | 'flinch' | 'ears' | 'step' | 'cheer' | 'film' | 'clap' | 'watch' | 'flee' | 'notice' | 'jump' | 'annoyed' | 'laugh' | 'point' | 'shake';
 
 export interface Agent {
   idx: number;
   kind: PersonKind;
-  owner: number | 'walker' | 'rider';
+  owner: number | 'walker' | 'rider' | 'player';
+  /** a reaction on its way (NOTICING), and the one after the current (follow-up) */
+  pend?: { k: ReactKind; dur: number; at: number; ex: number; ez: number; up: number; then?: ReactKind; thenDur?: number };
+  next?: { k: ReactKind; dur: number };
   x: number;
   y: number;
   z: number;
@@ -403,6 +406,53 @@ function poseFor(a: Agent, t: number, out: Pose, reduced: boolean) {
         out.headX = -a.lookUp * 0.6;
         out.headY = 0;
         break;
+      case 'notice':
+        // a turn of the head toward the sound
+        out.headX = -a.lookUp * 0.4 - 0.05 * env;
+        out.lean = -0.05 * env;
+        break;
+      case 'jump': {
+        // a little hop of surprise, arms flung up
+        const hop = Math.sin(Math.min(1, u * 2.2) * Math.PI);
+        out.bob = Math.max(0, hop) * 0.22 * k;
+        out.armLz = -1.6 * env;
+        out.armRz = 1.6 * env;
+        out.armLx = -0.5 * env;
+        out.armRx = -0.5 * env;
+        out.lean = -0.15 * env;
+        out.headX = 0.2 * env;
+        break;
+      }
+      case 'annoyed':
+        // hands on hips, a tilt of the head
+        out.armLz = -0.75 * env;
+        out.armRz = 0.75 * env;
+        out.armLx = 0.35 * env;
+        out.armRx = 0.35 * env;
+        out.headY = Math.sin(a.reactT * 7) * 0.16 * env * k;
+        out.lean = 0.04 * env;
+        break;
+      case 'shake':
+        out.headY = Math.sin(a.reactT * 11) * 0.32 * env * k;
+        out.armLx = -0.2 * env;
+        out.armRx = -0.2 * env;
+        break;
+      case 'laugh':
+        // doubled over a little, shoulders going, a hand on the tummy
+        out.lean = 0.16 * env + Math.sin(a.reactT * 16) * 0.03 * k;
+        out.bob = Math.abs(Math.sin(a.reactT * 16)) * 0.04 * k;
+        out.armLx = -0.9 * env;
+        out.armLz = -0.15;
+        out.armRx = -1.6 * env;
+        out.armRz = 0.5 * env;
+        out.headX = -0.25 * env;
+        break;
+      case 'point':
+        // an arm out toward whoever threw it, a wag of the finger
+        out.armRx = -1.5 * env + Math.sin(a.reactT * 9) * 0.12 * k;
+        out.armRz = 0.15;
+        out.headX = -0.1;
+        break;
     }
     if (!a.sit && (a.react === 'watch' || a.react === 'film' || a.react === 'clap')) out.headX -= a.lookUp * 0.2;
   }
@@ -729,6 +779,22 @@ export function Crowd() {
       walkers++;
     }
 
+    // in the society the player is seen over the shoulder: a figure of their own
+    let me = crowd.agents.find((x) => x.owner === 'player');
+    if (levelState.id === 'society') {
+      if (!me) me = crowd.spawn('woman', p.x, 0, p.z, 0, 'idle', 'player', { speed: 1.3 }) ?? undefined;
+      if (me) {
+        const step = Math.hypot(p.x - me.x, p.z - me.z);
+        me.x = p.x;
+        me.z = p.z;
+        me.y = 0;
+        if (me.react === 'none') me.ry = Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw));
+        me.moving += ((step > 0.002 ? 1 : 0) - me.moving) * Math.min(1, dt * 10);
+        me.phase += (step / Math.max(dt, 1e-3)) * dt * 2.4;
+        me.solid = true;
+      }
+    } else if (me) crowd.remove(me);
+
     const pm = Math.hypot(p.x - lastPlayer.x, p.z - lastPlayer.z);
     lastPlayer.x = p.x;
     lastPlayer.z = p.z;
@@ -737,21 +803,22 @@ export function Crowd() {
       const dz = a.z - p.z;
       const d = Math.hypot(dx, dz);
       // walking into someone gets a word (rarely: there is a long cooldown)
-      if (d < 0.75 && pm > 0.004 && a.kind !== 'dog' && a.owner !== 'rider' && Math.abs(a.y - (p.floor ?? 0)) < 0.6) bump(a, null);
+      if (d < 0.75 && pm > 0.004 && a.kind !== 'dog' && a.owner !== 'rider' && a.owner !== 'player' && Math.abs(a.y - (p.floor ?? 0)) < 0.6) bump(a, null);
       if (a.owner === 'walker' && Math.abs(dx) > 72) {
         crowd.remove(a);
         continue;
       }
+      if (a.pend && performance.now() >= a.pend.at) begin(a);
       if (a.react !== 'none') {
         a.reactT += dt;
         a.state = 'reacting';
-        if (a.reactT >= a.reactDur) {
+        if (a.reactT >= a.reactDur && !finish(a)) {
           a.react = 'none';
           a.state = a.owner === 'walker' ? 'returning' : 'idle';
           if (a.owner !== 'walker' && a.anim !== 'wander' && a.anim !== 'play') a.ry = a.baseRy;
         }
       }
-      if (a.owner !== 'rider') move(a, dt);
+      if (a.owner !== 'rider' && a.owner !== 'player') move(a, dt);
       const far = d > (high ? 72 : 52);
       if (far) {
         if (!a.hidden) {
@@ -768,7 +835,8 @@ export function Crowd() {
         // 3D figure takes over (like the vehicles' low-poly models), seen from behind, with some
         // hysteresis so nobody flickers. Across and towards the camera stay illustrations.
         const mv = a.moving > 0.25 && !a.sit && a.owner !== 'rider';
-        if (mv) {
+        if (a.owner === 'player') a.solid = true;
+        else if (mv) {
           const vx = a.x - cam.x;
           const vz = a.z - cam.z;
           const vl = Math.hypot(vx, vz) || 1;
@@ -832,6 +900,17 @@ function hazardPush(x: number, z: number, margin: number) {
   return [px, pz] as const;
 }
 
+/** A step that never walks into anybody else. */
+function stepClear(a: Agent, nx: number, nz: number) {
+  for (const o of crowd.agents) {
+    if (o === a || o.hidden || Math.abs(o.y - a.y) > 0.5) continue;
+    const r = a.kind === 'dog' || o.kind === 'dog' ? 0.45 : 0.55;
+    const dn = Math.hypot(o.x - nx, o.z - nz);
+    if (dn < r && dn < Math.hypot(o.x - a.x, o.z - a.z)) return false;
+  }
+  return stepTo(a, nx, nz);
+}
+
 function stepTo(a: Agent, nx: number, nz: number) {
   if (isOpen(nx, nz, 0.25)) {
     a.x = nx;
@@ -858,13 +937,13 @@ function move(a: Agent, dt: number) {
     }
   }
   // reactions that move
-  if (a.react === 'step') {
+  if (a.react === 'step' || a.react === 'jump') {
     const k = Math.min(1, a.reactT / (a.reactDur * 0.6));
-    const s = (1 - k) * 2.2 * dt;
-    stepTo(a, a.x + a.fx * s, a.z + a.fz * s);
+    const s = (1 - k) * (a.react === 'jump' ? 0.9 : 2.2) * dt;
+    stepClear(a, a.x + a.fx * s, a.z + a.fz * s);
   } else if (a.react === 'flee') {
     const s = 4.2 * dt;
-    if (!stepTo(a, a.x + a.fx * s, a.z + a.fz * s)) {
+    if (!stepClear(a, a.x + a.fx * s, a.z + a.fz * s)) {
       // turn along the wall
       const t = a.fx;
       a.fx = -a.fz;
@@ -1089,83 +1168,196 @@ function react(e: WorldEvent) {
     scatter(e, 6.5);
     return;
   }
+  // a cracker lands with a clatter: people close by look over before it goes off
+  if (e.kind === 'landed') {
+    for (const a of crowd.agents) {
+      if (a.owner === 'rider' || a.owner === 'player' || a.hidden || a.react !== 'none' || a.kind === 'dog') continue;
+      const d = Math.hypot(a.x - e.pos[0], a.z - e.pos[2]);
+      if (d > 7) continue;
+      schedule(a, 'notice', rnd(0.7, 1.1), 60 + d * 40, e);
+    }
+    return;
+  }
   // the burst of a cracker thrown down among people sends them running again
   const t = runtime.thrownAt;
-  if (t && e.kind !== 'interaction' && e.kind !== 'stage' && Math.hypot(e.pos[0] - t[0], e.pos[2] - t[2]) < 3) {
+  if (t && Math.hypot(e.pos[0] - t[0], e.pos[2] - t[2]) < 3) {
     scatter(e, e.kind === 'bomb' ? 12 : 8);
     return;
   }
   const big = e.kind === 'bomb' || e.kind === 'bigBurst';
-  const R = e.kind === 'bomb' ? 18 : big ? 15 : e.kind === 'launch' ? 9 : 10;
+  const R = e.kind === 'bomb' ? 18 : big ? 15 : e.kind === 'launch' ? 9 : 11;
   const ex = e.pos[0];
   const ez = e.pos[2];
-  const up = e.kind === 'bigBurst' && e.pos[1] > 6;
   let filmer: Agent | null = null;
   let filmerD = Infinity;
-  let talker: { a: Agent; d: number } | null = null;
+  const speakers: { a: Agent; d: number; mood: Mood }[] = [];
+  const p = runtime.player;
   for (const a of crowd.agents) {
-    if (a.owner === 'rider' || a.hidden) continue;
-    const dx = a.x - ex;
-    const dz = a.z - ez;
-    const d = Math.hypot(dx, dz);
+    if (a.owner === 'rider' || a.owner === 'player' || a.hidden) continue;
+    const d = Math.hypot(a.x - ex, a.z - ez);
     if (d > R) continue;
-    const away = d > 0.01 ? [dx / d, dz / d] : [1, 0];
-    const face = Math.atan2(-dx, -dz);
-    const start = (k: ReactKind, dur: number) => {
-      if (a.react !== 'none' && a.react !== 'watch' && k === 'watch') return;
-      a.react = k;
-      a.reactT = 0;
-      a.reactDur = dur;
-      a.fx = away[0];
-      a.fz = away[1];
-      a.lookUp = up ? 1 : e.pos[1] > 2 ? 0.6 : 0;
-    };
+    // sound reaches the far ones a moment later, and everyone takes their own beat to react
+    const delay = 40 + d * 30 + rnd(0, 220);
     if (a.kind === 'dog') {
       if (d < 12 || e.kind === 'bomb') {
-        start('flee', rnd(2.2, 3.2));
-        if (Math.random() < 0.5) window.setTimeout(() => audio.woof(), 120);
+        schedule(a, 'flee', rnd(2.2, 3.2), delay, e);
+        if (Math.random() < 0.5) window.setTimeout(() => audio.woof(), delay + 120);
       }
       continue;
     }
-    if (a.owner === 'walker' || (a.anim !== 'sip' && !a.sit)) a.ry = face;
-    if (a.kind === 'child') {
-      start(d < 3 ? 'flinch' : 'cheer', d < 3 ? 0.7 : rnd(1.8, 2.6));
-      if (!talker || Math.random() < 0.3) talker = { a, d };
-      continue;
-    }
-    if (d < 3.6 && a.y < 0.3 && !a.sit) {
-      start(e.kind === 'bomb' ? 'ears' : 'step', e.kind === 'bomb' ? 1.6 : 1.1);
-      if (!talker || d < talker.d) talker = { a, d };
-    } else if (e.kind === 'bomb' && d < 9) {
-      start('ears', rnd(1.2, 1.8));
-    } else {
-      start(Math.random() < 0.3 ? 'clap' : 'watch', rnd(2, 3.5));
-      if (d > 3.5 && d < 11 && d < filmerD && !a.sit && a.y < 0.3) {
-        filmer = a;
-        filmerD = d;
-      }
+    const near = d < (big ? 5 : 3.8) && a.y < 0.3;
+    const mid = d < 10;
+    const plan = planFor(a, near, mid, e.kind === 'bomb');
+    schedule(a, plan.first, plan.firstDur, delay, e, plan.then, plan.thenDur);
+    if (plan.mood) speakers.push({ a, d, mood: plan.mood });
+    if (!near && d > 3.5 && d < 11 && d < filmerD && !a.sit && a.y < 0.3 && plan.first === 'watch') {
+      filmer = a;
+      filmerD = d;
     }
   }
-  if (filmer && Math.random() < 0.85) {
-    filmer.react = 'film';
-    filmer.reactT = 0;
-    filmer.reactDur = rnd(4, 5.5);
-    filmer.ry = Math.atan2(ex - filmer.x, ez - filmer.z);
+  const f = filmer as Agent | null;
+  if (f && Math.random() < 0.6) {
+    f.pend = { k: 'film', dur: rnd(4, 5.5), at: performance.now() + 300, ex, ez, up: e.pos[1] };
   }
-  // one short line, now and then
-  const pickLine = () => {
-    if (e.text && Math.random() < 0.6) return e.text;
-    if (talker && talker.a.kind === 'child') return pick(LINES.kid);
-    if (talker && talker.d < 3.6) return pick(LINES.close);
-    if (e.kind === 'bomb') return pick(LINES.bomb);
-    if (up) return pick(LINES.rocket);
-    if (filmer && Math.random() < 0.4) return pick(LINES.film);
-    return pick(LINES.wow);
-  };
-  const who = talker?.a ?? filmer;
-  if (who && (e.kind !== 'firework' || Math.random() < 0.5)) {
-    const line = pickLine();
-    const h = who.kind === 'child' ? 1.25 : 1.95;
-    window.setTimeout(() => sayLine(line, who.x, who.y + h, who.z), 260);
+  // one short line, from whoever is closest and has something to say
+  speakers.sort((x, y) => x.d - y.d);
+  const s0 = speakers[0];
+  if (s0 && (e.kind !== 'firework' || Math.random() < 0.7)) {
+    const line = lineFor(s0.a, s0.mood, e);
+    const h = s0.a.kind === 'child' ? 1.25 : 1.95;
+    window.setTimeout(() => {
+      sayLine(line, s0.a.x, s0.a.y + h, s0.a.z);
+      voice(line, s0.a, Math.hypot(s0.a.x - p.x, s0.a.z - p.z));
+    }, 380 + s0.d * 30);
+  }
+}
+
+type Mood = 'startled' | 'annoyed' | 'happy';
+
+/** How this person takes a burst: by who they are, how close it was, and a little chance. */
+function planFor(a: Agent, near: boolean, mid: boolean, bomb: boolean): { first: ReactKind; firstDur: number; then?: ReactKind; thenDur?: number; mood?: Mood } {
+  const r = Math.random();
+  if (a.kind === 'child') {
+    if (near) return { first: 'jump', firstDur: 0.7, then: r < 0.6 ? 'laugh' : 'cheer', thenDur: rnd(1.4, 2.2), mood: 'happy' };
+    return { first: 'cheer', firstDur: rnd(1.6, 2.4), mood: r < 0.5 ? 'happy' : undefined };
+  }
+  if (a.sit) return { first: near ? 'ears' : 'watch', firstDur: rnd(1.2, 2), then: near && r < 0.6 ? 'shake' : undefined, thenDur: 1.2, mood: near ? 'annoyed' : undefined };
+  if (a.kind === 'elder') {
+    if (near) return { first: bomb ? 'ears' : 'jump', firstDur: bomb ? 1.4 : 0.8, then: r < 0.55 ? 'shake' : 'annoyed', thenDur: rnd(1.3, 1.8), mood: 'annoyed' };
+    if (mid) return { first: 'watch', firstDur: rnd(1.6, 2.4), then: r < 0.3 ? 'shake' : undefined, thenDur: 1.2 };
+    return { first: 'notice', firstDur: rnd(0.9, 1.4) };
+  }
+  if (near) {
+    const first: ReactKind = bomb ? 'ears' : r < 0.55 ? 'jump' : 'step';
+    const r2 = Math.random();
+    const talking = a.anim === 'talk' || a.state === 'talking';
+    const then: ReactKind = talking && r2 < 0.6 ? 'laugh' : r2 < 0.35 ? 'annoyed' : r2 < 0.65 ? 'point' : r2 < 0.85 ? 'laugh' : 'shake';
+    return { first, firstDur: first === 'ears' ? 1.3 : 0.8, then, thenDur: rnd(1.3, 2), mood: then === 'laugh' ? 'happy' : then === 'point' || then === 'annoyed' || then === 'shake' ? 'annoyed' : 'startled' };
+  }
+  if (mid) {
+    if (bomb) return { first: 'ears', firstDur: rnd(1.1, 1.6), mood: 'startled' };
+    return { first: r < 0.25 ? 'clap' : r < 0.45 ? 'laugh' : 'watch', firstDur: rnd(1.8, 3) };
+  }
+  return { first: 'notice', firstDur: rnd(0.9, 1.5) };
+}
+
+const VOICE_LINES = {
+  startled: ['Arre baap re!', 'Oye hoye!', 'Arre baap re!'],
+  annoyed: ['Arey sambhal ke!', 'Kya yaar!', 'Arey sambhal ke!'],
+  happy: ['Diwali hai bhai!', 'Oye hoye!', 'Diwali hai bhai!'],
+};
+function lineFor(a: Agent, mood: Mood, e: WorldEvent) {
+  if (e.text && Math.random() < 0.3) return e.text;
+  if (a.kind === 'child' && mood === 'happy') return pick(['Oye hoye!', 'Ek aur, ek aur!', 'Diwali hai bhai!']);
+  return pick(VOICE_LINES[mood]);
+}
+
+/** Start a reaction after a beat (the NOTICING state), with an optional follow-up. */
+function schedule(a: Agent, k: ReactKind, dur: number, delayMs: number, e: WorldEvent, then?: ReactKind, thenDur?: number) {
+  // somebody already mid-reaction only picks up a bigger one
+  if (a.react !== 'none' && a.react !== 'notice' && a.react !== 'watch' && (k === 'notice' || k === 'watch')) return;
+  a.pend = { k, dur, at: performance.now() + delayMs, ex: e.pos[0], ez: e.pos[2], up: e.pos[1], then, thenDur };
+}
+
+/** Bring a scheduled reaction in: face the sound, set the move, keep the follow-up. */
+function begin(a: Agent) {
+  const q = a.pend!;
+  a.pend = undefined;
+  const dx = a.x - q.ex;
+  const dz = a.z - q.ez;
+  const d = Math.hypot(dx, dz);
+  a.react = q.k;
+  a.reactT = 0;
+  a.reactDur = q.dur;
+  a.fx = d > 0.01 ? dx / d : 1;
+  a.fz = d > 0.01 ? dz / d : 0;
+  a.lookUp = q.up > 6 ? 1 : q.up > 2 ? 0.6 : 0;
+  a.next = q.then ? { k: q.then, dur: q.thenDur ?? 1.4 } : undefined;
+  // turn toward the sound (sitters and sippers only turn their heads)
+  if (a.kind === 'dog' || q.k === 'flee') return;
+  if (a.owner === 'walker' || (a.anim !== 'sip' && !a.sit)) a.ry = Math.atan2(-dx, -dz);
+}
+
+/** The REACTING → RECOVERING → IDLE end of a reaction, or its follow-up. */
+function finish(a: Agent) {
+  if (a.next) {
+    const n = a.next;
+    a.next = undefined;
+    a.react = n.k;
+    a.reactT = 0;
+    a.reactDur = n.dur;
+    // pointing and shaking a finger are aimed at whoever threw it
+    if (n.k === 'point' || n.k === 'annoyed') {
+      const p = runtime.player;
+      if (!a.sit) a.ry = Math.atan2(p.x - a.x, p.z - a.z);
+    }
+    return true;
+  }
+  return false;
+}
+
+/** Where a person is in their reaction, for tests and the debug overlay. */
+export function reactionState(a: Agent): 'IDLE' | 'NOTICING' | 'STARTLED' | 'REACTING' | 'RECOVERING' {
+  if (a.pend) return 'NOTICING';
+  if (a.react === 'none') return 'IDLE';
+  const u = a.reactT / Math.max(0.01, a.reactDur);
+  if ((a.react === 'jump' || a.react === 'flinch' || a.react === 'step' || a.react === 'ears') && u < 0.5) return 'STARTLED';
+  if (u > 0.75 && !a.next) return 'RECOVERING';
+  return 'REACTING';
+}
+
+// ------------------------------------------------------------------------------------------
+// Voices: a short spoken line now and then, quieter further away, never two at once.
+
+let lastVoice = 0;
+const voiceCd = new WeakMap<Agent, number>();
+let hiVoice: SpeechSynthesisVoice | null | undefined;
+function pickVoice() {
+  if (hiVoice !== undefined) return hiVoice;
+  const vs = window.speechSynthesis?.getVoices?.() ?? [];
+  if (!vs.length) return null;
+  hiVoice = vs.find((v) => v.lang === 'hi-IN') ?? vs.find((v) => v.lang === 'en-IN') ?? vs.find((v) => /hindi|india/i.test(v.name)) ?? null;
+  return hiVoice;
+}
+export function voice(line: string, a: Agent, dist: number) {
+  try {
+    const g = useGame.getState();
+    if (!g.settings.sound || !('speechSynthesis' in window)) return;
+    const now = performance.now();
+    if (now - lastVoice < 3800 || (voiceCd.get(a) ?? 0) > now || dist > 22) return;
+    const v = pickVoice();
+    if (!v) return;
+    lastVoice = now + rnd(0, 1200);
+    voiceCd.set(a, now + 14000);
+    const u = new SpeechSynthesisUtterance(line);
+    u.voice = v;
+    u.lang = v.lang;
+    u.volume = Math.max(0.15, Math.min(0.9, 1 - dist / 24));
+    u.rate = a.kind === 'child' ? 1.15 : a.kind === 'elder' ? 0.9 : 1.05;
+    u.pitch = a.kind === 'child' ? 1.7 : a.female ? 1.3 : a.kind === 'elder' ? 0.8 : 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch {
+    /* no voice here */
   }
 }

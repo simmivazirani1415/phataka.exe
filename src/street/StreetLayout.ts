@@ -915,11 +915,11 @@ export const LEVELS: Record<LevelId, Level> = {
   },
   society: {
     id: 'society',
-    name: 'Society Compound',
+    name: 'Society Ground',
     floor: 0,
     walk: { x0: -SW + 0.6, x1: SW - 0.6, z0: SZ - SD + 0.6, z1: SZ + SD - 0.6 },
     burst: { x0: -SW + 2.2, x1: SW - 2.2, z0: SZ - SD + 2.6, z1: SZ + SD - 2.2 },
-    spawn: { x: 0, z: SZ - SD + 1.0, yaw: Math.PI, pitch: -0.1 },
+    spawn: { x: 0, z: SZ - SD + 3.8, yaw: Math.PI, pitch: -0.1 },
   },
   aangan: {
     id: 'aangan',

@@ -40,7 +40,7 @@ export interface Settings {
  * its cracker goes to the tray; later a cracker put down on the road is framed in a
  * 'spotlight', lit, and bursts ('playing'), and its first burst develops into a Polaroid.
  */
-export type RevealStep = 'focusing' | 'presented' | 'opening' | 'opened' | 'lighting' | 'spotlight' | 'playing' | 'developing';
+export type RevealStep = 'focusing' | 'presented' | 'opening' | 'opened' | 'lighting' | 'spotlight' | 'flying' | 'playing' | 'developing';
 
 /** Every cracker can be lit this many times per box. */
 export const MAX_USES = 5;

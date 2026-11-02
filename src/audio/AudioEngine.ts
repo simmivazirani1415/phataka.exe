@@ -221,6 +221,13 @@ class Engine {
       o2.stop(t + 0.25);
     }
   }
+  /** a car alarm's short chirp-chirp */
+  alarm() {
+    for (const d of [0, 0.16]) {
+      this.tone('world', 1850, 0.11, { type: 'square', gain: 0.03, to: 1450, delay: d, attack: 0.005 });
+      this.tone('world', 1250, 0.11, { type: 'square', gain: 0.02, to: 1050, delay: d + 0.05, attack: 0.005 });
+    }
+  }
   kettle() {
     const ctx = this.live();
     if (!ctx) return;
