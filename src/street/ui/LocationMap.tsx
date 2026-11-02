@@ -5,7 +5,7 @@ import { goToLevel, whereNow } from '../Locations';
 import { IconClose } from '../../components/Icons';
 import { audio } from '../../audio/AudioEngine';
 
-// "Kahan se chalaoge?": the five places as cards in the middle of the screen. It opens
+// "Kahan phodoge?": the five places as cusped-arch cards in the middle of the screen. It opens
 // right after "Enter the Mohalla" and again from the place button at the bottom centre.
 // Picking a card glides the camera there.
 
@@ -84,6 +84,67 @@ export function PlaceIcon({ id }: { id: LevelId }) {
   }
 }
 
+const ART = (id: LevelId) => `${import.meta.env.BASE_URL}assets/places/${id}.webp`;
+
+/** A cusped Mughal arch, top and bottom: the card's plum body with its glowing gold edge. */
+const ARCH =
+  'M12 296V122c0-22 18-30 30-40 0-24 22-32 36-42 6-20 30-22 42-40 12 18 36 20 42 40 14 10 36 18 36 42 12 10 30 18 30 40v174c0 16-22 22-36 26-20 6-50 8-72 22-22-14-52-16-72-22-14-4-36-10-36-26z';
+function ArchFrame() {
+  return (
+    <svg className="place-frame" viewBox="0 0 240 340" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="pf-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#9a2654" />
+          <stop offset="1" stopColor="#5e1236" />
+        </linearGradient>
+      </defs>
+      <path d={ARCH} fill="url(#pf-fill)" stroke="#f6b53a" strokeWidth="5" vectorEffect="non-scaling-stroke" />
+      <path d={ARCH} fill="none" stroke="#ffd27a" strokeOpacity="0.55" strokeWidth="1.2" transform="translate(12 13) scale(0.9 0.92)" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** The scalloped plaque the heading sits on, with a diya on top and gold flourishes. */
+function Plaque() {
+  const d = 'M70 40c24 0 34-20 62-22h196c28 0 40-18 72-18s44 18 72 18h196c28 2 38 22 62 22 22 16 50 28 70 45-20 17-48 29-70 45-24 0-34 20-62 22H472c-28 0-40 18-72 18s-44-18-72-18H132c-28-2-38-22-62-22C48 114 20 102 0 85c20-17 48-29 70-45z';
+  return (
+    <svg className="places-plaque" viewBox="-4 -4 808 178" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="pq-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8e1f4a" />
+          <stop offset="1" stopColor="#5e1236" />
+        </linearGradient>
+      </defs>
+      <path d={d} fill="url(#pq-fill)" stroke="#f6b53a" strokeWidth="4" vectorEffect="non-scaling-stroke" />
+      <path d={d} fill="none" stroke="#ffd27a" strokeOpacity="0.5" strokeWidth="1.2" transform="translate(28 9) scale(0.93 0.9)" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function Diya() {
+  return (
+    <svg className="places-diya" viewBox="0 0 64 52" aria-hidden="true">
+      <path d="M32 2c6 8 7 13 0 19-7-6-6-11 0-19z" fill="#ffc531" />
+      <path d="M32 9c3 4 3.4 6.5 0 9.5-3.4-3-3-5.5 0-9.5z" fill="#fff3c4" />
+      <path d="M4 24c4 1 10 3 14 1 2 3 8 5 14 5s12-2 14-5c4 2 10 0 14-1-3 14-14 24-28 24S7 38 4 24z" fill="#f28c28" />
+      <path d="M10 30c6 6 13 9 22 9s16-3 22-9" fill="none" stroke="#ffd27a" strokeWidth="2" />
+    </svg>
+  );
+}
+
+/** Little gold sprays either side of the plaque and the stay button. */
+function Spray({ flip = false }: { flip?: boolean }) {
+  return (
+    <svg className={`spray ${flip ? 'flip' : ''}`} viewBox="0 0 40 40" aria-hidden="true">
+      <g fill="#ffc531">
+        <ellipse cx="26" cy="20" rx="10" ry="4" />
+        <ellipse cx="20" cy="9" rx="7" ry="3" transform="rotate(-35 20 9)" />
+        <ellipse cx="20" cy="31" rx="7" ry="3" transform="rotate(35 20 31)" />
+      </g>
+    </svg>
+  );
+}
+
 export function LocationMap() {
   const open = useGame((s) => s.ui.map);
   const phase = useGame((s) => s.phase);
@@ -115,26 +176,37 @@ export function LocationMap() {
           <IconClose size={18} />
         </button>
         <header className="places-head">
-          <h2 id="places-title">Kahan se chalaoge?</h2>
-          <p>Pick a place to burst from. Collect your patakas in the Chowk.</p>
+          <Diya />
+          <Spray flip />
+          <div className="places-plaque-wrap">
+            <Plaque />
+            <h2 id="places-title">Kahan phodoge?</h2>
+            <p>Pick a place to burst from. Collect your patakas in the Chowk.</p>
+          </div>
+          <Spray />
         </header>
         <ul className="places-cards">
           {PLACE_ORDER.map((id, i) => (
             <li key={id} style={{ ['--i' as string]: i }}>
               <button className={`place-card ${here === id ? 'here' : ''}`} onClick={() => (here === id ? close() : void goToLevel(id))} aria-current={here === id ? 'location' : undefined}>
+                <ArchFrame />
                 <span className="place-art">
-                  <PlaceIcon id={id} />
+                  <img src={ART(id)} alt="" draggable={false} />
                 </span>
                 <b className="place-name">{LEVELS[id].name}</b>
                 <small className="place-blurb">{BLURB[id]}</small>
-                <span className="place-tag">{here === id ? 'You are here' : 'Go'}</span>
+                <span className="place-tag">{here === id ? 'You are here' : 'Go \u2192'}</span>
               </button>
             </li>
           ))}
         </ul>
-        <button className="places-stay" onClick={close}>
-          Stay in the {LEVELS[here].name}
-        </button>
+        <div className="places-stay-row">
+          <Spray flip />
+          <button className="places-stay" onClick={close}>
+            <span aria-hidden="true">{'\u2726'}</span> Stay in the {LEVELS[here].name} <span aria-hidden="true">{'\u2726'}</span>
+          </button>
+          <Spray />
+        </div>
       </section>
     </div>
   );
