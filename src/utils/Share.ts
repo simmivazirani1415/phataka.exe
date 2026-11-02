@@ -3,7 +3,7 @@ import { PACKAGE_BY_ID } from '../assets/AssetRegistry';
 import { dataUrlToPngBlob, downloadBlob } from './PDFGenerator';
 import { SITE } from '../config/site';
 
-export const SHARE_TEXT = `Maine apni Diwali ${SITE.name} mein banayi! Har ghar mein ek pataka hai. 🪔`;
+export const SHARE_TEXT = `Maine apni Diwali ${SITE.name} mein banayi! 🪔`;
 
 export function polaroidFilename(m: Memory) {
   return `pataka-exe-${m.packageId.replace(/_/g, '-')}-polaroid.png`;

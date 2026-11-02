@@ -17,7 +17,7 @@ import gsap from 'gsap';
 import App from './App';
 import { SITE } from './config/site';
 
-document.title = `${SITE.name} — ${SITE.tagline}`;
+document.title = SITE.name;
 
 // On slow GPUs gsap's default lag smoothing stretches every tween (a 1 s reveal can take a minute);
 // let tweens keep real time so the reveal flow never stalls.

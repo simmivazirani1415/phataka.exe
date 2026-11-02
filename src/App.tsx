@@ -39,7 +39,6 @@ function Fallback({ reason }: { reason: string }) {
   return (
     <div className="fallback">
       <h1 className="logo-big">{SITE.name}</h1>
-      <p className="tagline">{SITE.tagline}</p>
       <p>{reason}</p>
       <ul className="fallback-grid">
         {PACKAGES.map((p) => (

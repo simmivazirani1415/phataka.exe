@@ -12,7 +12,7 @@ import { useIntro } from './introState';
 // with the camera already standing at the head of the gali looking in, the way the film's last
 // shot looks through the doors. As the doors finish opening the film dissolves from the
 // doorway outward into the live street, which settles under a soft blur for the welcome:
-// the BOMBASTIC logo, the tagline, three steps and one button. Entering clears the blur and
+// the BOMBASTIC logo, three steps and one button. Entering clears the blur and
 // walks the camera a few steps into the gali, then hands over the controls.
 
 const BASE = import.meta.env.BASE_URL;
@@ -35,34 +35,60 @@ const BLUR = 6;
 /** Give up on a film that has not started playing by then. */
 const STALL_MS = 9000;
 
-const IconFind = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="10.5" cy="10.5" r="6" />
-    <path d="M15 15l5 5" />
-    <path d="M10.5 7.8v1.4M10.5 11.8v1.4M7.8 10.5h1.4M11.8 10.5h1.4" />
-  </svg>
-);
-const IconLight = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
-    <circle cx="12" cy="12" r="1.6" />
-  </svg>
-);
-const IconMemory = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="4.5" y="3" width="15" height="18" rx="1.5" />
-    <rect x="7" y="5.5" width="10" height="9.5" rx="0.5" />
-    <path d="M8 18h5" />
-  </svg>
-);
 const IconArrow = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 );
 
-const STEP_ICONS = [<IconFind key="f" />, <IconLight key="l" />, <IconMemory key="m" />];
-const STEPS = SITE.steps.map((text, i) => ({ icon: STEP_ICONS[i], text }));
+const STEP_ART = ['find', 'light', 'memory'].map((n) => `${BASE}assets/intro/steps/${n}.webp`);
+const STEPS = SITE.steps.map((text, i) => ({ art: STEP_ART[i], text }));
+
+/** A cusped Mughal-arch cartouche: a dome over the art, points at the sides and the foot. */
+const BADGE =
+  'M6 131 A30 30 0 0 1 44 96 A34 34 0 0 1 80 58 A48 48 0 0 1 146 40 A84 84 0 0 1 294 40 A48 48 0 0 1 360 58 A34 34 0 0 1 396 96 A30 30 0 0 1 434 131 A30 30 0 0 1 396 166 A34 34 0 0 1 360 204 A50 50 0 0 1 292 224 A80 80 0 0 1 220 256 A80 80 0 0 1 148 224 A50 50 0 0 1 80 204 A34 34 0 0 1 44 166 A30 30 0 0 1 6 131 Z';
+
+function Badge() {
+  return (
+    <svg className="intro-badge" viewBox="0 0 440 262" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="ib-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8E1F4A" />
+          <stop offset="1" stopColor="#5E1236" />
+        </linearGradient>
+      </defs>
+      <path d={BADGE} fill="url(#ib-fill)" stroke="#F6B53A" strokeWidth="5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <path d={BADGE} fill="none" stroke="#FFD27A" strokeOpacity="0.45" strokeWidth="1.5" vectorEffect="non-scaling-stroke" transform="translate(220 131) scale(0.95 0.91) translate(-220 -131)" />
+    </svg>
+  );
+}
+
+/** A string of fairy lights sagging between two cards. */
+function Garland() {
+  const pts = Array.from({ length: 9 }, (_, i) => {
+    const t = i / 8;
+    return [6 + t * 108, 8 + Math.sin(t * Math.PI) * 12];
+  });
+  return (
+    <svg className="intro-garland" viewBox="0 0 120 30" aria-hidden="true">
+      <path d="M2 8 Q60 32 118 8" fill="none" stroke="#F6B53A" strokeOpacity="0.8" strokeWidth="1.6" />
+      {pts.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="3.2" fill="#FFD983" />
+      ))}
+    </svg>
+  );
+}
+
+/** Little burst marks either side of the button and the outer cards. */
+function Splash({ side }: { side: 'l' | 'r' }) {
+  return (
+    <svg className={`intro-splash intro-splash-${side}`} viewBox="0 0 60 70" aria-hidden="true">
+      <path d="M40 6 L52 26 L45 28 Z" fill="#F6B53A" />
+      <path d="M8 30 L44 36 L42 43 Z" fill="#F08A2C" />
+      <path d="M14 62 L44 48 L46 55 Z" fill="#F6B53A" />
+    </svg>
+  );
+}
 
 /** The world canvas's soft-focus treatment, driven as one proxy so GSAP can tween it. */
 const soft = { blur: 0, dim: 1 };
@@ -87,9 +113,9 @@ export function IntroOverlay() {
     scrim: useRef<HTMLDivElement>(null!),
     welcome: useRef<HTMLDivElement>(null!),
     logo: useRef<HTMLDivElement>(null!),
-    tagline: useRef<HTMLParagraphElement>(null!),
     steps: useRef<HTMLOListElement>(null!),
     cta: useRef<HTMLButtonElement>(null!),
+    ctaWrap: useRef<HTMLDivElement>(null!),
     controls: useRef<HTMLDivElement>(null!),
   };
   const tl = useRef<gsap.core.Timeline | null>(null);
@@ -118,7 +144,7 @@ export function IntroOverlay() {
         t.to(r.film.current, { autoAlpha: 0, duration: 0.45, ease: 'power1.out' }, 0);
         t.to(r.haze.current, { autoAlpha: 0.14, duration: 0.45 }, 0);
         t.to(r.scrim.current, { autoAlpha: 1, duration: 0.45 }, 0);
-        t.fromTo([r.logo.current, r.tagline.current, ...steps, r.cta.current], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 0.15);
+        t.fromTo([r.logo.current, ...steps, r.ctaWrap.current], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 0.15);
         t.call(() => useIntro.getState().setStage('WELCOME_VISIBLE'), [], 0.15);
         return;
       }
@@ -131,11 +157,10 @@ export function IntroOverlay() {
       t.fromTo(r.film.current, { '--hole': 0 }, { '--hole': 1.6, duration: 1.15, ease: 'power2.inOut' }, 0.05);
       t.to(r.film.current, { autoAlpha: 0, duration: 0.55, ease: 'power1.in' }, 0.7);
       t.to(r.scrim.current, { autoAlpha: 1, duration: 0.8, ease: 'power1.out' }, 0.5);
-      // the welcome: logo, tagline a beat later, the steps in a quick stagger, then the button
+      // the welcome: logo, the steps in a quick stagger, then the button
       t.fromTo(r.logo.current, { autoAlpha: 0, y: 18, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.55, ease: 'power3.out' }, 0.75);
-      t.fromTo(r.tagline.current, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.88);
       t.fromTo(steps, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out', stagger: 0.085 }, 1.0);
-      t.fromTo(r.cta.current, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 1.22);
+      t.fromTo(r.ctaWrap.current, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 1.22);
       // the button works as soon as the welcome starts to appear
       t.call(() => useIntro.getState().setStage('WELCOME_VISIBLE'), [], 0.75);
     };
@@ -147,7 +172,7 @@ export function IntroOverlay() {
     const v = r.video.current;
     useIntro.getState().setStage('VIDEO_PLAYING');
     setNeedsTap(false);
-    gsap.set([r.logo.current, r.tagline.current, ...r.steps.current.children, r.cta.current, r.scrim.current, r.haze.current], { autoAlpha: 0 });
+    gsap.set([r.logo.current, ...r.steps.current.children, r.ctaWrap.current, r.scrim.current, r.haze.current], { autoAlpha: 0 });
     gsap.set(r.film.current, { autoAlpha: 1, '--hole': 0 });
     gsap.set(r.controls.current, { autoAlpha: 1 });
     soft.blur = 0;
@@ -246,9 +271,6 @@ export function IntroOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (stage === 'WELCOME_VISIBLE') r.cta.current?.focus({ preventScroll: true });
-  }, [stage]);
 
   const enter = () => {
     const intro = useIntro.getState();
@@ -269,7 +291,7 @@ export function IntroOverlay() {
     tl.current = t;
     if (DEBUG) (window as unknown as Record<string, unknown>).__introTl = t;
     const dur = reduced ? 0.45 : 1.25;
-    const ui = [r.logo.current, r.tagline.current, ...r.steps.current.children, r.cta.current];
+    const ui = [r.logo.current, ...r.steps.current.children, r.ctaWrap.current];
     t.to(ui, { autoAlpha: 0, y: reduced ? 0 : -10, duration: 0.32, ease: 'power1.in', stagger: reduced ? 0 : 0.025 }, 0);
     t.to([r.scrim.current, r.haze.current, r.controls.current], { autoAlpha: 0, duration: 0.5, ease: 'power1.out' }, 0.1);
     t.to(soft, { blur: 0, dim: 1, duration: dur * 0.8, ease: 'power2.out' }, 0.05);
@@ -292,22 +314,27 @@ export function IntroOverlay() {
         <div className="intro-logo" ref={r.logo}>
           <img src={LOGO} alt={SITE.name} draggable={false} />
         </div>
-        <p className="intro-tagline" ref={r.tagline}>
-          {SITE.tagline}
-        </p>
         <ol className="intro-steps" ref={r.steps}>
           {STEPS.map((s, i) => (
-            <li key={s.text}>
-              <span className="intro-step-icon">{s.icon}</span>
+            <li key={s.text} className="intro-step">
+              <Badge />
+              <img className="intro-step-art" src={s.art} alt="" draggable={false} />
               <span className="intro-step-n">0{i + 1}</span>
               <span className="intro-step-text">{s.text}</span>
+              {i < STEPS.length - 1 && <Garland />}
+              {i === 0 && <Splash side="l" />}
+              {i === STEPS.length - 1 && <Splash side="r" />}
             </li>
           ))}
         </ol>
-        <button className="intro-cta" ref={r.cta} onClick={enter} disabled={stage !== 'WELCOME_VISIBLE'} tabIndex={welcome ? 0 : -1}>
-          {SITE.enter}
-          <IconArrow />
-        </button>
+        <div className="intro-cta-wrap" ref={r.ctaWrap}>
+          <Splash side="l" />
+          <button className="intro-cta" ref={r.cta} onClick={enter} disabled={stage !== 'WELCOME_VISIBLE'} tabIndex={welcome ? 0 : -1}>
+            {SITE.enter}
+            <IconArrow />
+          </button>
+          <Splash side="r" />
+        </div>
       </div>
 
       {needsTap && filmUp && (
