@@ -1,0 +1,185 @@
+/* ---------- festive skin for the in-game HUD, location panel and inventory ----------
+   The same language as the welcome cards: jamun-plum surfaces, gold edges with a warm glow
+   and a thin inner gold rule, cream tags, ivory type. */
+
+:root {
+  --jm-1: #8e1f4a;
+  --jm-2: #5e1236;
+  --gold: #f6b53a;
+  --gold-2: #ffd27a;
+  --tag: #fbe2b4;
+  --on-jm: #fff4e2;
+  --on-jm-soft: rgba(255, 244, 226, 0.68);
+  --jm-line: rgba(255, 210, 122, 0.2);
+  --jm-glow: 0 0 12px rgba(255, 176, 64, 0.45), 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- panels ---------- */
+.panel.inv,
+.panel.locpanel {
+  color: var(--on-jm);
+  background: linear-gradient(180deg, var(--jm-1), var(--jm-2));
+  border: 2px solid var(--gold);
+  border-radius: 22px;
+  box-shadow: var(--jm-glow);
+}
+.panel.inv::after,
+.panel.locpanel::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  border-radius: 17px;
+  pointer-events: none;
+}
+.panel.inv .panel-head h2,
+.panel.locpanel .panel-head h2 {
+  color: var(--on-jm);
+}
+.panel.inv .icon-btn,
+.panel.locpanel .icon-btn {
+  color: var(--gold-2);
+}
+.panel.inv .icon-btn:hover:not(:disabled),
+.panel.locpanel .icon-btn:hover:not(:disabled) {
+  color: var(--on-jm);
+  background: rgba(255, 244, 226, 0.12);
+}
+@media (max-width: 640px) {
+  .panel.inv,
+  .panel.locpanel {
+    border-width: 2px 0 0;
+    border-radius: 22px 22px 0 0;
+  }
+  .panel.inv::after,
+  .panel.locpanel::after {
+    inset: 5px 5px 0;
+    border-bottom: 0;
+    border-radius: 17px 17px 0 0;
+  }
+  .panel.inv::before,
+  .panel.locpanel::before {
+    background: rgba(255, 210, 122, 0.45);
+  }
+}
+
+/* ---------- location selector ---------- */
+.locpanel .loc-rows li + li {
+  border-top-color: var(--jm-line);
+}
+.locpanel .loc-row {
+  color: var(--on-jm);
+  border: 1px solid transparent;
+}
+.locpanel .loc-row:hover {
+  background: rgba(255, 244, 226, 0.08);
+}
+.locpanel .loc-row.here {
+  background: rgba(246, 181, 58, 0.16);
+  border-color: rgba(246, 181, 58, 0.55);
+}
+.locpanel .loc-row > svg {
+  color: var(--gold);
+}
+.locpanel .loc-icon {
+  background: var(--tag);
+  box-shadow: 0 0 0 1.5px var(--gold);
+}
+.locpanel .loc-text small {
+  color: var(--on-jm-soft);
+}
+.locpanel .loc-row.here small {
+  color: var(--gold-2);
+}
+
+/* ---------- inventory ---------- */
+.inv .inv-total {
+  color: var(--on-jm);
+}
+.inv .inv-total svg {
+  color: var(--gold);
+}
+.inv .inv-item {
+  color: var(--jm-2);
+  background: var(--ivory);
+  border: 1.5px solid var(--gold);
+  border-radius: 14px;
+}
+.inv .inv-item:hover,
+.inv .inv-item:focus-visible {
+  border-color: var(--gold-2);
+  box-shadow: 0 0 10px rgba(255, 176, 64, 0.55);
+}
+.inv .inv-item.on {
+  background: #fff;
+  border-color: var(--gold-2);
+  box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(255, 176, 64, 0.7);
+}
+.inv .inv-name {
+  color: var(--jm-2);
+  font-weight: 600;
+}
+/* counts wear the notched cream-and-gold tag of the welcome cards */
+.inv .inv-count {
+  padding: 3px 7px 2px;
+  color: var(--jm-2);
+  background: var(--gold);
+  border-radius: 0;
+  clip-path: polygon(14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%, 0 50%);
+}
+.inv .inv-lock {
+  color: var(--tag);
+  background: var(--jm-2);
+}
+.inv .inv-item.empty .inv-count {
+  color: var(--jm-2);
+  background: var(--tag);
+}
+.inv .inv-foot {
+  color: var(--on-jm-soft);
+}
+
+/* ---------- HUD ---------- */
+.hud-logo {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.hud-logo img {
+  height: 26px;
+  filter: drop-shadow(0 0 1px rgba(255, 241, 215, 0.95)) drop-shadow(0 0 1px rgba(255, 241, 215, 0.95)) drop-shadow(0 3px 8px rgba(0, 0, 0, 0.5));
+}
+.hud-place,
+.hud-count,
+.hud-btn {
+  color: var(--on-jm);
+  background: linear-gradient(180deg, var(--jm-1), var(--jm-2));
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 8px rgba(255, 176, 64, 0.4), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.hud-place svg,
+.hud-count svg {
+  color: var(--gold);
+}
+.hud-place:hover,
+.hud-btn:hover {
+  color: var(--on-jm);
+  background: linear-gradient(180deg, #a02a57, var(--jm-1));
+}
+.hud-place.on,
+.hud-btn.on {
+  color: var(--jm-2);
+  background: linear-gradient(180deg, #ffcb45, #f7ad22);
+  border-color: var(--gold-2);
+  box-shadow: 0 0 12px rgba(255, 176, 64, 0.6), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.hud-place.on svg {
+  color: var(--jm-2);
+}
+@keyframes countBump {
+  30% {
+    transform: scale(1.12);
+    border-color: var(--gold-2);
+    box-shadow: 0 0 18px rgba(255, 176, 64, 0.9);
+  }
+}
