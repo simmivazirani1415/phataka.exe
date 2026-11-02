@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame, wide } from '../game/GameState';
-import { IconAlbum, IconCracker, IconGrid, IconPin, IconSettings, IconSoundOff, IconSoundOn } from './Icons';
+import { IconAlbum, IconCracker, IconGrid, IconPin } from './Icons';
 import { audio } from '../audio/AudioEngine';
 import { SITE } from '../config/site';
 import { LEVELS } from '../street/StreetLayout';
@@ -16,8 +16,6 @@ const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(point
 export function GameHUD() {
   const found = useGame((s) => Object.values(s.packages).filter((p) => p === 'UNLOCKED' || p === 'PLAYED' || p === 'MEMORY_CAPTURED').length);
   const memories = useGame((s) => s.memories.length);
-  const sound = useGame((s) => s.settings.sound);
-  const update = useGame((s) => s.updateSettings);
   const setUi = useGame((s) => s.setUi);
   const ui = useGame((s) => s.ui);
   const active = useGame((s) => s.active);
@@ -47,12 +45,6 @@ export function GameHUD() {
   }, [found]);
 
   const busy = !!active;
-  const toggleSound = () => {
-    const next = !sound;
-    update({ sound: next });
-    audio.setEnabled(next);
-    if (next) audio.tap();
-  };
   const open = (u: Partial<typeof ui>) => {
     audio.tap();
     // on phones one sheet at a time; on wide screens the side panels stay, but the settings
@@ -66,7 +58,7 @@ export function GameHUD() {
     <div className={`hud ${busy ? 'hud-busy' : ''}`}>
       <div className="hud-tl">
         <div className="hud-logo">
-          <img src={`${import.meta.env.BASE_URL}assets/intro/phataka_party_logo.webp`} alt={SITE.name} draggable={false} />
+          <img src={`${import.meta.env.BASE_URL}assets/intro/phataka_party_logo_light.webp`} alt={SITE.name} draggable={false} />
         </div>
       </div>
 
@@ -96,15 +88,10 @@ export function GameHUD() {
         <button className={`hud-btn ${ui.tray ? 'on' : ''}`} onClick={() => open({ tray: !ui.tray })} aria-label="Inventory" aria-expanded={ui.tray} title="Inventory">
           <IconGrid size={20} />
         </button>
-        <button className="hud-btn" onClick={() => { audio.paper(); open({ album: true }); }} aria-label="Memories" title="Memories">
-          <IconAlbum size={20} />
+        <button className="hud-book" onClick={() => { audio.paper(); open({ album: true }); }} aria-label={`Your scrapbook${memories ? `, ${memories} memories` : ''}`}>
+          <IconAlbum size={18} />
+          <span>Your scrapbook</span>
           {memories > 0 && <span className="badge">{memories}</span>}
-        </button>
-        <button className="hud-btn" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? 'Mute background sound' : 'Turn on background sound'} title={sound ? 'Background sound on' : 'Background sound off (bursts stay on)'}>
-          {sound ? <IconSoundOn size={20} /> : <IconSoundOff size={20} />}
-        </button>
-        <button className={`hud-btn ${ui.settings ? 'on' : ''}`} onClick={() => open({ settings: !ui.settings })} aria-label="Settings" title="Settings">
-          <IconSettings size={20} />
         </button>
       </nav>
     </div>

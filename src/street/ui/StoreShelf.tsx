@@ -123,7 +123,7 @@ export function StoreShelf() {
     const el = track.current;
     if (!el) return;
     const item = el.querySelector('li');
-    el.scrollBy({ left: d * (item ? item.clientWidth * 3 : 300), behavior: reduced ? 'auto' : 'smooth' });
+    el.scrollBy({ left: d * (item ? item.clientWidth * (el.clientWidth > 600 ? 4 : 2) : 300), behavior: reduced ? 'auto' : 'smooth' });
   };
 
   const tap = (id: PackageId) => {

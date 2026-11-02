@@ -60,8 +60,8 @@
 /* ---------- the logo ---------- */
 .hud .hud-logo {
   padding: 7px 14px 6px;
-  background: var(--pp-cream);
-  border: 1.5px solid var(--pp-gold);
+  background: linear-gradient(180deg, var(--jm-1), var(--jm-2));
+  border: 1.5px solid var(--gold);
   border-radius: 999px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
@@ -185,7 +185,7 @@
   display: none;
 }
 .coll-track > li {
-  flex: 0 0 calc(100% / 6);
+  flex: 0 0 calc(100% / 4);
   height: 100%;
   scroll-snap-align: start;
   animation: shelfTile 420ms var(--ease) both;
@@ -976,3 +976,22 @@ span.burst-note {
     font-size: 14px;
   }
 }
+
+/* bottom-right: just the stash icon and the scrapbook CTA */
+.hud-actions { align-items: center; gap: 10px; }
+.hud-book {
+  position: relative; display: inline-flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 18px 0 14px; border-radius: 999px;
+  background: linear-gradient(#ffcf4a, #f5a623); color: #4a0f2a;
+  border: 0; box-shadow: 0 3px 0 #b8322f, 0 8px 18px rgba(0,0,0,.35);
+  font: 700 15px / 1 var(--ui); cursor: pointer; white-space: nowrap;
+}
+.hud-book:hover { filter: brightness(1.05); }
+.hud-book:active { transform: translateY(2px); box-shadow: 0 1px 0 #b8322f; }
+.hud-book .badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #7a1840; color: #fff; font-size: 11px; display: grid; place-items: center; border: 2px solid #ffd27a; }
+
+.hud .hud-logo img { filter: none; }
+
+/* four to a view, with breathing room around each cracker */
+.coll-art img { inset: 0 14%; width: 72%; }
+@media (max-width: 640px) { .coll-art img { inset: 0 8%; width: 84%; } }

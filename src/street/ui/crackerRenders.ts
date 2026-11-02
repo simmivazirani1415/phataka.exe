@@ -53,7 +53,7 @@ export function renderCrackers(): Promise<void> {
     // give the main scene its first frames before borrowing the GPU
     window.setTimeout(async () => {
       try {
-        await Promise.race([preloadArt(PACKAGES.map((p) => p.image.front).filter((u): u is string => !!u)), new Promise((r) => setTimeout(r, 4000))]);
+        await Promise.race([preloadArt(PACKAGES.map((p) => p.image.front).filter((u): u is string => !!u)), new Promise((r) => setTimeout(r, 10000))]);
         const canvas = document.createElement('canvas');
         canvas.width = W;
         canvas.height = H;
