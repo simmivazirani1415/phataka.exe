@@ -70,7 +70,7 @@ export function GameHUD() {
         </div>
       </div>
 
-      <button className={`hud-place ${ui.map ? 'on' : ''}`} onClick={() => open({ map: !ui.map })} aria-expanded={ui.map} aria-label={`Change place. You are at the ${LEVELS[here].name}.`} disabled={busy}>
+      <button className={`hud-place ${ui.map ? 'on' : ''}`} onClick={() => (!ui.map && here === 'store' && found < 8 ? setUi({ nag: true }) : open({ map: !ui.map }))} aria-expanded={ui.map} aria-label={`Change place. You are at the ${LEVELS[here].name}.`} disabled={busy}>
         <IconPin size={17} />
         <span className="hud-place-text">
           <small>You are at</small>

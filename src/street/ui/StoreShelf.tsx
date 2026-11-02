@@ -24,6 +24,31 @@ export const SHORT: Record<CrackerType, string> = {
 
 const owns = (s: string) => s === 'UNLOCKED' || s === 'PLAYED' || s === 'MEMORY_CAPTURED';
 const HOLD_MS = 1300;
+const STEP_MS = 420;
+
+/** A copy of the cracker's picture flies from the shelf into the stash on the right. */
+function flyToStash(from: Element | null | undefined, src: string | null) {
+  if (!from || !src) return;
+  const a = from.getBoundingClientRect();
+  const target = document.querySelector('.panel.inv .inv-grid') ?? document.querySelector('.hud-count');
+  const b = target?.getBoundingClientRect() ?? { left: window.innerWidth - 60, top: 80, width: 40, height: 40 };
+  const img = document.createElement('img');
+  img.src = src;
+  img.className = 'fly-cracker';
+  Object.assign(img.style, { left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px` });
+  document.body.appendChild(img);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+  const dy = b.top + Math.min(b.height, 160) / 2 - (a.top + a.height / 2);
+  const anim = img.animate(
+    [
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      { transform: `translate(${dx * 0.55}px, ${dy * 0.5 - 110}px) scale(0.7)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.22)`, opacity: 0.3 },
+    ],
+    { duration: 760, easing: 'cubic-bezier(.5,0,.3,1)' },
+  );
+  anim.onfinish = () => img.remove();
+}
 
 export function StoreShelf() {
   const phase = useGame((s) => s.phase);
@@ -38,6 +63,8 @@ export function StoreShelf() {
   const [card, setCard] = useState<{ id: PackageId; fresh: boolean; leaving: boolean; dx: number; dy: number } | null>(null);
   const track = useRef<HTMLUListElement>(null);
   const timers = useRef<number[]>([]);
+  const [filling, setFilling] = useState(false);
+  const nag = ui.nag;
 
   useEffect(() => {
     renderCrackers().then(() => setReady((n) => n + 1));
@@ -48,8 +75,49 @@ export function StoreShelf() {
     };
   }, []);
 
+  // the browser's back button at the store: remind them to collect everything first
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (phase !== 'playing' || here !== 'store') return;
+    const all = PACKAGES.every((p) => owns(useGame.getState().packages[p.id]));
+    if (all) return;
+    history.pushState({ store: 1 }, '');
+    const onPop = () => {
+      if (PACKAGES.every((p) => owns(useGame.getState().packages[p.id]))) return;
+      history.pushState({ store: 1 }, '');
+      useGame.getState().setUi({ nag: true });
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [phase, here]);
+
   if (phase !== 'playing' || here !== 'store' || active || ui.map || ui.album || ui.settings) return null;
   const owned = PACKAGES.filter((p) => owns(packages[p.id])).length;
+  const missing = PACKAGES.filter((p) => !owns(packages[p.id]));
+
+  /** Every cracker not yet collected goes into the stash, one after another. */
+  const collectAll = () => {
+    if (filling) return;
+    setUi({ nag: false });
+    const list = PACKAGES.filter((p) => !owns(useGame.getState().packages[p.id]));
+    if (!list.length) return;
+    setFilling(true);
+    list.forEach((p, k) => {
+      timers.current.push(
+        window.setTimeout(() => {
+          const li = track.current?.querySelector(`[data-id="${p.id}"]`);
+          li?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', inline: 'nearest', block: 'nearest' });
+          flyToStash(li?.querySelector('.coll-art img') ?? li, crackerRender(p.id));
+          collectFromStore(p.id);
+          if (k === list.length - 1) timers.current.push(window.setTimeout(() => setFilling(false), 800));
+        }, k * (reduced ? 120 : STEP_MS)),
+      );
+    });
+  };
+  const leave = () => {
+    if (missing.length) setUi({ nag: true });
+    else setUi({ map: true });
+  };
 
   const scroll = (d: number) => {
     const el = track.current;
@@ -86,7 +154,7 @@ export function StoreShelf() {
       <div className="coll-bokeh" aria-hidden="true" />
       <header className="coll-head">
         <h2 id="coll-title">Your Pataka Collection</h2>
-        <p>Pick anything. No rules.</p>
+        <p>Collect all the crackers: tap each one, or collect them all at once.</p>
       </header>
       <div className="coll-stage">
         <button className="coll-arrow l" onClick={() => scroll(-1)} aria-label="Previous crackers">
@@ -98,7 +166,7 @@ export function StoreShelf() {
               const have = owns(packages[p.id]);
               const img = crackerShelf(p.id);
               return (
-                <li key={p.id} style={{ ['--i' as string]: i }}>
+                <li key={p.id} data-id={p.id} style={{ ['--i' as string]: i }}>
                   <button className={`coll-item ${have ? 'have' : ''}`} onClick={() => tap(p.id)} aria-label={have ? `${SHORT[p.crackerType]}: collected, ${uses[p.id]} lights. Tap to see its box.` : `${SHORT[p.crackerType]}: tap to collect.`}>
                     <span className="coll-art">{img ? <img src={img} alt="" draggable={false} /> : <IconCracker size={40} />}</span>
                     <span className="coll-name">{SHORT[p.crackerType]}</span>
@@ -115,12 +183,39 @@ export function StoreShelf() {
         </button>
       </div>
       <div className="coll-foot">
+        {owned > 0 && missing.length > 0 && (
+          <button className="pill-cta" onClick={collectAll} disabled={filling}>
+            {filling ? 'Collecting…' : `Collect all (${missing.length} more)`}
+          </button>
+        )}
         {owned > 0 && (
-          <button className="pill-cta" onClick={() => setUi({ map: true })}>
-            Go light them <span aria-hidden="true">{'→'}</span>
+          <button className={missing.length ? 'pill-ghost' : 'pill-cta'} onClick={leave} disabled={filling}>
+            Go light them <span aria-hidden="true">{'\u2192'}</span>
           </button>
         )}
       </div>
+
+      {nag && (
+        <div className="coll-nag" role="alertdialog" aria-modal="true" aria-labelledby="nag-title">
+          <div className="coll-nag-card">
+            <h3 id="nag-title">Collect all the crackers first</h3>
+            <p>
+              {missing.length} still on the shelf. Tap each one, or collect them all in one go.
+            </p>
+            <button className="pill-cta" autoFocus onClick={collectAll}>
+              Collect all
+            </button>
+            <button
+              className="coll-nag-later"
+              onClick={() => {
+                setUi({ nag: false, map: true });
+              }}
+            >
+              Go anyway
+            </button>
+          </div>
+        </div>
+      )}
 
       {card && shown && (
         <div className={`coll-pop ${card.leaving ? 'leaving' : ''}`} role="status" aria-live="polite" style={{ ['--dx' as string]: `${card.dx}px`, ['--dy' as string]: `${card.dy}px` }}>

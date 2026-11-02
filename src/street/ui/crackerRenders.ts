@@ -19,7 +19,7 @@ export function crackerShelf(id: PackageId) {
 }
 
 /** Display scale per cracker, so a little packet of pop-pops reads next to a rocket. */
-const SCALE: Record<CrackerType, number> = { rocket: 1.0, sparkler: 1.2, bomb: 1.7, anaar: 1.7, chakri: 1.1, ladi: 1.3, skyshot: 1.9, popPop: 2.5 };
+const SCALE: Record<CrackerType, number> = { rocket: 1.0, sparkler: 1.2, bomb: 1.7, anaar: 1.7, chakri: 1.1, ladi: 1.3, skyshot: 1.9, popPop: 2.9 };
 
 const W = 300;
 const H = 520;

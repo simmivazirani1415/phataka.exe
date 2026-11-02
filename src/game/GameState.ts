@@ -84,6 +84,8 @@ interface GameStore {
     guide: PackageId | null;
     /** a cracker picked at the store, readied as soon as the player reaches a place */
     queued: PackageId | null;
+    /** the "collect them all first" reminder at the store */
+    nag: boolean;
   };
   captions: Caption[];
   worldPhoto: string | null;
@@ -168,7 +170,7 @@ export const useGame = create<GameStore>((set, get) => ({
   active: null,
   uses: restoreUses(),
   placing: null,
-  ui: { tray: true, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null, queued: null },
+  ui: { tray: true, album: false, settings: false, howTo: false, newMemory: null, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null, queued: null, nag: false },
   captions: [],
   worldPhoto: null,
 
@@ -211,7 +213,7 @@ export const useGame = create<GameStore>((set, get) => ({
       memories: [],
       active: null,
       worldPhoto: null,
-      ui: { ...get().ui, tray: true, album: false, settings: false, newMemory: null, showMe: null, guide: null, card: null, queued: null, map: false, finalSeen: false, toast: 'Mohalla reset. Naye sire se Diwali!' },
+      ui: { ...get().ui, tray: true, album: false, settings: false, newMemory: null, showMe: null, guide: null, card: null, queued: null, nag: false, map: false, finalSeen: false, toast: 'Mohalla reset. Naye sire se Diwali!' },
     });
   },
 }));

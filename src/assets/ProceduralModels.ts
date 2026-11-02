@@ -192,7 +192,7 @@ function chakriFace(palette: string[]) {
  */
 export function createCrackerModel(type: CrackerType, palette: string[], art?: string): THREE.Group {
   const g = new THREE.Group();
-  const [a, b, c] = palette;
+  const [a, , c] = palette;
   switch (type) {
     case 'rocket': {
       g.add(mesh(new THREE.BoxGeometry(0.025, 0.7, 0.025), paint('#C9A36A', 0.9), [0, 0.35, 0]));
@@ -240,25 +240,39 @@ export function createCrackerModel(type: CrackerType, palette: string[], art?: s
       break;
     }
     case 'skyshot': {
-      // seven tubes bundled in the box's label: one in the middle, six around it
+      // seven paper tubes bundled tight: one in the middle, six around it, each with gold
+      // bands and a dark mouth, tied with a gold-and-red band, the fuse out of the side
       const R = 0.052;
       for (let i = 0; i < 7; i++) {
         const ang = (i / 6) * Math.PI * 2;
         const x = i === 6 ? 0 : Math.cos(ang) * R * 2.02;
         const z = i === 6 ? 0 : Math.sin(ang) * R * 2.02;
-        g.add(mesh(new THREE.CylinderGeometry(R, R, 0.34, 12), paint(i % 2 ? '#C9262B' : '#D8352A', 0.6), [x, 0.17, z]));
-        g.add(mesh(new THREE.CylinderGeometry(R * 0.55, R * 0.55, 0.012, 10), paint('#2A2018', 0.9), [x, 0.345, z]));
+        g.add(mesh(new THREE.CylinderGeometry(R, R, 0.34, 14), paint(i % 2 ? '#1F7A4D' : '#C9262B', 0.55), [x, 0.17, z]));
+        g.add(mesh(new THREE.CylinderGeometry(R * 1.01, R * 1.01, 0.02, 14), paint('#E3B23C', 0.35, 0.5), [x, 0.31, z]));
+        g.add(mesh(new THREE.CylinderGeometry(R * 0.6, R * 0.6, 0.012, 12), paint('#2A2018', 0.9), [x, 0.345, z]));
       }
-      g.add(mesh(new THREE.CylinderGeometry(R * 3.1, R * 3.1, 0.28, 28), label(art, 'wrap', c), [0, 0.16, 0]));
-      g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1, 6), paint('#E3D7B0', 0.9), [R * 3.1, 0.06, 0], [0, 0, -0.9]));
+      g.add(mesh(new THREE.CylinderGeometry(R * 3.08, R * 3.08, 0.06, 28), paint('#E3B23C', 0.35, 0.5), [0, 0.12, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(R * 3.09, R * 3.09, 0.02, 28), paint('#C4302B', 0.5), [0, 0.12, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 6), paint('#3A7D44', 0.8), [R * 3.1, 0.07, 0.03], [0, 0, -0.9]));
       break;
     }
     case 'popPop': {
-      if (art) g.add(mesh(new THREE.BoxGeometry(0.16, 0.22, 0.03), [paint(a), paint(a), paint(a), paint(a), label(art, 'flat', a), paint(a)], [0, 0.11, -0.1]));
-      for (let i = 0; i < 7; i++) {
-        const ang = (i / 7) * Math.PI * 2;
-        g.add(mesh(new THREE.SphereGeometry(0.045, 10, 8), paint(i % 2 ? a : b, 0.7), [Math.cos(ang) * 0.1, 0.05 + (i % 3) * 0.03, Math.sin(ang) * 0.1 + 0.04]));
-      }
+      // a little heap of paper twists: a round of gravel in pink, white and blue tissue,
+      // each twisted shut at the top
+      const cols = ['#F48FB1', '#FFF6E6', '#90CAF9', '#F48FB1', '#FFE082', '#FFF6E6'];
+      const spots: [number, number, number][] = [
+        [0, 0.035, 0], [0.075, 0.035, 0.02], [-0.07, 0.035, 0.03], [0.03, 0.035, 0.08], [-0.03, 0.035, -0.07], [0.07, 0.035, -0.06], [-0.08, 0.035, -0.04],
+        [0.02, 0.095, 0.01], [-0.04, 0.09, 0.03], [0.05, 0.09, -0.03], [-0.01, 0.15, -0.01],
+      ];
+      spots.forEach(([x, y, z], i) => {
+        const tw = new THREE.Group();
+        tw.add(mesh(new THREE.SphereGeometry(0.036, 12, 10), paint(cols[i % cols.length], 0.85), [0, 0, 0]));
+        tw.add(mesh(new THREE.ConeGeometry(0.018, 0.045, 8), paint(cols[i % cols.length], 0.85), [0, 0.045, 0], [Math.PI, 0, 0]));
+        tw.add(mesh(new THREE.ConeGeometry(0.02, 0.03, 8), paint(cols[i % cols.length], 0.85), [0, 0.072, 0]));
+        tw.position.set(x, y, z);
+        tw.rotation.set(Math.sin(i * 2.1) * 0.5, i * 1.3, Math.cos(i * 1.7) * 0.5);
+        g.add(tw);
+      });
       break;
     }
   }
