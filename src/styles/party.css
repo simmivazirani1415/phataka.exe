@@ -1034,3 +1034,23 @@ span.burst-note {
 @media (prefers-reduced-motion: reduce) {
   .intro-charm { animation: none; opacity: 0.8; }
 }
+
+/* the landing logo sits at the top of the screen, the steps keep the middle */
+@media (min-width: 641px) {
+  .intro-welcome .intro-logo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: max(34px, calc(env(safe-area-inset-top) + 24px));
+    margin: 0 auto;
+  }
+  .intro-welcome .intro-steps {
+    margin-top: clamp(40px, 8vh, 72px);
+  }
+}
+@media (max-width: 640px) {
+  .intro-welcome {
+    justify-content: flex-start;
+    padding-top: max(36px, calc(env(safe-area-inset-top) + 24px));
+  }
+}
