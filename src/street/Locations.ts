@@ -17,6 +17,7 @@ export async function goToLevel(id: LevelId) {
   levelState.id = id;
   const cam = runtime.camera;
   if (!cam) return;
+  useGame.getState().setUi({ placeChoice: null });
   cam.setUserInput(false);
   await cam.travel({ x: L.spawn.x, z: L.spawn.z, yaw: L.spawn.yaw, pitch: L.spawn.pitch, floor: L.floor }, g.settings.reducedMotion ? 0.3 : 1.4);
   cam.setUserInput(true);
@@ -26,8 +27,8 @@ export async function goToLevel(id: LevelId) {
   if (q) {
     useGame.getState().setUi({ queued: null });
     // loaded lazily: DiscoverySystem imports this module
-    const { readyCracker } = await import('../game/DiscoverySystem');
-    void readyCracker(q);
+    const { offerPlacement } = await import('../game/DiscoverySystem');
+    offerPlacement(q);
   }
 }
 

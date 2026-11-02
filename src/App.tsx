@@ -15,6 +15,7 @@ import { cancelPlacing, closeActive } from './game/DiscoverySystem';
 import { StoreShelf } from './street/ui/StoreShelf';
 import { CameraExplainer } from './street/ui/CameraExplainer';
 import { InventoryTray } from './street/ui/InventoryTray';
+import { PlaceChoice } from './street/ui/PlaceChoice';
 import { LocationMap } from './street/ui/LocationMap';
 import { SpotlightCard } from './street/ui/SpotlightCard';
 import { Joystick } from './street/ui/Joystick';
@@ -197,6 +198,7 @@ export default function App() {
       <NewMemory />
       <StoreShelf />
       <InventoryTray />
+      <PlaceChoice />
       <CameraExplainer />
       <LocationMap />
       <SpotlightCard />

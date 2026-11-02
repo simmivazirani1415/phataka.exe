@@ -89,6 +89,8 @@ interface GameStore {
     queued: PackageId | null;
     /** the "collect them all first" reminder at the store */
     nag: boolean;
+    /** a cracker waiting for the player to choose where it goes (Balcony and Society) */
+    placeChoice: PackageId | null;
   };
   captions: Caption[];
   worldPhoto: string | null;
@@ -173,7 +175,7 @@ export const useGame = create<GameStore>((set, get) => ({
   active: null,
   uses: restoreUses(),
   placing: null,
-  ui: { tray: true, album: false, settings: false, howTo: false, newMemory: null, bookPage: 0, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null, queued: null, nag: false },
+  ui: { tray: true, album: false, settings: false, howTo: false, newMemory: null, bookPage: 0, hintUntil: 0, showMe: null, perfSuggest: false, finalSeen: saved?.finalSeen ?? false, toast: null, trayPulse: null, card: null, map: false, guide: null, queued: null, nag: false, placeChoice: null },
   captions: [],
   worldPhoto: null,
 

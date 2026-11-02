@@ -5,6 +5,8 @@ import { createMemory } from './MemorySystem';
 import { audio } from '../audio/AudioEngine';
 import { burstOnLevel, currentLevel, inRect, inSideGali, isBurstGround, levelState } from '../street/StreetLayout';
 import { goToLevel } from '../street/Locations';
+import { crowd } from '../street/Crowd';
+import { trafficState } from '../street/Traffic';
 
 // Orchestrates the package lifecycle:
 // HIDDEN -> DISCOVERED -> OPENING -> UNLOCKED -> PLAYED -> MEMORY_CAPTURED
@@ -87,11 +89,99 @@ export function pickFromPanel(id: PackageId) {
     g.setUi({ queued: id, map: true });
     return;
   }
+  offerPlacement(id);
+}
+
+// ------------------------------------------------------------------------------------------
+// Where it goes: on the Balcony and in the Society the player picks a target first
+
+export type Aim = 'people' | 'vehicles' | 'front';
+export const AIM_PLACES = ['balcony', 'society'];
+
+/** Ask where it should go (Balcony and Society), or ready it in front of the player elsewhere. */
+export function offerPlacement(id: PackageId) {
+  if (AIM_PLACES.includes(levelState.id)) {
+    useGame.getState().setUi({ placeChoice: id });
+    return;
+  }
   void readyCracker(id);
 }
 
+/** In front of the balcony, where the view looks (within about 55 degrees of straight ahead). */
+function inView(x: number, z: number, cone = 0.57) {
+  const p = runtime.player;
+  const L = currentLevel();
+  const yaw = L.spawn.yaw;
+  const dx = x - p.x;
+  const dz = z - p.z;
+  const d = Math.hypot(dx, dz) || 1;
+  return (-Math.sin(yaw) * dx - Math.cos(yaw) * dz) / d > cone;
+}
+
+const reachOf = () => (levelState.id === 'balcony' ? 26 : 13);
+
+/** The middle of the liveliest group of people in reach, nudged a step towards the player. */
+function peopleTarget(): [number, number] | null {
+  const p = runtime.player;
+  const max = reachOf();
+  const L = currentLevel();
+  const high = L.id === 'balcony';
+  const cands = crowd.agents.filter((a) => {
+    if (a.hidden || a.owner === 'rider' || a.kind === 'dog' || Math.abs(a.y) > 0.6) return false;
+    // from the balcony: people down on the chowk, never the family beside you
+    if (high && inRect(L.walk, a.x, a.z, 3)) return false;
+    const d = Math.hypot(a.x - p.x, a.z - p.z);
+    return d < max && d > (high ? 6 : 3) && (!high || inView(a.x, a.z));
+  });
+  if (!cands.length) return null;
+  let best = cands[0];
+  let bs = -1;
+  for (const a of cands) {
+    let n = 0;
+    for (const b of cands) if (Math.hypot(a.x - b.x, a.z - b.z) < 3.5) n++;
+    const score = n - Math.hypot(a.x - p.x, a.z - p.z) * 0.02;
+    if (score > bs) {
+      bs = score;
+      best = a;
+    }
+  }
+  const dx = p.x - best.x;
+  const dz = p.z - best.z;
+  const d = Math.hypot(dx, dz) || 1;
+  return [best.x + (dx / d) * 1.6, best.z + (dz / d) * 1.6];
+}
+
+/** Beside the nearest vehicle in reach (parked ones first: they chirp their alarm). */
+function vehicleTarget(): [number, number] | null {
+  const p = runtime.player;
+  const max = reachOf() + 4;
+  const vs = trafficState.list
+    .map((v) => ({ v, d: Math.hypot(v.x - p.x, v.z - p.z) - (v.parked ? 6 : 0) }))
+    .filter(({ v }) => Math.hypot(v.x - p.x, v.z - p.z) < max && (levelState.id !== 'balcony' || inView(v.x, v.z, 0.25)))
+    .sort((a, b) => a.d - b.d);
+  if (!vs.length) return null;
+  const v = vs[0].v;
+  // on the side of the road towards the player, by the wheels
+  const side = Math.sign(p.z - v.z) || 1;
+  return [v.x, v.z + side * 2.1];
+}
+
+/** Which targets this place has right now, for the choice chips. */
+export function aimOptions(): Aim[] {
+  const out: Aim[] = [];
+  if (peopleTarget()) out.push('people');
+  if (vehicleTarget()) out.push('vehicles');
+  out.push('front');
+  return out;
+}
+
+export function chooseAim(id: PackageId, aim: Aim) {
+  useGame.getState().setUi({ placeChoice: null });
+  void readyCracker(id, aim);
+}
+
 /** Set the cracker down in front of the player (or throw it down from above) and frame it. */
-export async function readyCracker(id: PackageId) {
+export async function readyCracker(id: PackageId, aim: Aim = 'front') {
   const g = useGame.getState();
   if (busy() || g.uses[id] <= 0) return false;
   const pl = runtime.player;
@@ -99,7 +189,11 @@ export async function readyCracker(id: PackageId) {
   const fz = -Math.cos(pl.yaw);
   const L = currentLevel();
   let spot: [number, number] | null = null;
-  if (L.id === 'balcony') {
+  const t = aim === 'people' ? peopleTarget() : aim === 'vehicles' ? vehicleTarget() : null;
+  if (t) spot = findSpot(id, t[0], t[1], 4);
+  if (spot) {
+    /* aimed at a crowd or a vehicle */
+  } else if (L.id === 'balcony') {
     // over the railing, onto the chowk below
     for (const d of [7, 6, 8.5, 5, 10]) {
       spot = findSpot(id, pl.x + fx * d, pl.z + fz * d, 3);
