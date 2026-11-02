@@ -5,6 +5,7 @@ import { aimOptions, chooseAim, type Aim } from '../../game/DiscoverySystem';
 import { levelState } from '../StreetLayout';
 import { crackerRender } from './crackerRenders';
 import { IconClose } from '../../components/Icons';
+import { useHands } from '../../input/HandTracker';
 
 // On the Balcony and in the Society, a picked cracker first asks where it should go.
 
@@ -18,6 +19,7 @@ export function PlaceChoice() {
   const id = useGame((s) => s.ui.placeChoice);
   const setUi = useGame((s) => s.setUi);
   const [opts, setOpts] = useState<Aim[]>([]);
+  const asking = useHands((s) => s.ask);
   useEffect(() => {
     if (!id) return;
     const up = () => setOpts(aimOptions());
@@ -26,7 +28,7 @@ export function PlaceChoice() {
     const t = setInterval(up, 900);
     return () => clearInterval(t);
   }, [id]);
-  if (!id) return null;
+  if (!id || asking) return null;
   const pkg = PACKAGE_BY_ID[id];
   const img = crackerRender(id);
   const where = levelState.id === 'balcony' ? 'Down on the chowk' : 'In the society';

@@ -206,6 +206,8 @@ class Builder {
     this.d.signs.push({ x, y, z, w, h, ry, slot });
   }
   person(kind: PersonKind, x: number, y: number, z: number, ry: number, anim: PersonAnim, extra: Partial<Spawn> = {}) {
+    // no pets anywhere in the mohalla (Simran's call)
+    if (kind === 'dog') return;
     this.d.spawns.push({ kind, x, y, z, ry, anim, ...extra });
   }
 }

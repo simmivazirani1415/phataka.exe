@@ -5,6 +5,7 @@ import { collectFromStore } from '../../game/DiscoverySystem';
 import { whereNow } from '../Locations';
 import { crackerRender, crackerShelf, renderCrackers } from './crackerRenders';
 import { IconCracker, IconLeft, IconRight } from '../../components/Icons';
+import { useNarrow } from '../../utils/useNarrow';
 
 // The Pataka Store: the whole collection, full screen, every cracker standing on one long
 // dark shelf with its name on the shelf's edge. Tapping one collects it: its packaging comes
@@ -50,6 +51,19 @@ function flyToStash(from: Element | null | undefined, src: string | null) {
   anim.onfinish = () => img.remove();
 }
 
+/**
+ * Phones show the shelf as pages of four, two rows of two. The grid fills column by column,
+ * so each page of four is reordered (a b c d -> a c b d) to read left to right, row by row.
+ */
+function twoRows<T>(list: T[]) {
+  const out: T[] = [];
+  for (let i = 0; i < list.length; i += 4) {
+    const [a, b, c, d] = list.slice(i, i + 4);
+    for (const x of [a, c, b, d]) if (x !== undefined) out.push(x);
+  }
+  return out;
+}
+
 export function StoreShelf() {
   const phase = useGame((s) => s.phase);
   const active = useGame((s) => s.active);
@@ -65,6 +79,7 @@ export function StoreShelf() {
   const timers = useRef<number[]>([]);
   const [filling, setFilling] = useState(false);
   const nag = ui.nag;
+  const narrow = useNarrow();
 
   useEffect(() => {
     renderCrackers().then(() => setReady((n) => n + 1));
@@ -162,7 +177,7 @@ export function StoreShelf() {
         </button>
         <div className="coll-shelf">
           <ul className="coll-track" ref={track}>
-            {PACKAGES.map((p, i) => {
+            {(narrow ? twoRows(PACKAGES) : PACKAGES).map((p, i) => {
               const have = owns(packages[p.id]);
               const img = crackerShelf(p.id);
               return (

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGame } from '../../game/GameState';
 import { LEVELS, type LevelId } from '../StreetLayout';
 import { goToLevel, whereNow } from '../Locations';
+import { useNarrow } from '../../utils/useNarrow';
 import { IconClose } from '../../components/Icons';
 import { audio } from '../../audio/AudioEngine';
 
@@ -48,12 +49,33 @@ function Plaque() {
   );
 }
 
+/** Phones: the places as a small dropdown list rising from the place pill. */
+function PlaceDropdown({ here, close }: { here: LevelId; close: () => void }) {
+  return (
+    <div className="place-drop-wrap" role="dialog" aria-modal="true" aria-label="Change place">
+      <div className="place-drop-scrim" onClick={close} aria-hidden="true" />
+      <ul className="place-drop" role="listbox" aria-label="Places">
+        {PLACE_ORDER.map((id) => (
+          <li key={id}>
+            <button role="option" aria-selected={here === id} className={`place-drop-item ${here === id ? 'here' : ''}`} onClick={() => (here === id ? close() : void goToLevel(id))}>
+              <img src={ART(id)} alt="" draggable={false} />
+              <b>{LEVELS[id].name}</b>
+              <span>{here === id ? 'Here' : 'Go'}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function LocationMap() {
   const open = useGame((s) => s.ui.map);
   const phase = useGame((s) => s.phase);
   const active = useGame((s) => s.active);
   const album = useGame((s) => s.ui.album);
   const setUi = useGame((s) => s.setUi);
+  const narrow = useNarrow();
   const [here, setHere] = useState<LevelId>(whereNow());
   useEffect(() => {
     if (!open) return;
@@ -67,6 +89,7 @@ export function LocationMap() {
     audio.tap();
     setUi({ map: false, queued: null });
   };
+  if (narrow) return <PlaceDropdown here={here} close={close} />;
   return (
     <div className="places places-v3" role="dialog" aria-modal="true" aria-labelledby="places-title">
       <div className="places-scrim" onClick={close} aria-hidden="true" />

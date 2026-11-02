@@ -994,7 +994,6 @@ export function buildWorld(): World {
     pottedPlant(5.6, 0, 15.7, 1.0, '#5BAE62');
     pottedPlant(3.2, 0, 15.8, 0.9, '#E86C9A');
     pottedPlant(-4.6, 0, 9.6, 1.0, '#4E9A58');
-    characters.push({ id: 'dog', name: 'Sheru', kind: 'dog', pos: [3.4, 0.0, 15.3], rotY: 0.3, pose: 'sleep', anim: 'idle', stage: 0, interactive: 'dog', colors: { top: '#C28A4E', bottom: '#C28A4E', hair: '#8A5A30', skin: '#C28A4E' } });
     characters.push({ id: 'courtKid', name: 'Pinky', kind: 'child', pos: [-1.2, 0.06, 8.0], rotY: 1.0, pose: 'stand', anim: 'wave', stage: 0, colors: { top: '#D64A91', bottom: '#FFD15A', hair: '#1E1A1A', skin: '#B97A56' } });
   }
 

@@ -5,6 +5,7 @@ import { pickFromPanel } from '../../game/DiscoverySystem';
 import { goToLevel } from '../Locations';
 import { IconClose, IconCracker } from '../../components/Icons';
 import { crackerRender, renderCrackers } from './crackerRenders';
+import { useNarrow } from '../../utils/useNarrow';
 
 // The stash: a column on the right (a slim strip on phones) of the crackers collected at the
 // store, big pictures with the lights left on a gold tag. Tapping one readies it where the
@@ -22,6 +23,7 @@ export function InventoryTray() {
   const pulse = useGame((s) => s.ui.trayPulse);
   const setUi = useGame((s) => s.setUi);
   const [, setReady] = useState(0);
+  const narrow = useNarrow();
 
   useEffect(() => {
     renderCrackers().then(() => setReady((n) => n + 1));
@@ -32,7 +34,8 @@ export function InventoryTray() {
     return () => window.clearTimeout(t);
   }, [pulse, setUi]);
 
-  if (phase !== 'playing' || album || !open || active) return null;
+  // on phones the stash is a dock along the bottom that is always there
+  if (phase !== 'playing' || album || (!open && !narrow) || active) return null;
   const mine = PACKAGES.filter((p) => owns(packages[p.id]));
 
   return (

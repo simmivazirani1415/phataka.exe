@@ -5,6 +5,7 @@ import { audio } from '../audio/AudioEngine';
 import { SITE } from '../config/site';
 import { LEVELS } from '../street/StreetLayout';
 import { whereNow } from '../street/Locations';
+import { isNarrow } from '../utils/useNarrow';
 
 // The HUD stays small so the mohalla is the picture: the logo at the top left, the place
 // switcher at the bottom centre, the collection count at the top right, four round buttons
@@ -69,6 +70,7 @@ export function GameHUD() {
           <b>{LEVELS[here].name}</b>
         </span>
         <span className="hud-place-go">Change place</span>
+        <span className="hud-place-caret" aria-hidden="true">{ui.map ? '\u25B4' : '\u25BE'}</span>
       </button>
 
       <button className={`hud-count ${bump ? 'bump' : ''}`} onClick={() => open({ tray: !ui.tray })} aria-label={`${found} of 8 patakas collected. Open the stash.`}>
@@ -80,7 +82,7 @@ export function GameHUD() {
 
       {hint && !busy && !placing && !ui.map && here !== 'store' && (
         <p className="hud-hint" aria-live="polite">
-          {isTouch() ? 'Tap a pataka on the right to light it · joystick to walk' : 'Tap a pataka on the right to light it · WASD to walk'}
+          {isNarrow() ? 'Tap a pataka below to light it · joystick to walk' : isTouch() ? 'Tap a pataka on the right to light it · joystick to walk' : 'Tap a pataka on the right to light it · WASD to walk'}
         </p>
       )}
 
