@@ -75,7 +75,7 @@ export function paint(color: string, rough = 0.6, metal = 0, emissive?: string) 
   return m;
 }
 
-function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, p: P3 = [0, 0, 0], r: P3 = [0, 0, 0]) {
+function mesh(geo: THREE.BufferGeometry, mat: THREE.Material | THREE.Material[], p: P3 = [0, 0, 0], r: P3 = [0, 0, 0]) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(...p);
   m.rotation.set(...r);
@@ -83,28 +83,137 @@ function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, p: P3 = [0, 0, 0],
   return m;
 }
 
-export function createCrackerModel(type: CrackerType, palette: string[]): THREE.Group {
+// The packaging art, wrapped round each cracker's body so the cracker on the shelf, in the
+// stash and on the ground is the same decorated cracker. Two variants share one image: `wrap`
+// for cylinders and cones (the art's middle faces the front), `flat` for box faces.
+const artCache = new Map<string, { wrap: THREE.Texture; flat: THREE.Texture }>();
+const artLoader = new THREE.TextureLoader();
+function artFor(url: string) {
+  let t = artCache.get(url);
+  if (!t) {
+    const flat = artLoader.load(url);
+    flat.colorSpace = THREE.SRGBColorSpace;
+    flat.anisotropy = 4;
+    const wrap = flat.clone();
+    wrap.wrapS = THREE.RepeatWrapping;
+    // twice round, so the visible front half shows the whole label, its middle facing +z
+    wrap.repeat.set(2, 1);
+    wrap.offset.set(0.5, 0);
+    // a clone shares the image: refresh it once the picture arrives
+    const img = flat.image as HTMLImageElement | undefined;
+    if (img && !img.complete) img.addEventListener('load', () => (wrap.needsUpdate = true), { once: true });
+    else wrap.needsUpdate = true;
+    t = { wrap, flat };
+    artCache.set(url, t);
+  }
+  return t;
+}
+
+/** Wait for the packaging pictures (for the offscreen renders, which draw once). */
+export function preloadArt(urls: string[]) {
+  return Promise.all(
+    urls.map(
+      (u) =>
+        new Promise<void>((res) => {
+          const t = artFor(u);
+          const img = t.flat.image as HTMLImageElement | undefined;
+          if (img && img.complete && img.naturalWidth) {
+            t.wrap.needsUpdate = true;
+            t.flat.needsUpdate = true;
+            return res();
+          }
+          const done = () => {
+            t.wrap.needsUpdate = true;
+            t.flat.needsUpdate = true;
+            res();
+          };
+          // the loader creates the image element synchronously
+          const el = t.flat.image as HTMLImageElement | undefined;
+          if (el) {
+            el.addEventListener('load', done, { once: true });
+            el.addEventListener('error', () => res(), { once: true });
+          } else setTimeout(res, 1500);
+        }),
+    ),
+  );
+}
+
+const labelMats = new Map<string, THREE.MeshStandardMaterial>();
+function label(url: string | undefined, kind: 'wrap' | 'flat', fallback: string) {
+  if (!url) return paint(fallback, 0.55);
+  const key = url + kind;
+  let m = labelMats.get(key);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ map: artFor(url)[kind], roughness: 0.62, metalness: 0.02 });
+    labelMats.set(key, m);
+  }
+  return m;
+}
+
+/** A chakri's face: rings of coloured paper coiled round the hub. */
+const chakriFaces = new Map<string, THREE.MeshStandardMaterial>();
+function chakriFace(palette: string[]) {
+  const key = palette.join();
+  let m = chakriFaces.get(key);
+  if (!m) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const x = c.getContext('2d')!;
+    const cols = [palette[0], '#F2C14E', palette[1], '#FFF1D7', palette[0], '#1F8A70', '#F2C14E'];
+    for (let i = 0; i < 7; i++) {
+      x.beginPath();
+      x.arc(128, 128, 126 - i * 16, 0, Math.PI * 2);
+      x.fillStyle = cols[i % cols.length];
+      x.fill();
+    }
+    x.strokeStyle = 'rgba(40,20,10,0.35)';
+    x.lineWidth = 2;
+    for (let r = 24; r < 126; r += 8) {
+      x.beginPath();
+      x.arc(128, 128, r, 0, Math.PI * 2);
+      x.stroke();
+    }
+    x.fillStyle = '#C4302B';
+    x.beginPath();
+    x.arc(128, 128, 18, 0, Math.PI * 2);
+    x.fill();
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 });
+    chakriFaces.set(key, m);
+  }
+  return m;
+}
+
+/**
+ * A cracker as a small 3D model. With `art` (the packaging's front picture) its body wears the
+ * box's illustration, so it matches the collection card. Sizes and anchor heights are what the
+ * firework effects expect.
+ */
+export function createCrackerModel(type: CrackerType, palette: string[], art?: string): THREE.Group {
   const g = new THREE.Group();
   const [a, b, c] = palette;
   switch (type) {
     case 'rocket': {
       g.add(mesh(new THREE.BoxGeometry(0.025, 0.7, 0.025), paint('#C9A36A', 0.9), [0, 0.35, 0]));
-      g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.28, 12), paint(a, 0.5, 0.1), [0.07, 0.62, 0]));
-      g.add(mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.06, 12), paint(c, 0.4, 0.4), [0.07, 0.56, 0]));
-      g.add(mesh(new THREE.ConeGeometry(0.065, 0.14, 12), paint(b, 0.5), [0.07, 0.83, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.3, 20), label(art, 'wrap', a), [0.07, 0.62, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.066, 0.066, 0.03, 20), paint('#E3B23C', 0.35, 0.5), [0.07, 0.47, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.066, 0.066, 0.03, 20), paint('#E3B23C', 0.35, 0.5), [0.07, 0.77, 0]));
+      g.add(mesh(new THREE.ConeGeometry(0.068, 0.16, 20), paint('#C4302B', 0.45), [0.07, 0.86, 0]));
       break;
     }
     case 'bomb': {
-      g.add(mesh(new THREE.SphereGeometry(0.17, 16, 12), paint('#1F5B3A', 0.55), [0, 0.17, 0]));
-      g.add(mesh(new THREE.TorusGeometry(0.172, 0.022, 6, 24), paint('#C4302B', 0.5), [0, 0.17, 0], [Math.PI / 2, 0, 0]));
-      const fuse = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 6), paint('#E3B23C', 0.8), [0.03, 0.39, 0], [0, 0, -0.4]);
-      g.add(fuse);
+      // a sutli bomb: a squat drum in its label, a red cap and the fuse
+      g.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.34, 28), label(art, 'wrap', '#1F5B3A'), [0, 0.17, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.152, 0.152, 0.025, 28), paint('#C4302B', 0.5), [0, 0.345, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.152, 0.152, 0.02, 28), paint('#E3B23C', 0.4, 0.4), [0, 0.01, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 6), paint('#B9B1A0', 0.8), [0.03, 0.42, 0], [0, 0, -0.4]));
       break;
     }
     case 'chakri': {
-      g.add(mesh(new THREE.TorusGeometry(0.2, 0.06, 8, 28), paint(a, 0.5), [0, 0.07, 0], [Math.PI / 2, 0, 0]));
-      g.add(mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 24), paint(b, 0.5), [0, 0.07, 0], [Math.PI / 2, 0, 0]));
-      g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), paint(c, 0.5), [0, 0.07, 0]));
+      g.add(mesh(new THREE.TorusGeometry(0.2, 0.06, 10, 32), paint(a, 0.5), [0, 0.07, 0], [Math.PI / 2, 0, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 32), chakriFace(palette), [0, 0.07, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.12, 12), paint(c, 0.5), [0, 0.07, 0]));
       break;
     }
     case 'sparkler': {
@@ -112,12 +221,12 @@ export function createCrackerModel(type: CrackerType, palette: string[]): THREE.
         const s = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 6), paint('#8D8F97', 0.4, 0.6), [(i - 1) * 0.05, 0.375, 0], [0, 0, (i - 1) * 0.12]);
         g.add(s);
       }
-      g.add(mesh(new THREE.BoxGeometry(0.16, 0.1, 0.05), paint(a, 0.6), [0, 0.05, 0]));
+      g.add(mesh(new THREE.BoxGeometry(0.17, 0.26, 0.04), [paint(a), paint(a), paint(a), paint(a), label(art, 'flat', a), paint(a)], [0, 0.13, 0.02]));
       break;
     }
     case 'anaar': {
-      g.add(mesh(new THREE.CylinderGeometry(0.045, 0.17, 0.38, 14), paint('#B5683F', 0.9), [0, 0.19, 0]));
-      g.add(mesh(new THREE.CylinderGeometry(0.11, 0.15, 0.11, 14), paint(a, 0.6), [0, 0.12, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.045, 0.17, 0.38, 24), label(art, 'wrap', '#B5683F'), [0, 0.19, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(0.172, 0.172, 0.025, 24), paint('#E3B23C', 0.4, 0.4), [0, 0.012, 0]));
       g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 6), paint('#3A2A1A', 0.9), [0, 0.4, 0]));
       break;
     }
@@ -125,13 +234,13 @@ export function createCrackerModel(type: CrackerType, palette: string[]): THREE.
       const n = 12;
       for (let i = 0; i < n; i++) {
         const side = i % 2 ? 1 : -1;
-        g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.12, 8), paint(i % 3 === 0 ? b : a, 0.55), [side * 0.05, 0.05 + i * 0.045, 0], [0, 0, side * 1.1]));
+        g.add(mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.13, 10), paint(i % 4 === 0 ? '#E3B23C' : '#C9262B', 0.55), [side * 0.05, 0.05 + i * 0.045, 0], [0, 0, side * 1.1]));
       }
       g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, n * 0.045, 4), paint('#E3D7B0', 0.9), [0, 0.05 + (n * 0.045) / 2, 0]));
       break;
     }
     case 'skyshot': {
-      // seven tubes bundled in red paper with a gold band: one in the middle, six around it
+      // seven tubes bundled in the box's label: one in the middle, six around it
       const R = 0.052;
       for (let i = 0; i < 7; i++) {
         const ang = (i / 6) * Math.PI * 2;
@@ -140,14 +249,15 @@ export function createCrackerModel(type: CrackerType, palette: string[]): THREE.
         g.add(mesh(new THREE.CylinderGeometry(R, R, 0.34, 12), paint(i % 2 ? '#C9262B' : '#D8352A', 0.6), [x, 0.17, z]));
         g.add(mesh(new THREE.CylinderGeometry(R * 0.55, R * 0.55, 0.012, 10), paint('#2A2018', 0.9), [x, 0.345, z]));
       }
-      g.add(mesh(new THREE.CylinderGeometry(R * 3.08, R * 3.08, 0.07, 24), paint(c, 0.4, 0.3), [0, 0.17, 0]));
+      g.add(mesh(new THREE.CylinderGeometry(R * 3.1, R * 3.1, 0.28, 28), label(art, 'wrap', c), [0, 0.16, 0]));
       g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1, 6), paint('#E3D7B0', 0.9), [R * 3.1, 0.06, 0], [0, 0, -0.9]));
       break;
     }
     case 'popPop': {
+      if (art) g.add(mesh(new THREE.BoxGeometry(0.16, 0.22, 0.03), [paint(a), paint(a), paint(a), paint(a), label(art, 'flat', a), paint(a)], [0, 0.11, -0.1]));
       for (let i = 0; i < 7; i++) {
         const ang = (i / 7) * Math.PI * 2;
-        g.add(mesh(new THREE.SphereGeometry(0.045, 8, 6), paint(i % 2 ? a : b, 0.7), [Math.cos(ang) * 0.1, 0.05 + (i % 3) * 0.03, Math.sin(ang) * 0.1]));
+        g.add(mesh(new THREE.SphereGeometry(0.045, 10, 8), paint(i % 2 ? a : b, 0.7), [Math.cos(ang) * 0.1, 0.05 + (i % 3) * 0.03, Math.sin(ang) * 0.1 + 0.04]));
       }
       break;
     }

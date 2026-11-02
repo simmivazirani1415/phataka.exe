@@ -727,7 +727,7 @@ export function FireworkDirector() {
       const o: V3 = [...origin];
       const group = new THREE.Group();
       sceneGroup.current.add(group);
-      const model = createCrackerModel(pkg.crackerType, pkg.palette);
+      const model = createCrackerModel(pkg.crackerType, pkg.palette, pkg.image.front ?? undefined);
       group.add(model);
       const fired = new Set<string>();
       const ctx: EffectCtx = {

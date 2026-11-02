@@ -5,70 +5,46 @@ import { goToLevel, whereNow } from '../Locations';
 import { IconClose } from '../../components/Icons';
 import { audio } from '../../audio/AudioEngine';
 
-// "Kahan phodoge?": the five places as window-shaped cards, each just a small icon and its
-// name. Opened from the bottom pill and from the store's "Go light them".
+// "Kahan phodoge?": the five places as cusped-arch cards with Simran's icons, each with just
+// its name and a Go pill. Opened from the bottom pill and from the store's "Go light them".
 
 export const PLACE_ORDER: LevelId[] = ['store', 'terrace', 'balcony', 'society', 'aangan'];
 
-/** Small gold line icons, one per place. */
-function PlaceIcon({ id }: { id: LevelId }) {
-  const common = { viewBox: '0 0 48 48', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
-  switch (id) {
-    case 'store':
-      // a stall with a scalloped awning
-      return (
-        <svg {...common}>
-          <path d="M8 18h32l-3-8H11z" />
-          <path d="M8 18c0 2.5 2 4 4 4s4-1.5 4-4c0 2.5 2 4 4 4s4-1.5 4-4c0 2.5 2 4 4 4s4-1.5 4-4c0 2.5 2 4 4 4s4-1.5 4-4" />
-          <path d="M11 22v16h26V22M20 38v-9h8v9" />
-        </svg>
-      );
-    case 'terrace':
-      // a roofline under a string of lights
-      return (
-        <svg {...common}>
-          <path d="M6 10q18 8 36 0" />
-          <circle cx="13" cy="13" r="1.2" fill="currentColor" />
-          <circle cx="24" cy="14.5" r="1.2" fill="currentColor" />
-          <circle cx="35" cy="13" r="1.2" fill="currentColor" />
-          <path d="M8 24h32M10 24v14h28V24M20 38v-7h8v7" />
-        </svg>
-      );
-    case 'balcony':
-      // a railing with a diya on it
-      return (
-        <svg {...common}>
-          <path d="M24 10c2.5 3 2.8 5 0 7.5-2.8-2.5-2.5-4.5 0-7.5z" />
-          <path d="M17 21h14c-1 3.5-3.6 5-7 5s-6-1.5-7-5z" />
-          <path d="M6 30h36M6 40h36M10 30v10M17 30v10M24 30v10M31 30v10M38 30v10" />
-        </svg>
-      );
-    case 'society':
-      // apartment blocks
-      return (
-        <svg {...common}>
-          <path d="M8 40V14h14v26M26 40V8h14v32M5 40h38" />
-          <path d="M12 19h2M16 19h2M12 25h2M16 25h2M12 31h2M16 31h2M30 13h2M34 13h2M30 19h2M34 19h2M30 25h2M34 25h2M30 31h2M34 31h2" />
-        </svg>
-      );
-    default:
-      // a tulsi chaura
-      return (
-        <svg {...common}>
-          <path d="M24 22c0-5-3-8-7-9 0 4 3 7 7 9zM24 22c0-5 3-8 7-9 0 4-3 7-7 9zM24 22v-11" />
-          <path d="M14 24h20v4H14zM16 28h16v12H16zM12 40h24" />
-          <path d="M24 31l3 3-3 3-3-3z" />
-        </svg>
-      );
-  }
+/** Simran's cut-out icons, reused for the new set of places. */
+const ICON: Record<LevelId, string> = { store: 'terrace', terrace: 'chowk', balcony: 'balcony', society: 'street', aangan: 'friend' };
+const ART = (id: LevelId) => `${import.meta.env.BASE_URL}assets/places/${ICON[id]}.webp`;
+
+/** A cusped Mughal arch, top and bottom: the card's plum body with its glowing gold edge. */
+const ARCH =
+  'M12 296V122c0-22 18-30 30-40 0-24 22-32 36-42 6-20 30-22 42-40 12 18 36 20 42 40 14 10 36 18 36 42 12 10 30 18 30 40v174c0 16-22 22-36 26-20 6-50 8-72 22-22-14-52-16-72-22-14-4-36-10-36-26z';
+function ArchFrame() {
+  return (
+    <svg className="place-frame" viewBox="0 0 240 340" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="pf-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#9a2654" />
+          <stop offset="1" stopColor="#5e1236" />
+        </linearGradient>
+      </defs>
+      <path d={ARCH} fill="url(#pf-fill)" stroke="#f6b53a" strokeWidth="5" vectorEffect="non-scaling-stroke" />
+      <path d={ARCH} fill="none" stroke="#ffd27a" strokeOpacity="0.55" strokeWidth="1.2" transform="translate(12 13) scale(0.9 0.92)" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
 }
 
-/** A jharokha: a rectangle under a pointed, gently ogee arch. */
-const WINDOW = 'M4 316V118C4 70 52 52 90 30 104 22 114 12 120 2 126 12 136 22 150 30 188 52 236 70 236 118V316Z';
-function WindowFrame() {
+/** The scalloped plaque the heading sits on, with a diya on top and gold flourishes. */
+function Plaque() {
+  const d = 'M70 40c24 0 34-20 62-22h196c28 0 40-18 72-18s44 18 72 18h196c28 2 38 22 62 22 22 16 50 28 70 45-20 17-48 29-70 45-24 0-34 20-62 22H472c-28 0-40 18-72 18s-44-18-72-18H132c-28-2-38-22-62-22C48 114 20 102 0 85c20-17 48-29 70-45z';
   return (
-    <svg className="win-frame" viewBox="0 0 240 320" preserveAspectRatio="none" aria-hidden="true">
-      <path d={WINDOW} />
+    <svg className="places-plaque" viewBox="-4 -4 808 178" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="pq-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8e1f4a" />
+          <stop offset="1" stopColor="#5e1236" />
+        </linearGradient>
+      </defs>
+      <path d={d} fill="url(#pq-fill)" stroke="#f6b53a" strokeWidth="4" vectorEffect="non-scaling-stroke" />
+      <path d={d} fill="none" stroke="#ffd27a" strokeOpacity="0.5" strokeWidth="1.2" transform="translate(28 9) scale(0.93 0.9)" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -93,23 +69,28 @@ export function LocationMap() {
     setUi({ map: false, queued: null });
   };
   return (
-    <div className="places places-min" role="dialog" aria-modal="true" aria-labelledby="places-title">
+    <div className="places places-v3" role="dialog" aria-modal="true" aria-labelledby="places-title">
       <div className="places-scrim" onClick={close} aria-hidden="true" />
       <section className="places-sheet">
-        <button className="places-x" onClick={close} aria-label="Close">
+        <button className="icon-btn places-x" onClick={close} aria-label="Close">
           <IconClose size={18} />
         </button>
-        <h2 id="places-title">Kahan phodoge?</h2>
-        <ul className="win-cards">
+        <header className="places-head">
+          <div className="places-plaque-wrap">
+            <Plaque />
+            <h2 id="places-title">Kahan phodoge?</h2>
+          </div>
+        </header>
+        <ul className="places-cards">
           {PLACE_ORDER.map((id, i) => (
             <li key={id} style={{ ['--i' as string]: i }}>
-              <button className={`win-card ${here === id ? 'here' : ''}`} onClick={() => (here === id ? close() : void goToLevel(id))} aria-current={here === id ? 'location' : undefined}>
-                <WindowFrame />
-                <span className="win-icon">
-                  <PlaceIcon id={id} />
+              <button className={`place-card ${here === id ? 'here' : ''}`} onClick={() => (here === id ? close() : void goToLevel(id))} aria-current={here === id ? 'location' : undefined}>
+                <ArchFrame />
+                <span className="place-art">
+                  <img src={ART(id)} alt="" draggable={false} />
                 </span>
-                <b className="win-name">{LEVELS[id].name}</b>
-                {here === id && <span className="win-here">You are here</span>}
+                <b className="place-name">{LEVELS[id].name}</b>
+                <span className="place-tag">{here === id ? 'You are here' : 'Go \u2192'}</span>
               </button>
             </li>
           ))}
