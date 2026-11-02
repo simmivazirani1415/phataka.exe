@@ -54,7 +54,7 @@ export function InventoryTray() {
           const n = uses[p.id];
           const img = crackerRender(p.id);
           return (
-            <li key={p.id}>
+            <li key={p.id} data-id={p.id}>
               <button
                 className={`inv-item ${n <= 0 ? 'empty' : ''} ${pulse === p.id ? 'pulse' : ''}`}
                 style={{ ['--pk' as string]: p.palette[0] }}

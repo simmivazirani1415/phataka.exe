@@ -27,11 +27,21 @@ const owns = (s: string) => s === 'UNLOCKED' || s === 'PLAYED' || s === 'MEMORY_
 const HOLD_MS = 1300;
 const STEP_MS = 420;
 
-/** A copy of the cracker's picture flies from the shelf into the stash on the right. */
-function flyToStash(from: Element | null | undefined, src: string | null) {
+/** The stash item for a cracker (scrolled into view in the phone dock), or the stash itself. */
+function stashTarget(id?: PackageId) {
+  const item = id ? document.querySelector(`.panel.inv [data-id="${id}"]`) : null;
+  if (item) {
+    item.scrollIntoView({ behavior: 'auto', inline: 'nearest', block: 'nearest' });
+    return item;
+  }
+  return document.querySelector('.panel.inv .inv-grid') ?? document.querySelector('.hud-count');
+}
+
+/** A copy of the cracker's picture flies from the shelf into the stash. */
+function flyToStash(from: Element | null | undefined, src: string | null, id?: PackageId) {
   if (!from || !src) return;
   const a = from.getBoundingClientRect();
-  const target = document.querySelector('.panel.inv .inv-grid') ?? document.querySelector('.hud-count');
+  const target = stashTarget(id);
   const b = target?.getBoundingClientRect() ?? { left: window.innerWidth - 60, top: 80, width: 40, height: 40 };
   const img = document.createElement('img');
   img.src = src;
@@ -122,8 +132,9 @@ export function StoreShelf() {
         window.setTimeout(() => {
           const li = track.current?.querySelector(`[data-id="${p.id}"]`);
           li?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', inline: 'nearest', block: 'nearest' });
-          flyToStash(li?.querySelector('.coll-art img') ?? li, crackerRender(p.id));
           collectFromStore(p.id);
+          // after collecting, so its place in the stash exists to fly to
+          window.requestAnimationFrame(() => flyToStash(li?.querySelector('.coll-art img') ?? li, crackerRender(p.id), p.id));
           if (k === list.length - 1) timers.current.push(window.setTimeout(() => setFilling(false), 800));
         }, k * (reduced ? 120 : STEP_MS)),
       );
@@ -146,7 +157,7 @@ export function StoreShelf() {
     const fresh = !owns(packages[id]) || uses[id] <= 0;
     if (fresh) collectFromStore(id);
     // where the stash is, for the slide
-    const target = document.querySelector('.panel.inv') ?? document.querySelector('.hud-count');
+    const target = stashTarget(id) ?? document.querySelector('.panel.inv');
     const b = target?.getBoundingClientRect();
     const dx = b ? b.left + b.width / 2 - window.innerWidth / 2 : window.innerWidth / 2;
     const dy = b ? b.top + Math.min(b.height, 200) / 2 - window.innerHeight / 2 : -window.innerHeight / 3;

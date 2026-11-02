@@ -382,6 +382,12 @@ export function Scrapbook() {
   });
 
   const cur = pagesOf(view, wide);
+  const thumbsRef = useRef<HTMLOListElement>(null);
+  // the strip follows the book: the open page's thumbnail scrolls into view
+  useEffect(() => {
+    const el = thumbsRef.current?.querySelector('button.on');
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [view]);
   const curPage = cur.find((p) => p >= 0) ?? 0;
   const thumbs = useMemo(() => PACKAGES.map((p) => latest(memories, p.id)), [memories]);
 
@@ -469,7 +475,7 @@ export function Scrapbook() {
         <span className="sb-count">
           {wide ? (cur[0] < 0 ? '1' : `${cur[0] + 1}–${cur[1] + 1}`) : curPage + 1} / 9
         </span>
-        <ol className="sb-thumbs">
+        <ol className="sb-thumbs" ref={thumbsRef}>
           <li>
             <button className={cur.includes(0) ? 'on' : ''} onClick={() => goPage(0)} aria-label="Cover">
               <span className="sb-thumb-cover">

@@ -121,9 +121,18 @@ function prefersReducedMotion() {
 const freshPackages = () => Object.fromEntries(PACKAGE_IDS.map((id) => [id, 'HIDDEN'])) as Record<PackageId, PackageState>;
 const freshUses = () => Object.fromEntries(PACKAGE_IDS.map((id) => [id, 0])) as Record<PackageId, number>;
 
+/** Phones and small touch screens start on Low graphics; High stays one switch away in Settings. */
+function phoneLike() {
+  try {
+    return window.matchMedia('(max-width: 640px)').matches || (window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 1024px)').matches);
+  } catch {
+    return false;
+  }
+}
+
 const defaultSettings = (): Settings => ({
   sound: false, // audio always begins muted
-  graphics: 'high',
+  graphics: phoneLike() ? 'low' : 'high',
   reducedMotion: prefersReducedMotion(),
   flash: 'low',
   quickReveal: false,

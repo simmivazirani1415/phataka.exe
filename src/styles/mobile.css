@@ -343,3 +343,88 @@
     gap: 8px;
   }
 }
+
+/* ---- phone polish, round 2 ---- */
+@media (max-width: 640px) {
+  /* gesture card: full width, a clear close inside the card, readable instructions */
+  .hguide {
+    width: calc(100% - 24px) !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    padding: 12px 12px 12px !important;
+  }
+  .hguide-x {
+    top: 8px !important;
+    right: 8px !important;
+    width: 40px !important;
+    height: 40px !important;
+    color: #fff1d7 !important;
+    background: rgba(40, 8, 22, 0.75) !important;
+    border-color: rgba(246, 181, 58, 0.8) !important;
+  }
+  .hguide-pane figcaption {
+    font-size: 13px !important;
+  }
+  .hguide-progress p {
+    font-size: 15px !important;
+    line-height: 1.3 !important;
+  }
+  .hguide-progress small {
+    font-size: 12px !important;
+  }
+
+  /* scrapbook: the strip scrolls with a soft fade at its edge; download is just an icon */
+  .sb-thumbs {
+    scroll-snap-type: x proximity;
+    padding-right: 28px !important;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent);
+  }
+  .sb-thumbs > li {
+    scroll-snap-align: center;
+  }
+  .sb-dl-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0 !important;
+    justify-content: center;
+    font-size: 0 !important;
+    gap: 0 !important;
+  }
+  .sb-dl-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* tap targets: at least 44px */
+  .hud .hud-book,
+  .icon-btn,
+  .place-drop-item,
+  .aim-opt {
+    min-height: 44px;
+  }
+}
+
+/* short phones (iPhone SE and the like): the landing fits without scrolling */
+@media (max-width: 640px) and (max-height: 720px) {
+  .intro-welcome {
+    padding-top: max(18px, calc(env(safe-area-inset-top) + 10px)) !important;
+  }
+  .intro-welcome .intro-logo {
+    width: min(220px, 58vw) !important;
+  }
+  .intro-steps {
+    --card: min(250px, 66vw) !important;
+    gap: 6px !important;
+    margin-top: 14px !important;
+  }
+  .intro-cta-wrap {
+    margin-top: 10px !important;
+    margin-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  }
+}
+@media (max-width: 640px) {
+  /* keep the camera button clear of the close button in the corner */
+  .hguide-off {
+    padding-top: 34px !important;
+  }
+}

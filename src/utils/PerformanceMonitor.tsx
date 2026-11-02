@@ -1,3 +1,4 @@
+import { levelState } from '../street/StreetLayout';
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGame } from '../game/GameState';
@@ -40,7 +41,9 @@ export function PerformanceMonitor() {
       setDpr(dpr.current);
     }
     const st = useGame.getState();
-    if (st.phase === 'playing' && st.settings.graphics === 'high' && !w.suggested) {
+    // never in the middle of a moment: not at the store, not while a cracker is in focus
+    const quiet = !!st.active || levelState.id === 'store' || st.ui.album || st.ui.map;
+    if (st.phase === 'playing' && st.settings.graphics === 'high' && !w.suggested && !quiet) {
       w.bad = fps < 28 ? w.bad + 1 : 0;
       if (w.bad >= 3) {
         w.suggested = true;
